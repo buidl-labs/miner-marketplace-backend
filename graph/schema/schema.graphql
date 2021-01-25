@@ -1,0 +1,33 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+# ignore stuff below
+
+type Fun {
+  id: ID!
+  meta: String!
+  text: String!
+}
+
+type Todo {
+  id: ID!
+  text: String!
+  done: Boolean!
+  user: User!
+}
+
+type User {
+  id: ID!
+  name: String!
+}
+
+# type Query {
+#   todos: [Todo!]!
+# }
+
+input NewTodo {
+  text: String!
+  userId: String!
+}

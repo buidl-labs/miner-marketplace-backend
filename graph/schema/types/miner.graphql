@@ -1,0 +1,255 @@
+type Miner {
+  # @goModel(model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Miner") {
+  id: ID!
+  address: String!
+  peerId: String!
+  owner: Owner @goField(forceResolver: true)
+  worker: Worker @goField(forceResolver: true)
+  name: String
+  bio: String
+  contact: Contact @goField(forceResolver: true)
+  verified: Boolean!
+
+  serviceDetails: ServiceDetails @goField(forceResolver: true)
+  qualityIndicators(since: Int, till: Int): QualityIndicators
+    @goField(forceResolver: true)
+  financeMetrics(since: Int, till: Int): FinanceMetrics
+    @goField(forceResolver: true)
+
+  allServiceDetails(since: Int, till: Int): [ServiceDetails!]
+    @goField(forceResolver: true)
+  allQualityIndicators(since: Int, till: Int): [QualityIndicators!]
+    @goField(forceResolver: true)
+  allFinanceMetrics(since: Int, till: Int): [FinanceMetrics!]
+    @goField(forceResolver: true)
+
+  storageDeal(id: ID!): StorageDeal @goField(forceResolver: true)
+  transaction(id: ID!): Transaction @goField(forceResolver: true)
+  sector(id: ID!): Sector @goField(forceResolver: true)
+  penalty(id: ID!): Penalty @goField(forceResolver: true)
+  deadline(id: ID!): Deadline @goField(forceResolver: true)
+
+  storageDeals: [StorageDeal!] @goField(forceResolver: true)
+  transactions: [Transaction!] @goField(forceResolver: true)
+  sectors: [Sector!] @goField(forceResolver: true)
+  penalties: [Penalty!] @goField(forceResolver: true)
+  deadlines: [Deadline!] @goField(forceResolver: true)
+}
+
+type ServiceDetails {
+  storage: Boolean
+  retrieval: Boolean
+  repair: Boolean
+  onlineDeals: Boolean
+  offlineDeals: Boolean
+  storageAskPrice: Float # FIL/GB/epoch
+  retrievalAskPrice: Float
+  minPieceSize: Int # Bytes
+  maxPieceSize: Int
+}
+
+type QualityIndicators {
+  qualityAdjPower: Float
+  rawBytePower: Float
+  qualityAdjPowerRatio: Float
+  rawBytePowerRatio: Float
+  winCount: Int
+  faultySectors: Int
+  dataStored: Float
+  blocksMined: Int
+  feeDebt: Float
+  miningEfficiency: Int
+}
+
+type FinanceMetrics {
+  # @goModel(
+  #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.FinanceMetrics"
+  # ) {
+  miner: Miner! @goField(forceResolver: true)
+  income: Income @goField(forceResolver: true)
+  expenditure: Expenditure @goField(forceResolver: true)
+  funds: Funds @goField(forceResolver: true)
+}
+
+type Income {
+  total: Float
+  blockRewards: Float
+  storageDealPayments: Float
+  retrievalDealPayments: Float
+}
+
+type Expenditure {
+  networkFee: Float
+  penalty: Float
+}
+
+type Funds {
+  preCommitDeposits: Float!
+  initialPledge: Float!
+  lockedFunds: Float!
+  availableFunds: Float!
+}
+
+type Contact {
+  email: String
+  slack: String
+  website: String
+  twitter: String
+}
+
+type StorageDeal {
+  # @goModel(
+  #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal"
+  # ) {
+  id: ID! # dealID
+  miner: Miner! @goField(forceResolver: true)
+  messageId: String!
+  clientId: String!
+  clientAddress: String!
+  price: Float!
+  startEpoch: Int!
+  endEpoch: Int!
+  duration: Int!
+  pieceSize: Int!
+  pieceCID: String!
+  verified: Boolean
+}
+
+type Transaction {
+  # @goModel(
+  #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction"
+  # ) {
+  id: ID! # transaction cid
+  miner: Miner @goField(forceResolver: true)
+  transactionType: TransactionType
+  amount: Float!
+  sender: String!
+  receiver: String!
+  height: Int!
+  timestamp: Time
+  networkFee: Float
+}
+
+enum TransactionType {
+  STORAGE_DEAL
+  RETRIEVAL_DEAL
+  BLOCK_REWARD
+  NETWORK_FEE
+  PENALTY
+}
+
+enum TransactionDirection {
+  INCOMING
+  OUTGOING
+}
+
+type Sector {
+  # @goModel(
+  #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Sector"
+  # ) {
+  id: ID!
+  miner: Miner! @goField(forceResolver: true)
+  size: Float!
+  qualityAdjPower: Float!
+  state: SectorState
+  initialPledge: Float
+  faults: [Fault!] @goField(forceResolver: true)
+}
+
+type Fault {
+  type: FaultType
+  penalty: Penalty
+  height: Int!
+  timestamp: Time
+}
+
+enum FaultType {
+  DECLARED
+  DETECTED
+  SKIPPED
+}
+
+type Penalty {
+  id: ID!
+  fee: Float!
+  type: PenaltyType
+  height: Int!
+  timestamp: Time
+}
+
+enum PenaltyType {
+  PRECOMMIT_EXPIRY_PENALTY
+  UNDECLARED_FAULT_PENALTY
+  DECLARED_FAULT_PENALTY
+  ONGOING_FAULT_PENALTY
+  TERMINATION_FAULT_PENALTY
+  CONSENSUS_FAULT_PENALTY
+}
+
+enum SectorState {
+  PRECOMMITED
+  COMMITTED
+  ACTIVE
+  FAULTY
+  RECOVERING
+  TERMINATED
+}
+
+input DeadlineOrderByInput {
+  deadline: Sort
+}
+
+enum Sort {
+  asc
+  desc
+}
+
+type Deadline {
+  id: ID!
+  deadlineIndex: Int!
+  periodStart: Int!
+  open: Int!
+  close: Int!
+  challenge: Int!
+  faultCutoff: Int!
+}
+
+type Owner {
+  # @goModel(model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Owner") {
+  id: ID!
+  miner: Miner! @goField(forceResolver: true)
+  address: String!
+  actor: Actor
+  balance: Float!
+  messages: Int
+  createdAt: Int
+  latestTransactionAt: Int
+}
+
+type Worker {
+  # @goModel(
+  #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Worker"
+  # ) {
+  id: ID!
+  miner: Miner! @goField(forceResolver: true)
+  address: String!
+  actor: Actor
+  balance: Float!
+  messages: Int
+  createdAt: Int
+  latestTransactionAt: Int
+}
+
+enum Actor {
+  STORAGE_MINER
+  RETRIEVAL_MINER
+  ACCOUNT
+}
+
+# For pagination (can be implemented in M2)
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}

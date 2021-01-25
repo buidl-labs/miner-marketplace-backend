@@ -1,0 +1,10 @@
+type Query {
+  miner(id: ID!): Miner
+  allMiners: [Miner!]
+
+  storageDeal(id: ID!): StorageDeal
+  allStorageDeals(since: Int, till: Int): [StorageDeal!]
+
+  transaction(id: ID!): Transaction
+  allTransactions(since: Int, till: Int): [Transaction!]
+}
