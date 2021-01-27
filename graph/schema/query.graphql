@@ -1,4 +1,6 @@
 type Query {
+  parsedTill: Int
+
   miner(id: ID!): Miner
   allMiners: [Miner!]
 

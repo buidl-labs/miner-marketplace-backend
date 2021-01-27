@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-pg/pg/v10"
+
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/buidl-labs/miner-marketplace-backend/graph"
@@ -19,11 +21,25 @@ func main() {
 		port = defaultPort
 	}
 
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
+	myNewDB, err := NewDB()
+	if err != nil {
+		log.Fatal("connecting to db: ", err)
+	}
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{DB: myNewDB}}))
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func NewDB() (*pg.DB, error) {
+	// dburl postgres://rajdeep@localhost/filecoinminermarketplace?sslmode=disable
+	db := pg.Connect(&pg.Options{
+		Addr:     ":5432",
+		User:     "rajdeep",
+		Database: "filecoinminermarketplace",
+	})
+	return db, nil
 }

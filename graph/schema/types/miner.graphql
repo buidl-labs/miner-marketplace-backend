@@ -29,10 +29,12 @@ type Miner {
   penalty(id: ID!): Penalty @goField(forceResolver: true)
   deadline(id: ID!): Deadline @goField(forceResolver: true)
 
-  storageDeals: [StorageDeal!] @goField(forceResolver: true)
-  transactions: [Transaction!] @goField(forceResolver: true)
-  sectors: [Sector!] @goField(forceResolver: true)
-  penalties: [Penalty!] @goField(forceResolver: true)
+  storageDeals(since: Int, till: Int): [StorageDeal!]
+    @goField(forceResolver: true)
+  transactions(since: Int, till: Int): [Transaction!]
+    @goField(forceResolver: true)
+  sectors(since: Int, till: Int): [Sector!] @goField(forceResolver: true)
+  penalties(since: Int, till: Int): [Penalty!] @goField(forceResolver: true)
   deadlines: [Deadline!] @goField(forceResolver: true)
 }
 
@@ -42,23 +44,23 @@ type ServiceDetails {
   repair: Boolean
   onlineDeals: Boolean
   offlineDeals: Boolean
-  storageAskPrice: Float # FIL/GB/epoch
-  retrievalAskPrice: Float
+  storageAskPrice: String # FIL/GB/epoch
+  retrievalAskPrice: String
   minPieceSize: Int # Bytes
   maxPieceSize: Int
 }
 
 type QualityIndicators {
-  qualityAdjPower: Float
-  rawBytePower: Float
-  qualityAdjPowerRatio: Float
-  rawBytePowerRatio: Float
+  qualityAdjPower: String
+  rawBytePower: String
+  qualityAdjPowerRatio: String
+  rawBytePowerRatio: String
   winCount: Int
   faultySectors: Int
-  dataStored: Float
+  dataStored: String
   blocksMined: Int
-  feeDebt: Float
-  miningEfficiency: Int
+  feeDebt: String
+  miningEfficiency: String
 }
 
 type FinanceMetrics {
@@ -72,22 +74,22 @@ type FinanceMetrics {
 }
 
 type Income {
-  total: Float
-  blockRewards: Float
-  storageDealPayments: Float
-  retrievalDealPayments: Float
+  total: String
+  blockRewards: String
+  storageDealPayments: String
+  retrievalDealPayments: String
 }
 
 type Expenditure {
-  networkFee: Float
-  penalty: Float
+  networkFee: String
+  penalty: String
 }
 
 type Funds {
-  preCommitDeposits: Float!
-  initialPledge: Float!
-  lockedFunds: Float!
-  availableFunds: Float!
+  preCommitDeposits: String!
+  initialPledge: String!
+  lockedFunds: String!
+  availableFunds: String!
 }
 
 type Contact {
@@ -106,11 +108,12 @@ type StorageDeal {
   messageId: String!
   clientId: String!
   clientAddress: String!
-  price: Float!
+  price: String!
   startEpoch: Int!
   endEpoch: Int!
   duration: Int!
-  pieceSize: Int!
+  paddedPieceSize: Int!
+  unpaddedPieceSize: Int!
   pieceCID: String!
   verified: Boolean
 }
@@ -122,12 +125,12 @@ type Transaction {
   id: ID! # transaction cid
   miner: Miner @goField(forceResolver: true)
   transactionType: TransactionType
-  amount: Float!
+  amount: String!
   sender: String!
   receiver: String!
   height: Int!
   timestamp: Time
-  networkFee: Float
+  networkFee: String
 }
 
 enum TransactionType {
@@ -149,10 +152,11 @@ type Sector {
   # ) {
   id: ID!
   miner: Miner! @goField(forceResolver: true)
-  size: Float!
-  qualityAdjPower: Float!
+  size: String!
+  activationEpoch: Int
+  expirationEpoch: Int
   state: SectorState
-  initialPledge: Float
+  initialPledge: String
   faults: [Fault!] @goField(forceResolver: true)
 }
 
@@ -171,7 +175,7 @@ enum FaultType {
 
 type Penalty {
   id: ID!
-  fee: Float!
+  fee: String!
   type: PenaltyType
   height: Int!
   timestamp: Time
@@ -217,10 +221,10 @@ type Deadline {
 type Owner {
   # @goModel(model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Owner") {
   id: ID!
-  miner: Miner! @goField(forceResolver: true)
+  miners: [Miner!] @goField(forceResolver: true)
   address: String!
   actor: Actor
-  balance: Float!
+  balance: String!
   messages: Int
   createdAt: Int
   latestTransactionAt: Int
@@ -234,7 +238,7 @@ type Worker {
   miner: Miner! @goField(forceResolver: true)
   address: String!
   actor: Actor
-  balance: Float!
+  balance: String!
   messages: Int
   createdAt: Int
   latestTransactionAt: Int

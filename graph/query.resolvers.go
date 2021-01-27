@@ -7,20 +7,63 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/model/indexing"
+	"github.com/buidl-labs/filecoin-chain-indexer/model/miner"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
 )
 
+func (r *queryResolver) ParsedTill(ctx context.Context) (*int, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
 func (r *queryResolver) Miner(ctx context.Context, id string) (*model.Miner, error) {
-	// select * from miner_infos where id=id; (get miner from db)
-	m := &model.Miner{
-		ID: "f099",
+	pt := new(indexing.ParsedTill)
+	err := r.DB.Model(pt).Limit(1).Select()
+	if err != nil {
+		panic(err)
 	}
+	fmt.Println("pth", pt.Height)
+	// select * from miner_infos where id=id; (get miner from db)
+
+	// mi := &miner.MinerInfo{MinerID: id}
+	mi := new(miner.MinerInfo)
+	err = r.DB.Model(mi).Where("miner_id = ? AND height = ?", id, pt.Height).Select()
+	if err != nil {
+		panic(err)
+	}
+
+	m := &model.Miner{
+		ID:       mi.MinerID,
+		Address:  mi.Address,
+		PeerID:   mi.PeerID,
+		Name:     "",
+		Bio:      "",
+		Verified: false,
+	}
+	// res, err := r.db.Query("")
 	return m, nil
 }
 
 func (r *queryResolver) AllMiners(ctx context.Context) ([]*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	var mis []miner.MinerInfo // this is the indexer model (db)
+	err := r.DB.Model(&mis).Select()
+	if err != nil {
+		panic(err)
+	}
+	var miners []*model.Miner // this is the webapp model (graphql)
+	// TODO: do this in sql instead of looping again
+	for _, mi := range mis {
+		miners = append(miners, &model.Miner{
+			ID:       mi.MinerID,
+			Address:  mi.Address,
+			PeerID:   mi.PeerID,
+			Name:     "",
+			Bio:      "",
+			Verified: false,
+		})
+	}
+	return miners, nil
 }
 
 func (r *queryResolver) StorageDeal(ctx context.Context, id string) (*model.StorageDeal, error) {

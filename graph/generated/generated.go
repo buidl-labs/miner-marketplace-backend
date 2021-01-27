@@ -40,8 +40,10 @@ type ResolverRoot interface {
 	Miner() MinerResolver
 	Mutation() MutationResolver
 	Owner() OwnerResolver
+	QualityIndicators() QualityIndicatorsResolver
 	Query() QueryResolver
 	Sector() SectorResolver
+	ServiceDetails() ServiceDetailsResolver
 	StorageDeal() StorageDealResolver
 	Todo() TodoResolver
 	Transaction() TransactionResolver
@@ -122,16 +124,16 @@ type ComplexityRoot struct {
 		Name                 func(childComplexity int) int
 		Owner                func(childComplexity int) int
 		PeerID               func(childComplexity int) int
-		Penalties            func(childComplexity int) int
+		Penalties            func(childComplexity int, since *int, till *int) int
 		Penalty              func(childComplexity int, id string) int
 		QualityIndicators    func(childComplexity int, since *int, till *int) int
 		Sector               func(childComplexity int, id string) int
-		Sectors              func(childComplexity int) int
+		Sectors              func(childComplexity int, since *int, till *int) int
 		ServiceDetails       func(childComplexity int) int
 		StorageDeal          func(childComplexity int, id string) int
-		StorageDeals         func(childComplexity int) int
+		StorageDeals         func(childComplexity int, since *int, till *int) int
 		Transaction          func(childComplexity int, id string) int
-		Transactions         func(childComplexity int) int
+		Transactions         func(childComplexity int, since *int, till *int) int
 		Verified             func(childComplexity int) int
 		Worker               func(childComplexity int) int
 	}
@@ -148,7 +150,7 @@ type ComplexityRoot struct {
 		ID                  func(childComplexity int) int
 		LatestTransactionAt func(childComplexity int) int
 		Messages            func(childComplexity int) int
-		Miner               func(childComplexity int) int
+		Miners              func(childComplexity int) int
 	}
 
 	PageInfo struct {
@@ -184,16 +186,18 @@ type ComplexityRoot struct {
 		AllStorageDeals func(childComplexity int, since *int, till *int) int
 		AllTransactions func(childComplexity int, since *int, till *int) int
 		Miner           func(childComplexity int, id string) int
+		ParsedTill      func(childComplexity int) int
 		StorageDeal     func(childComplexity int, id string) int
 		Transaction     func(childComplexity int, id string) int
 	}
 
 	Sector struct {
+		ActivationEpoch func(childComplexity int) int
+		ExpirationEpoch func(childComplexity int) int
 		Faults          func(childComplexity int) int
 		ID              func(childComplexity int) int
 		InitialPledge   func(childComplexity int) int
 		Miner           func(childComplexity int) int
-		QualityAdjPower func(childComplexity int) int
 		Size            func(childComplexity int) int
 		State           func(childComplexity int) int
 	}
@@ -211,18 +215,19 @@ type ComplexityRoot struct {
 	}
 
 	StorageDeal struct {
-		ClientAddress func(childComplexity int) int
-		ClientID      func(childComplexity int) int
-		Duration      func(childComplexity int) int
-		EndEpoch      func(childComplexity int) int
-		ID            func(childComplexity int) int
-		MessageID     func(childComplexity int) int
-		Miner         func(childComplexity int) int
-		PieceCid      func(childComplexity int) int
-		PieceSize     func(childComplexity int) int
-		Price         func(childComplexity int) int
-		StartEpoch    func(childComplexity int) int
-		Verified      func(childComplexity int) int
+		ClientAddress     func(childComplexity int) int
+		ClientID          func(childComplexity int) int
+		Duration          func(childComplexity int) int
+		EndEpoch          func(childComplexity int) int
+		ID                func(childComplexity int) int
+		MessageID         func(childComplexity int) int
+		Miner             func(childComplexity int) int
+		PaddedPieceSize   func(childComplexity int) int
+		PieceCid          func(childComplexity int) int
+		Price             func(childComplexity int) int
+		StartEpoch        func(childComplexity int) int
+		UnpaddedPieceSize func(childComplexity int) int
+		Verified          func(childComplexity int) int
 	}
 
 	Todo struct {
@@ -284,19 +289,28 @@ type MinerResolver interface {
 	Sector(ctx context.Context, obj *model.Miner, id string) (*model.Sector, error)
 	Penalty(ctx context.Context, obj *model.Miner, id string) (*model.Penalty, error)
 	Deadline(ctx context.Context, obj *model.Miner, id string) (*model.Deadline, error)
-	StorageDeals(ctx context.Context, obj *model.Miner) ([]*model.StorageDeal, error)
-	Transactions(ctx context.Context, obj *model.Miner) ([]*model.Transaction, error)
-	Sectors(ctx context.Context, obj *model.Miner) ([]*model.Sector, error)
-	Penalties(ctx context.Context, obj *model.Miner) ([]*model.Penalty, error)
+	StorageDeals(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.StorageDeal, error)
+	Transactions(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Transaction, error)
+	Sectors(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Sector, error)
+	Penalties(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Penalty, error)
 	Deadlines(ctx context.Context, obj *model.Miner) ([]*model.Deadline, error)
 }
 type MutationResolver interface {
 	CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error)
 }
 type OwnerResolver interface {
-	Miner(ctx context.Context, obj *model.Owner) (*model.Miner, error)
+	Miners(ctx context.Context, obj *model.Owner) ([]*model.Miner, error)
+}
+type QualityIndicatorsResolver interface {
+	WinCount(ctx context.Context, obj *model.QualityIndicators) (*int, error)
+	FaultySectors(ctx context.Context, obj *model.QualityIndicators) (*int, error)
+
+	BlocksMined(ctx context.Context, obj *model.QualityIndicators) (*int, error)
+
+	MiningEfficiency(ctx context.Context, obj *model.QualityIndicators) (*string, error)
 }
 type QueryResolver interface {
+	ParsedTill(ctx context.Context) (*int, error)
 	Miner(ctx context.Context, id string) (*model.Miner, error)
 	AllMiners(ctx context.Context) ([]*model.Miner, error)
 	StorageDeal(ctx context.Context, id string) (*model.StorageDeal, error)
@@ -309,8 +323,15 @@ type SectorResolver interface {
 
 	Faults(ctx context.Context, obj *model.Sector) ([]*model.Fault, error)
 }
+type ServiceDetailsResolver interface {
+	MinPieceSize(ctx context.Context, obj *model.ServiceDetails) (*int, error)
+	MaxPieceSize(ctx context.Context, obj *model.ServiceDetails) (*int, error)
+}
 type StorageDealResolver interface {
 	Miner(ctx context.Context, obj *model.StorageDeal) (*model.Miner, error)
+
+	PaddedPieceSize(ctx context.Context, obj *model.StorageDeal) (int, error)
+	UnpaddedPieceSize(ctx context.Context, obj *model.StorageDeal) (int, error)
 }
 type TodoResolver interface {
 	User(ctx context.Context, obj *model.Todo) (*model.User, error)
@@ -682,7 +703,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Miner.Penalties(childComplexity), true
+		args, err := ec.field_Miner_penalties_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Miner.Penalties(childComplexity, args["since"].(*int), args["till"].(*int)), true
 
 	case "Miner.penalty":
 		if e.complexity.Miner.Penalty == nil {
@@ -725,7 +751,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Miner.Sectors(childComplexity), true
+		args, err := ec.field_Miner_sectors_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Miner.Sectors(childComplexity, args["since"].(*int), args["till"].(*int)), true
 
 	case "Miner.serviceDetails":
 		if e.complexity.Miner.ServiceDetails == nil {
@@ -751,7 +782,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Miner.StorageDeals(childComplexity), true
+		args, err := ec.field_Miner_storageDeals_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Miner.StorageDeals(childComplexity, args["since"].(*int), args["till"].(*int)), true
 
 	case "Miner.transaction":
 		if e.complexity.Miner.Transaction == nil {
@@ -770,7 +806,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Miner.Transactions(childComplexity), true
+		args, err := ec.field_Miner_transactions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Miner.Transactions(childComplexity, args["since"].(*int), args["till"].(*int)), true
 
 	case "Miner.verified":
 		if e.complexity.Miner.Verified == nil {
@@ -847,12 +888,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Owner.Messages(childComplexity), true
 
-	case "Owner.miner":
-		if e.complexity.Owner.Miner == nil {
+	case "Owner.miners":
+		if e.complexity.Owner.Miners == nil {
 			break
 		}
 
-		return e.complexity.Owner.Miner(childComplexity), true
+		return e.complexity.Owner.Miners(childComplexity), true
 
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
@@ -1030,6 +1071,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Miner(childComplexity, args["id"].(string)), true
 
+	case "Query.parsedTill":
+		if e.complexity.Query.ParsedTill == nil {
+			break
+		}
+
+		return e.complexity.Query.ParsedTill(childComplexity), true
+
 	case "Query.storageDeal":
 		if e.complexity.Query.StorageDeal == nil {
 			break
@@ -1053,6 +1101,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Transaction(childComplexity, args["id"].(string)), true
+
+	case "Sector.activationEpoch":
+		if e.complexity.Sector.ActivationEpoch == nil {
+			break
+		}
+
+		return e.complexity.Sector.ActivationEpoch(childComplexity), true
+
+	case "Sector.expirationEpoch":
+		if e.complexity.Sector.ExpirationEpoch == nil {
+			break
+		}
+
+		return e.complexity.Sector.ExpirationEpoch(childComplexity), true
 
 	case "Sector.faults":
 		if e.complexity.Sector.Faults == nil {
@@ -1081,13 +1143,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Sector.Miner(childComplexity), true
-
-	case "Sector.qualityAdjPower":
-		if e.complexity.Sector.QualityAdjPower == nil {
-			break
-		}
-
-		return e.complexity.Sector.QualityAdjPower(childComplexity), true
 
 	case "Sector.size":
 		if e.complexity.Sector.Size == nil {
@@ -1215,19 +1270,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.StorageDeal.Miner(childComplexity), true
 
+	case "StorageDeal.paddedPieceSize":
+		if e.complexity.StorageDeal.PaddedPieceSize == nil {
+			break
+		}
+
+		return e.complexity.StorageDeal.PaddedPieceSize(childComplexity), true
+
 	case "StorageDeal.pieceCID":
 		if e.complexity.StorageDeal.PieceCid == nil {
 			break
 		}
 
 		return e.complexity.StorageDeal.PieceCid(childComplexity), true
-
-	case "StorageDeal.pieceSize":
-		if e.complexity.StorageDeal.PieceSize == nil {
-			break
-		}
-
-		return e.complexity.StorageDeal.PieceSize(childComplexity), true
 
 	case "StorageDeal.price":
 		if e.complexity.StorageDeal.Price == nil {
@@ -1242,6 +1297,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.StorageDeal.StartEpoch(childComplexity), true
+
+	case "StorageDeal.unpaddedPieceSize":
+		if e.complexity.StorageDeal.UnpaddedPieceSize == nil {
+			break
+		}
+
+		return e.complexity.StorageDeal.UnpaddedPieceSize(childComplexity), true
 
 	case "StorageDeal.verified":
 		if e.complexity.StorageDeal.Verified == nil {
@@ -1490,6 +1552,8 @@ directive @goField(
 }
 `, BuiltIn: false},
 	{Name: "graph/schema/query.graphql", Input: `type Query {
+  parsedTill: Int
+
   miner(id: ID!): Miner
   allMiners: [Miner!]
 
@@ -1586,10 +1650,12 @@ input NewTodo {
   penalty(id: ID!): Penalty @goField(forceResolver: true)
   deadline(id: ID!): Deadline @goField(forceResolver: true)
 
-  storageDeals: [StorageDeal!] @goField(forceResolver: true)
-  transactions: [Transaction!] @goField(forceResolver: true)
-  sectors: [Sector!] @goField(forceResolver: true)
-  penalties: [Penalty!] @goField(forceResolver: true)
+  storageDeals(since: Int, till: Int): [StorageDeal!]
+    @goField(forceResolver: true)
+  transactions(since: Int, till: Int): [Transaction!]
+    @goField(forceResolver: true)
+  sectors(since: Int, till: Int): [Sector!] @goField(forceResolver: true)
+  penalties(since: Int, till: Int): [Penalty!] @goField(forceResolver: true)
   deadlines: [Deadline!] @goField(forceResolver: true)
 }
 
@@ -1599,23 +1665,23 @@ type ServiceDetails {
   repair: Boolean
   onlineDeals: Boolean
   offlineDeals: Boolean
-  storageAskPrice: Float # FIL/GB/epoch
-  retrievalAskPrice: Float
+  storageAskPrice: String # FIL/GB/epoch
+  retrievalAskPrice: String
   minPieceSize: Int # Bytes
   maxPieceSize: Int
 }
 
 type QualityIndicators {
-  qualityAdjPower: Float
-  rawBytePower: Float
-  qualityAdjPowerRatio: Float
-  rawBytePowerRatio: Float
+  qualityAdjPower: String
+  rawBytePower: String
+  qualityAdjPowerRatio: String
+  rawBytePowerRatio: String
   winCount: Int
   faultySectors: Int
-  dataStored: Float
+  dataStored: String
   blocksMined: Int
-  feeDebt: Float
-  miningEfficiency: Int
+  feeDebt: String
+  miningEfficiency: String
 }
 
 type FinanceMetrics {
@@ -1629,22 +1695,22 @@ type FinanceMetrics {
 }
 
 type Income {
-  total: Float
-  blockRewards: Float
-  storageDealPayments: Float
-  retrievalDealPayments: Float
+  total: String
+  blockRewards: String
+  storageDealPayments: String
+  retrievalDealPayments: String
 }
 
 type Expenditure {
-  networkFee: Float
-  penalty: Float
+  networkFee: String
+  penalty: String
 }
 
 type Funds {
-  preCommitDeposits: Float!
-  initialPledge: Float!
-  lockedFunds: Float!
-  availableFunds: Float!
+  preCommitDeposits: String!
+  initialPledge: String!
+  lockedFunds: String!
+  availableFunds: String!
 }
 
 type Contact {
@@ -1663,11 +1729,12 @@ type StorageDeal {
   messageId: String!
   clientId: String!
   clientAddress: String!
-  price: Float!
+  price: String!
   startEpoch: Int!
   endEpoch: Int!
   duration: Int!
-  pieceSize: Int!
+  paddedPieceSize: Int!
+  unpaddedPieceSize: Int!
   pieceCID: String!
   verified: Boolean
 }
@@ -1679,12 +1746,12 @@ type Transaction {
   id: ID! # transaction cid
   miner: Miner @goField(forceResolver: true)
   transactionType: TransactionType
-  amount: Float!
+  amount: String!
   sender: String!
   receiver: String!
   height: Int!
   timestamp: Time
-  networkFee: Float
+  networkFee: String
 }
 
 enum TransactionType {
@@ -1706,10 +1773,11 @@ type Sector {
   # ) {
   id: ID!
   miner: Miner! @goField(forceResolver: true)
-  size: Float!
-  qualityAdjPower: Float!
+  size: String!
+  activationEpoch: Int
+  expirationEpoch: Int
   state: SectorState
-  initialPledge: Float
+  initialPledge: String
   faults: [Fault!] @goField(forceResolver: true)
 }
 
@@ -1728,7 +1796,7 @@ enum FaultType {
 
 type Penalty {
   id: ID!
-  fee: Float!
+  fee: String!
   type: PenaltyType
   height: Int!
   timestamp: Time
@@ -1774,10 +1842,10 @@ type Deadline {
 type Owner {
   # @goModel(model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Owner") {
   id: ID!
-  miner: Miner! @goField(forceResolver: true)
+  miners: [Miner!] @goField(forceResolver: true)
   address: String!
   actor: Actor
-  balance: Float!
+  balance: String!
   messages: Int
   createdAt: Int
   latestTransactionAt: Int
@@ -1791,7 +1859,7 @@ type Worker {
   miner: Miner! @goField(forceResolver: true)
   address: String!
   actor: Actor
-  balance: Float!
+  balance: String!
   messages: Int
   createdAt: Int
   latestTransactionAt: Int
@@ -1929,6 +1997,30 @@ func (ec *executionContext) field_Miner_financeMetrics_args(ctx context.Context,
 	return args, nil
 }
 
+func (ec *executionContext) field_Miner_penalties_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["since"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("since"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["since"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["till"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("till"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["till"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Miner_penalty_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1983,6 +2075,30 @@ func (ec *executionContext) field_Miner_sector_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
+func (ec *executionContext) field_Miner_sectors_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["since"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("since"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["since"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["till"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("till"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["till"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Miner_storageDeal_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1998,6 +2114,30 @@ func (ec *executionContext) field_Miner_storageDeal_args(ctx context.Context, ra
 	return args, nil
 }
 
+func (ec *executionContext) field_Miner_storageDeals_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["since"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("since"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["since"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["till"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("till"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["till"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Miner_transaction_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2010,6 +2150,30 @@ func (ec *executionContext) field_Miner_transaction_args(ctx context.Context, ra
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Miner_transactions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["since"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("since"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["since"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["till"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("till"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["till"] = arg1
 	return args, nil
 }
 
@@ -2201,9 +2365,9 @@ func (ec *executionContext) _Contact_email(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Contact_slack(ctx context.Context, field graphql.CollectedField, obj *model.Contact) (ret graphql.Marshaler) {
@@ -2233,9 +2397,9 @@ func (ec *executionContext) _Contact_slack(ctx context.Context, field graphql.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Contact_website(ctx context.Context, field graphql.CollectedField, obj *model.Contact) (ret graphql.Marshaler) {
@@ -2265,9 +2429,9 @@ func (ec *executionContext) _Contact_website(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Contact_twitter(ctx context.Context, field graphql.CollectedField, obj *model.Contact) (ret graphql.Marshaler) {
@@ -2297,9 +2461,9 @@ func (ec *executionContext) _Contact_twitter(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Deadline_id(ctx context.Context, field graphql.CollectedField, obj *model.Deadline) (ret graphql.Marshaler) {
@@ -2367,9 +2531,9 @@ func (ec *executionContext) _Deadline_deadlineIndex(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Deadline_periodStart(ctx context.Context, field graphql.CollectedField, obj *model.Deadline) (ret graphql.Marshaler) {
@@ -2402,9 +2566,9 @@ func (ec *executionContext) _Deadline_periodStart(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Deadline_open(ctx context.Context, field graphql.CollectedField, obj *model.Deadline) (ret graphql.Marshaler) {
@@ -2437,9 +2601,9 @@ func (ec *executionContext) _Deadline_open(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Deadline_close(ctx context.Context, field graphql.CollectedField, obj *model.Deadline) (ret graphql.Marshaler) {
@@ -2472,9 +2636,9 @@ func (ec *executionContext) _Deadline_close(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Deadline_challenge(ctx context.Context, field graphql.CollectedField, obj *model.Deadline) (ret graphql.Marshaler) {
@@ -2507,9 +2671,9 @@ func (ec *executionContext) _Deadline_challenge(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Deadline_faultCutoff(ctx context.Context, field graphql.CollectedField, obj *model.Deadline) (ret graphql.Marshaler) {
@@ -2542,9 +2706,9 @@ func (ec *executionContext) _Deadline_faultCutoff(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Expenditure_networkFee(ctx context.Context, field graphql.CollectedField, obj *model.Expenditure) (ret graphql.Marshaler) {
@@ -2574,9 +2738,9 @@ func (ec *executionContext) _Expenditure_networkFee(ctx context.Context, field g
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Expenditure_penalty(ctx context.Context, field graphql.CollectedField, obj *model.Expenditure) (ret graphql.Marshaler) {
@@ -2606,9 +2770,9 @@ func (ec *executionContext) _Expenditure_penalty(ctx context.Context, field grap
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Fault_type(ctx context.Context, field graphql.CollectedField, obj *model.Fault) (ret graphql.Marshaler) {
@@ -2705,9 +2869,9 @@ func (ec *executionContext) _Fault_height(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Fault_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.Fault) (ret graphql.Marshaler) {
@@ -2737,9 +2901,9 @@ func (ec *executionContext) _Fault_timestamp(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*time.Time)
+	res := resTmp.(time.Time)
 	fc.Result = res
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _FinanceMetrics_miner(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
@@ -3008,9 +3172,9 @@ func (ec *executionContext) _Funds_preCommitDeposits(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Funds_initialPledge(ctx context.Context, field graphql.CollectedField, obj *model.Funds) (ret graphql.Marshaler) {
@@ -3043,9 +3207,9 @@ func (ec *executionContext) _Funds_initialPledge(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Funds_lockedFunds(ctx context.Context, field graphql.CollectedField, obj *model.Funds) (ret graphql.Marshaler) {
@@ -3078,9 +3242,9 @@ func (ec *executionContext) _Funds_lockedFunds(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Funds_availableFunds(ctx context.Context, field graphql.CollectedField, obj *model.Funds) (ret graphql.Marshaler) {
@@ -3113,9 +3277,9 @@ func (ec *executionContext) _Funds_availableFunds(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Income_total(ctx context.Context, field graphql.CollectedField, obj *model.Income) (ret graphql.Marshaler) {
@@ -3145,9 +3309,9 @@ func (ec *executionContext) _Income_total(ctx context.Context, field graphql.Col
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Income_blockRewards(ctx context.Context, field graphql.CollectedField, obj *model.Income) (ret graphql.Marshaler) {
@@ -3177,9 +3341,9 @@ func (ec *executionContext) _Income_blockRewards(ctx context.Context, field grap
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Income_storageDealPayments(ctx context.Context, field graphql.CollectedField, obj *model.Income) (ret graphql.Marshaler) {
@@ -3209,9 +3373,9 @@ func (ec *executionContext) _Income_storageDealPayments(ctx context.Context, fie
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Income_retrievalDealPayments(ctx context.Context, field graphql.CollectedField, obj *model.Income) (ret graphql.Marshaler) {
@@ -3241,9 +3405,9 @@ func (ec *executionContext) _Income_retrievalDealPayments(ctx context.Context, f
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Miner_id(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
@@ -3442,9 +3606,9 @@ func (ec *executionContext) _Miner_name(ctx context.Context, field graphql.Colle
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Miner_bio(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
@@ -3474,9 +3638,9 @@ func (ec *executionContext) _Miner_bio(ctx context.Context, field graphql.Collec
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Miner_contact(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
@@ -3984,9 +4148,16 @@ func (ec *executionContext) _Miner_storageDeals(ctx context.Context, field graph
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Miner_storageDeals_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Miner().StorageDeals(rctx, obj)
+		return ec.resolvers.Miner().StorageDeals(rctx, obj, args["since"].(*int), args["till"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4016,9 +4187,16 @@ func (ec *executionContext) _Miner_transactions(ctx context.Context, field graph
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Miner_transactions_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Miner().Transactions(rctx, obj)
+		return ec.resolvers.Miner().Transactions(rctx, obj, args["since"].(*int), args["till"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4048,9 +4226,16 @@ func (ec *executionContext) _Miner_sectors(ctx context.Context, field graphql.Co
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Miner_sectors_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Miner().Sectors(rctx, obj)
+		return ec.resolvers.Miner().Sectors(rctx, obj, args["since"].(*int), args["till"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4080,9 +4265,16 @@ func (ec *executionContext) _Miner_penalties(ctx context.Context, field graphql.
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Miner_penalties_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Miner().Penalties(rctx, obj)
+		return ec.resolvers.Miner().Penalties(rctx, obj, args["since"].(*int), args["till"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4205,7 +4397,7 @@ func (ec *executionContext) _Owner_id(ctx context.Context, field graphql.Collect
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Owner_miner(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
+func (ec *executionContext) _Owner_miners(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -4223,21 +4415,18 @@ func (ec *executionContext) _Owner_miner(ctx context.Context, field graphql.Coll
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Owner().Miner(rctx, obj)
+		return ec.resolvers.Owner().Miners(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.Miner)
+	res := resTmp.([]*model.Miner)
 	fc.Result = res
-	return ec.marshalNMiner2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐMiner(ctx, field.Selections, res)
+	return ec.marshalOMiner2ᚕᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐMinerᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Owner_address(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
@@ -4337,9 +4526,9 @@ func (ec *executionContext) _Owner_balance(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Owner_messages(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
@@ -4369,9 +4558,9 @@ func (ec *executionContext) _Owner_messages(ctx context.Context, field graphql.C
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Owner_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
@@ -4401,9 +4590,9 @@ func (ec *executionContext) _Owner_createdAt(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Owner_latestTransactionAt(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
@@ -4433,9 +4622,9 @@ func (ec *executionContext) _Owner_latestTransactionAt(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *model.PageInfo) (ret graphql.Marshaler) {
@@ -4535,9 +4724,9 @@ func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graphql.CollectedField, obj *model.PageInfo) (ret graphql.Marshaler) {
@@ -4567,9 +4756,9 @@ func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Penalty_id(ctx context.Context, field graphql.CollectedField, obj *model.Penalty) (ret graphql.Marshaler) {
@@ -4637,9 +4826,9 @@ func (ec *executionContext) _Penalty_fee(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Penalty_type(ctx context.Context, field graphql.CollectedField, obj *model.Penalty) (ret graphql.Marshaler) {
@@ -4704,9 +4893,9 @@ func (ec *executionContext) _Penalty_height(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Penalty_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.Penalty) (ret graphql.Marshaler) {
@@ -4736,9 +4925,9 @@ func (ec *executionContext) _Penalty_timestamp(ctx context.Context, field graphq
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*time.Time)
+	res := resTmp.(time.Time)
 	fc.Result = res
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_qualityAdjPower(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -4768,9 +4957,9 @@ func (ec *executionContext) _QualityIndicators_qualityAdjPower(ctx context.Conte
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_rawBytePower(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -4800,9 +4989,9 @@ func (ec *executionContext) _QualityIndicators_rawBytePower(ctx context.Context,
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_qualityAdjPowerRatio(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -4832,9 +5021,9 @@ func (ec *executionContext) _QualityIndicators_qualityAdjPowerRatio(ctx context.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_rawBytePowerRatio(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -4864,9 +5053,9 @@ func (ec *executionContext) _QualityIndicators_rawBytePowerRatio(ctx context.Con
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_winCount(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -4880,14 +5069,14 @@ func (ec *executionContext) _QualityIndicators_winCount(ctx context.Context, fie
 		Object:     "QualityIndicators",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.WinCount, nil
+		return ec.resolvers.QualityIndicators().WinCount(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4912,14 +5101,14 @@ func (ec *executionContext) _QualityIndicators_faultySectors(ctx context.Context
 		Object:     "QualityIndicators",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.FaultySectors, nil
+		return ec.resolvers.QualityIndicators().FaultySectors(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4960,9 +5149,9 @@ func (ec *executionContext) _QualityIndicators_dataStored(ctx context.Context, f
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_blocksMined(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -4976,14 +5165,14 @@ func (ec *executionContext) _QualityIndicators_blocksMined(ctx context.Context, 
 		Object:     "QualityIndicators",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.BlocksMined, nil
+		return ec.resolvers.QualityIndicators().BlocksMined(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5024,9 +5213,9 @@ func (ec *executionContext) _QualityIndicators_feeDebt(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_miningEfficiency(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -5040,14 +5229,46 @@ func (ec *executionContext) _QualityIndicators_miningEfficiency(ctx context.Cont
 		Object:     "QualityIndicators",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MiningEfficiency, nil
+		return ec.resolvers.QualityIndicators().MiningEfficiency(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_parsedTill(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ParsedTill(rctx)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5459,12 +5680,12 @@ func (ec *executionContext) _Sector_size(ctx context.Context, field graphql.Coll
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Sector_qualityAdjPower(ctx context.Context, field graphql.CollectedField, obj *model.Sector) (ret graphql.Marshaler) {
+func (ec *executionContext) _Sector_activationEpoch(ctx context.Context, field graphql.CollectedField, obj *model.Sector) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -5482,21 +5703,50 @@ func (ec *executionContext) _Sector_qualityAdjPower(ctx context.Context, field g
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.QualityAdjPower, nil
+		return obj.ActivationEpoch, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Sector_expirationEpoch(ctx context.Context, field graphql.CollectedField, obj *model.Sector) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Sector",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExpirationEpoch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Sector_state(ctx context.Context, field graphql.CollectedField, obj *model.Sector) (ret graphql.Marshaler) {
@@ -5558,9 +5808,9 @@ func (ec *executionContext) _Sector_initialPledge(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Sector_faults(ctx context.Context, field graphql.CollectedField, obj *model.Sector) (ret graphql.Marshaler) {
@@ -5622,9 +5872,9 @@ func (ec *executionContext) _ServiceDetails_storage(ctx context.Context, field g
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ServiceDetails_retrieval(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
@@ -5654,9 +5904,9 @@ func (ec *executionContext) _ServiceDetails_retrieval(ctx context.Context, field
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ServiceDetails_repair(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
@@ -5686,9 +5936,9 @@ func (ec *executionContext) _ServiceDetails_repair(ctx context.Context, field gr
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ServiceDetails_onlineDeals(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
@@ -5718,9 +5968,9 @@ func (ec *executionContext) _ServiceDetails_onlineDeals(ctx context.Context, fie
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ServiceDetails_offlineDeals(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
@@ -5750,9 +6000,9 @@ func (ec *executionContext) _ServiceDetails_offlineDeals(ctx context.Context, fi
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ServiceDetails_storageAskPrice(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
@@ -5782,9 +6032,9 @@ func (ec *executionContext) _ServiceDetails_storageAskPrice(ctx context.Context,
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ServiceDetails_retrievalAskPrice(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
@@ -5814,9 +6064,9 @@ func (ec *executionContext) _ServiceDetails_retrievalAskPrice(ctx context.Contex
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ServiceDetails_minPieceSize(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
@@ -5830,14 +6080,14 @@ func (ec *executionContext) _ServiceDetails_minPieceSize(ctx context.Context, fi
 		Object:     "ServiceDetails",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MinPieceSize, nil
+		return ec.resolvers.ServiceDetails().MinPieceSize(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5862,14 +6112,14 @@ func (ec *executionContext) _ServiceDetails_maxPieceSize(ctx context.Context, fi
 		Object:     "ServiceDetails",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.MaxPieceSize, nil
+		return ec.resolvers.ServiceDetails().MaxPieceSize(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6088,9 +6338,9 @@ func (ec *executionContext) _StorageDeal_price(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _StorageDeal_startEpoch(ctx context.Context, field graphql.CollectedField, obj *model.StorageDeal) (ret graphql.Marshaler) {
@@ -6123,9 +6373,9 @@ func (ec *executionContext) _StorageDeal_startEpoch(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _StorageDeal_endEpoch(ctx context.Context, field graphql.CollectedField, obj *model.StorageDeal) (ret graphql.Marshaler) {
@@ -6158,9 +6408,9 @@ func (ec *executionContext) _StorageDeal_endEpoch(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _StorageDeal_duration(ctx context.Context, field graphql.CollectedField, obj *model.StorageDeal) (ret graphql.Marshaler) {
@@ -6198,7 +6448,7 @@ func (ec *executionContext) _StorageDeal_duration(ctx context.Context, field gra
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _StorageDeal_pieceSize(ctx context.Context, field graphql.CollectedField, obj *model.StorageDeal) (ret graphql.Marshaler) {
+func (ec *executionContext) _StorageDeal_paddedPieceSize(ctx context.Context, field graphql.CollectedField, obj *model.StorageDeal) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -6209,14 +6459,49 @@ func (ec *executionContext) _StorageDeal_pieceSize(ctx context.Context, field gr
 		Object:     "StorageDeal",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PieceSize, nil
+		return ec.resolvers.StorageDeal().PaddedPieceSize(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StorageDeal_unpaddedPieceSize(ctx context.Context, field graphql.CollectedField, obj *model.StorageDeal) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StorageDeal",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.StorageDeal().UnpaddedPieceSize(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6295,9 +6580,9 @@ func (ec *executionContext) _StorageDeal_verified(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalOBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Todo_id(ctx context.Context, field graphql.CollectedField, obj *model.Todo) (ret graphql.Marshaler) {
@@ -6534,9 +6819,9 @@ func (ec *executionContext) _Transaction_transactionType(ctx context.Context, fi
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.TransactionType)
+	res := resTmp.(model.TransactionType)
 	fc.Result = res
-	return ec.marshalOTransactionType2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionType(ctx, field.Selections, res)
+	return ec.marshalOTransactionType2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionType(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_amount(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -6569,9 +6854,9 @@ func (ec *executionContext) _Transaction_amount(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_sender(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -6674,9 +6959,9 @@ func (ec *executionContext) _Transaction_height(ctx context.Context, field graph
 		}
 		return graphql.Null
 	}
-	res := resTmp.(int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -6706,9 +6991,9 @@ func (ec *executionContext) _Transaction_timestamp(ctx context.Context, field gr
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*time.Time)
+	res := resTmp.(time.Time)
 	fc.Result = res
-	return ec.marshalOTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_networkFee(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -6738,9 +7023,9 @@ func (ec *executionContext) _Transaction_networkFee(ctx context.Context, field g
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -6980,9 +7265,9 @@ func (ec *executionContext) _Worker_balance(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Worker_messages(ctx context.Context, field graphql.CollectedField, obj *model.Worker) (ret graphql.Marshaler) {
@@ -7012,9 +7297,9 @@ func (ec *executionContext) _Worker_messages(ctx context.Context, field graphql.
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Worker_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Worker) (ret graphql.Marshaler) {
@@ -7044,9 +7329,9 @@ func (ec *executionContext) _Worker_createdAt(ctx context.Context, field graphql
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Worker_latestTransactionAt(ctx context.Context, field graphql.CollectedField, obj *model.Worker) (ret graphql.Marshaler) {
@@ -7076,9 +7361,9 @@ func (ec *executionContext) _Worker_latestTransactionAt(ctx context.Context, fie
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int64)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -8850,7 +9135,7 @@ func (ec *executionContext) _Owner(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "miner":
+		case "miners":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
 				defer func() {
@@ -8858,10 +9143,7 @@ func (ec *executionContext) _Owner(ctx context.Context, sel ast.SelectionSet, ob
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Owner_miner(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
+				res = ec._Owner_miners(ctx, field, obj)
 				return res
 			})
 		case "address":
@@ -8990,17 +9272,53 @@ func (ec *executionContext) _QualityIndicators(ctx context.Context, sel ast.Sele
 		case "rawBytePowerRatio":
 			out.Values[i] = ec._QualityIndicators_rawBytePowerRatio(ctx, field, obj)
 		case "winCount":
-			out.Values[i] = ec._QualityIndicators_winCount(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._QualityIndicators_winCount(ctx, field, obj)
+				return res
+			})
 		case "faultySectors":
-			out.Values[i] = ec._QualityIndicators_faultySectors(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._QualityIndicators_faultySectors(ctx, field, obj)
+				return res
+			})
 		case "dataStored":
 			out.Values[i] = ec._QualityIndicators_dataStored(ctx, field, obj)
 		case "blocksMined":
-			out.Values[i] = ec._QualityIndicators_blocksMined(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._QualityIndicators_blocksMined(ctx, field, obj)
+				return res
+			})
 		case "feeDebt":
 			out.Values[i] = ec._QualityIndicators_feeDebt(ctx, field, obj)
 		case "miningEfficiency":
-			out.Values[i] = ec._QualityIndicators_miningEfficiency(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._QualityIndicators_miningEfficiency(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9027,6 +9345,17 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
+		case "parsedTill":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_parsedTill(ctx, field)
+				return res
+			})
 		case "miner":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -9143,11 +9472,10 @@ func (ec *executionContext) _Sector(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "qualityAdjPower":
-			out.Values[i] = ec._Sector_qualityAdjPower(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+		case "activationEpoch":
+			out.Values[i] = ec._Sector_activationEpoch(ctx, field, obj)
+		case "expirationEpoch":
+			out.Values[i] = ec._Sector_expirationEpoch(ctx, field, obj)
 		case "state":
 			out.Values[i] = ec._Sector_state(ctx, field, obj)
 		case "initialPledge":
@@ -9200,9 +9528,27 @@ func (ec *executionContext) _ServiceDetails(ctx context.Context, sel ast.Selecti
 		case "retrievalAskPrice":
 			out.Values[i] = ec._ServiceDetails_retrievalAskPrice(ctx, field, obj)
 		case "minPieceSize":
-			out.Values[i] = ec._ServiceDetails_minPieceSize(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ServiceDetails_minPieceSize(ctx, field, obj)
+				return res
+			})
 		case "maxPieceSize":
-			out.Values[i] = ec._ServiceDetails_maxPieceSize(ctx, field, obj)
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ServiceDetails_maxPieceSize(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9279,11 +9625,34 @@ func (ec *executionContext) _StorageDeal(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
-		case "pieceSize":
-			out.Values[i] = ec._StorageDeal_pieceSize(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+		case "paddedPieceSize":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._StorageDeal_paddedPieceSize(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "unpaddedPieceSize":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._StorageDeal_unpaddedPieceSize(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "pieceCID":
 			out.Values[i] = ec._StorageDeal_pieceCID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -9798,21 +10167,6 @@ func (ec *executionContext) marshalNFinanceMetrics2ᚖgithubᚗcomᚋbuidlᚑlab
 	return ec._FinanceMetrics(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
-	res, err := graphql.UnmarshalFloat(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
-	res := graphql.MarshalFloat(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-	}
-	return res
-}
-
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -9835,6 +10189,21 @@ func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}
 
 func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
 	res := graphql.MarshalInt(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNInt2int64(ctx context.Context, v interface{}) (int64, error) {
+	res, err := graphql.UnmarshalInt64(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	res := graphql.MarshalInt64(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
@@ -10398,21 +10767,6 @@ func (ec *executionContext) marshalOFinanceMetrics2ᚖgithubᚗcomᚋbuidlᚑlab
 	return ec._FinanceMetrics(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v interface{}) (*float64, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := graphql.UnmarshalFloat(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel ast.SelectionSet, v *float64) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return graphql.MarshalFloat(*v)
-}
-
 func (ec *executionContext) marshalOFunds2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐFunds(ctx context.Context, sel ast.SelectionSet, v *model.Funds) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -10425,6 +10779,24 @@ func (ec *executionContext) marshalOIncome2ᚖgithubᚗcomᚋbuidlᚑlabsᚋmine
 		return graphql.Null
 	}
 	return ec._Income(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	return graphql.MarshalInt(v)
+}
+
+func (ec *executionContext) unmarshalOInt2int64(ctx context.Context, v interface{}) (int64, error) {
+	res, err := graphql.UnmarshalInt64(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	return graphql.MarshalInt64(v)
 }
 
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
@@ -10839,19 +11211,13 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	return graphql.MarshalString(*v)
 }
 
-func (ec *executionContext) unmarshalOTime2ᚖtimeᚐTime(ctx context.Context, v interface{}) (*time.Time, error) {
-	if v == nil {
-		return nil, nil
-	}
+func (ec *executionContext) unmarshalOTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
 	res, err := graphql.UnmarshalTime(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOTime2ᚖtimeᚐTime(ctx context.Context, sel ast.SelectionSet, v *time.Time) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return graphql.MarshalTime(*v)
+func (ec *executionContext) marshalOTime2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	return graphql.MarshalTime(v)
 }
 
 func (ec *executionContext) marshalOTransaction2ᚕᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Transaction) graphql.Marshaler {
@@ -10901,19 +11267,13 @@ func (ec *executionContext) marshalOTransaction2ᚖgithubᚗcomᚋbuidlᚑlabs�
 	return ec._Transaction(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOTransactionType2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionType(ctx context.Context, v interface{}) (*model.TransactionType, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(model.TransactionType)
+func (ec *executionContext) unmarshalOTransactionType2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionType(ctx context.Context, v interface{}) (model.TransactionType, error) {
+	var res model.TransactionType
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOTransactionType2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionType(ctx context.Context, sel ast.SelectionSet, v *model.TransactionType) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
+func (ec *executionContext) marshalOTransactionType2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionType(ctx context.Context, sel ast.SelectionSet, v model.TransactionType) graphql.Marshaler {
 	return v
 }
 

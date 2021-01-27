@@ -10,20 +10,20 @@ import (
 )
 
 type Contact struct {
-	Email   *string `json:"email"`
-	Slack   *string `json:"slack"`
-	Website *string `json:"website"`
-	Twitter *string `json:"twitter"`
+	Email   string `json:"email"`
+	Slack   string `json:"slack"`
+	Website string `json:"website"`
+	Twitter string `json:"twitter"`
 }
 
 type Deadline struct {
 	ID            string `json:"id"`
-	DeadlineIndex int    `json:"deadlineIndex"`
-	PeriodStart   int    `json:"periodStart"`
-	Open          int    `json:"open"`
-	Close         int    `json:"close"`
-	Challenge     int    `json:"challenge"`
-	FaultCutoff   int    `json:"faultCutoff"`
+	DeadlineIndex int64  `json:"deadlineIndex"`
+	PeriodStart   int64  `json:"periodStart"`
+	Open          int64  `json:"open"`
+	Close         int64  `json:"close"`
+	Challenge     int64  `json:"challenge"`
+	FaultCutoff   int64  `json:"faultCutoff"`
 }
 
 type DeadlineOrderByInput struct {
@@ -31,15 +31,15 @@ type DeadlineOrderByInput struct {
 }
 
 type Expenditure struct {
-	NetworkFee *float64 `json:"networkFee"`
-	Penalty    *float64 `json:"penalty"`
+	NetworkFee string `json:"networkFee"`
+	Penalty    string `json:"penalty"`
 }
 
 type Fault struct {
 	Type      *FaultType `json:"type"`
 	Penalty   *Penalty   `json:"penalty"`
-	Height    int        `json:"height"`
-	Timestamp *time.Time `json:"timestamp"`
+	Height    int64      `json:"height"`
+	Timestamp time.Time  `json:"timestamp"`
 }
 
 type FinanceMetrics struct {
@@ -56,17 +56,17 @@ type Fun struct {
 }
 
 type Funds struct {
-	PreCommitDeposits float64 `json:"preCommitDeposits"`
-	InitialPledge     float64 `json:"initialPledge"`
-	LockedFunds       float64 `json:"lockedFunds"`
-	AvailableFunds    float64 `json:"availableFunds"`
+	PreCommitDeposits string `json:"preCommitDeposits"`
+	InitialPledge     string `json:"initialPledge"`
+	LockedFunds       string `json:"lockedFunds"`
+	AvailableFunds    string `json:"availableFunds"`
 }
 
 type Income struct {
-	Total                 *float64 `json:"total"`
-	BlockRewards          *float64 `json:"blockRewards"`
-	StorageDealPayments   *float64 `json:"storageDealPayments"`
-	RetrievalDealPayments *float64 `json:"retrievalDealPayments"`
+	Total                 string `json:"total"`
+	BlockRewards          string `json:"blockRewards"`
+	StorageDealPayments   string `json:"storageDealPayments"`
+	RetrievalDealPayments string `json:"retrievalDealPayments"`
 }
 
 type Miner struct {
@@ -75,8 +75,8 @@ type Miner struct {
 	PeerID               string               `json:"peerId"`
 	Owner                *Owner               `json:"owner"`
 	Worker               *Worker              `json:"worker"`
-	Name                 *string              `json:"name"`
-	Bio                  *string              `json:"bio"`
+	Name                 string               `json:"name"`
+	Bio                  string               `json:"bio"`
 	Contact              *Contact             `json:"contact"`
 	Verified             bool                 `json:"verified"`
 	ServiceDetails       *ServiceDetails      `json:"serviceDetails"`
@@ -103,91 +103,93 @@ type NewTodo struct {
 }
 
 type Owner struct {
-	ID                  string  `json:"id"`
-	Miner               *Miner  `json:"miner"`
-	Address             string  `json:"address"`
-	Actor               *Actor  `json:"actor"`
-	Balance             float64 `json:"balance"`
-	Messages            *int    `json:"messages"`
-	CreatedAt           *int    `json:"createdAt"`
-	LatestTransactionAt *int    `json:"latestTransactionAt"`
+	ID                  string   `json:"id"`
+	Miners              []*Miner `json:"miners"`
+	Address             string   `json:"address"`
+	Actor               *Actor   `json:"actor"`
+	Balance             string   `json:"balance"`
+	Messages            int      `json:"messages"`
+	CreatedAt           int64    `json:"createdAt"`
+	LatestTransactionAt int64    `json:"latestTransactionAt"`
 }
 
 type PageInfo struct {
-	HasNextPage     bool    `json:"hasNextPage"`
-	HasPreviousPage bool    `json:"hasPreviousPage"`
-	StartCursor     *string `json:"startCursor"`
-	EndCursor       *string `json:"endCursor"`
+	HasNextPage     bool   `json:"hasNextPage"`
+	HasPreviousPage bool   `json:"hasPreviousPage"`
+	StartCursor     string `json:"startCursor"`
+	EndCursor       string `json:"endCursor"`
 }
 
 type Penalty struct {
 	ID        string       `json:"id"`
-	Fee       float64      `json:"fee"`
+	Fee       string       `json:"fee"`
 	Type      *PenaltyType `json:"type"`
-	Height    int          `json:"height"`
-	Timestamp *time.Time   `json:"timestamp"`
+	Height    int64        `json:"height"`
+	Timestamp time.Time    `json:"timestamp"`
 }
 
 type QualityIndicators struct {
-	QualityAdjPower      *float64 `json:"qualityAdjPower"`
-	RawBytePower         *float64 `json:"rawBytePower"`
-	QualityAdjPowerRatio *float64 `json:"qualityAdjPowerRatio"`
-	RawBytePowerRatio    *float64 `json:"rawBytePowerRatio"`
-	WinCount             *int     `json:"winCount"`
-	FaultySectors        *int     `json:"faultySectors"`
-	DataStored           *float64 `json:"dataStored"`
-	BlocksMined          *int     `json:"blocksMined"`
-	FeeDebt              *float64 `json:"feeDebt"`
-	MiningEfficiency     *int     `json:"miningEfficiency"`
+	QualityAdjPower      string `json:"qualityAdjPower"`
+	RawBytePower         string `json:"rawBytePower"`
+	QualityAdjPowerRatio string `json:"qualityAdjPowerRatio"`
+	RawBytePowerRatio    string `json:"rawBytePowerRatio"`
+	WinCount             uint64 `json:"winCount"`
+	FaultySectors        uint64 `json:"faultySectors"`
+	DataStored           string `json:"dataStored"`
+	BlocksMined          uint64 `json:"blocksMined"`
+	FeeDebt              string `json:"feeDebt"`
+	MiningEfficiency     uint64 `json:"miningEfficiency"`
 }
 
 type Sector struct {
 	ID              string       `json:"id"`
 	Miner           *Miner       `json:"miner"`
-	Size            float64      `json:"size"`
-	QualityAdjPower float64      `json:"qualityAdjPower"`
+	Size            string       `json:"size"`
+	ActivationEpoch int64        `json:"activationEpoch"`
+	ExpirationEpoch int64        `json:"expirationEpoch"`
 	State           *SectorState `json:"state"`
-	InitialPledge   *float64     `json:"initialPledge"`
+	InitialPledge   string       `json:"initialPledge"`
 	Faults          []*Fault     `json:"faults"`
 }
 
 type ServiceDetails struct {
-	Storage           *bool    `json:"storage"`
-	Retrieval         *bool    `json:"retrieval"`
-	Repair            *bool    `json:"repair"`
-	OnlineDeals       *bool    `json:"onlineDeals"`
-	OfflineDeals      *bool    `json:"offlineDeals"`
-	StorageAskPrice   *float64 `json:"storageAskPrice"`
-	RetrievalAskPrice *float64 `json:"retrievalAskPrice"`
-	MinPieceSize      *int     `json:"minPieceSize"`
-	MaxPieceSize      *int     `json:"maxPieceSize"`
+	Storage           bool   `json:"storage"`
+	Retrieval         bool   `json:"retrieval"`
+	Repair            bool   `json:"repair"`
+	OnlineDeals       bool   `json:"onlineDeals"`
+	OfflineDeals      bool   `json:"offlineDeals"`
+	StorageAskPrice   string `json:"storageAskPrice"`
+	RetrievalAskPrice string `json:"retrievalAskPrice"`
+	MinPieceSize      uint64 `json:"minPieceSize"`
+	MaxPieceSize      uint64 `json:"maxPieceSize"`
 }
 
 type StorageDeal struct {
-	ID            string  `json:"id"`
-	Miner         *Miner  `json:"miner"`
-	MessageID     string  `json:"messageId"`
-	ClientID      string  `json:"clientId"`
-	ClientAddress string  `json:"clientAddress"`
-	Price         float64 `json:"price"`
-	StartEpoch    int     `json:"startEpoch"`
-	EndEpoch      int     `json:"endEpoch"`
-	Duration      int     `json:"duration"`
-	PieceSize     int     `json:"pieceSize"`
-	PieceCid      string  `json:"pieceCID"`
-	Verified      *bool   `json:"verified"`
+	ID                string `json:"id"`
+	Miner             *Miner `json:"miner"`
+	MessageID         string `json:"messageId"`
+	ClientID          string `json:"clientId"`
+	ClientAddress     string `json:"clientAddress"`
+	Price             string `json:"price"`
+	StartEpoch        int64  `json:"startEpoch"`
+	EndEpoch          int64  `json:"endEpoch"`
+	Duration          int    `json:"duration"`
+	PaddedPieceSize   uint64 `json:"paddedPieceSize"`
+	UnPaddedPieceSize uint64 `json:"unPaddedPieceSize"`
+	PieceCid          string `json:"pieceCID"`
+	Verified          bool   `json:"verified"`
 }
 
 type Transaction struct {
-	ID              string           `json:"id"`
-	Miner           *Miner           `json:"miner"`
-	TransactionType *TransactionType `json:"transactionType"`
-	Amount          float64          `json:"amount"`
-	Sender          string           `json:"sender"`
-	Receiver        string           `json:"receiver"`
-	Height          int              `json:"height"`
-	Timestamp       *time.Time       `json:"timestamp"`
-	NetworkFee      *float64         `json:"networkFee"`
+	ID              string          `json:"id"`
+	Miner           *Miner          `json:"miner"`
+	TransactionType TransactionType `json:"transactionType"`
+	Amount          string          `json:"amount"`
+	Sender          string          `json:"sender"`
+	Receiver        string          `json:"receiver"`
+	Height          int64           `json:"height"`
+	Timestamp       time.Time       `json:"timestamp"`
+	NetworkFee      string          `json:"networkFee"`
 }
 
 type User struct {
@@ -196,14 +198,14 @@ type User struct {
 }
 
 type Worker struct {
-	ID                  string  `json:"id"`
-	Miner               *Miner  `json:"miner"`
-	Address             string  `json:"address"`
-	Actor               *Actor  `json:"actor"`
-	Balance             float64 `json:"balance"`
-	Messages            *int    `json:"messages"`
-	CreatedAt           *int    `json:"createdAt"`
-	LatestTransactionAt *int    `json:"latestTransactionAt"`
+	ID                  string `json:"id"`
+	Miner               *Miner `json:"miner"`
+	Address             string `json:"address"`
+	Actor               *Actor `json:"actor"`
+	Balance             string `json:"balance"`
+	Messages            int    `json:"messages"`
+	CreatedAt           int64  `json:"createdAt"`
+	LatestTransactionAt int64  `json:"latestTransactionAt"`
 }
 
 type Actor string

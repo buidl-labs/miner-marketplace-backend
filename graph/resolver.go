@@ -3,9 +3,9 @@ package graph
 //go:generate go run github.com/99designs/gqlgen
 
 import (
-	"database/sql"
-
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
+
+	"github.com/go-pg/pg/v10"
 )
 
 // This file will not be regenerated automatically.
@@ -14,5 +14,5 @@ import (
 
 type Resolver struct {
 	todos []*model.Todo
-	db    *sql.DB
+	DB    *pg.DB
 }
