@@ -39,6 +39,8 @@ type Miner {
 }
 
 type ServiceDetails {
+  # id: ID!
+  miner: Miner! @goField(forceResolver: true)
   storage: Boolean
   retrieval: Boolean
   repair: Boolean
@@ -46,27 +48,30 @@ type ServiceDetails {
   offlineDeals: Boolean
   storageAskPrice: String # FIL/GB/epoch
   retrievalAskPrice: String
-  minPieceSize: Int # Bytes
-  maxPieceSize: Int
+  minPieceSize: Int! # Bytes
+  maxPieceSize: Int!
 }
 
 type QualityIndicators {
+  # id: ID!
+  miner: Miner! @goField(forceResolver: true)
   qualityAdjPower: String
   rawBytePower: String
   qualityAdjPowerRatio: String
   rawBytePowerRatio: String
-  winCount: Int
-  faultySectors: Int
+  winCount: Int!
+  faultySectors: Int!
   dataStored: String
-  blocksMined: Int
+  blocksMined: Int!
   feeDebt: String
-  miningEfficiency: String
+  miningEfficiency: Int!
 }
 
 type FinanceMetrics {
   # @goModel(
   #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.FinanceMetrics"
   # ) {
+  id: ID!
   miner: Miner! @goField(forceResolver: true)
   income: Income @goField(forceResolver: true)
   expenditure: Expenditure @goField(forceResolver: true)
@@ -93,6 +98,7 @@ type Funds {
 }
 
 type Contact {
+  miner: Miner! @goField(forceResolver: true)
   email: String
   slack: String
   website: String

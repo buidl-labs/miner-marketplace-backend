@@ -9,11 +9,20 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/miner"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
 )
+
+func (r *contactResolver) Miner(ctx context.Context, obj *model.Contact) (*model.Miner, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
+func (r *financeMetricsResolver) ID(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
+	panic(fmt.Errorf("not implemented"))
+}
 
 func (r *financeMetricsResolver) Miner(ctx context.Context, obj *model.FinanceMetrics) (*model.Miner, error) {
 	panic(fmt.Errorf("not implemented"))
@@ -80,7 +89,26 @@ func (r *minerResolver) ServiceDetails(ctx context.Context, obj *model.Miner) (*
 }
 
 func (r *minerResolver) QualityIndicators(ctx context.Context, obj *model.Miner, since *int, till *int) (*model.QualityIndicators, error) {
-	panic(fmt.Errorf("not implemented"))
+	// select miner_id, sum(win_count) from block_headers group by miner_id;
+
+	var bhs []blocks.BlockHeader
+	var winsum uint64
+	err := r.DB.Model(&bhs).ColumnExpr("SUM(win_count) AS wins").Where("miner_id = ?", obj.ID).Select(&winsum)
+	if err != nil {
+		panic(err)
+	}
+
+	// var res []struct {
+	// 	Wins int64
+	// }
+	// r.DB.Model(&bhs).ColumnExpr("SUM(win_count) AS wins").Group("miner_id").Select(&res)
+	// fmt.Println("res", res, &res)
+	// panic(fmt.Errorf("not implemented"))
+
+	qi := &model.QualityIndicators{
+		WinCount: winsum,
+	}
+	return qi, nil
 }
 
 func (r *minerResolver) FinanceMetrics(ctx context.Context, obj *model.Miner, since *int, till *int) (*model.FinanceMetrics, error) {
@@ -124,7 +152,6 @@ func (r *minerResolver) StorageDeals(ctx context.Context, obj *model.Miner, sinc
 }
 
 func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Transaction, error) {
-	// minerID := obj.ID
 	mi := new(miner.MinerInfo)
 	err := r.DB.Model(mi).Where("miner_id = ?", obj.ID).Select()
 	if err != nil {
@@ -172,19 +199,31 @@ func (r *ownerResolver) Miners(ctx context.Context, obj *model.Owner) ([]*model.
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *qualityIndicatorsResolver) WinCount(ctx context.Context, obj *model.QualityIndicators) (*int, error) {
+func (r *qualityIndicatorsResolver) Miner(ctx context.Context, obj *model.QualityIndicators) (*model.Miner, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *qualityIndicatorsResolver) FaultySectors(ctx context.Context, obj *model.QualityIndicators) (*int, error) {
+func (r *qualityIndicatorsResolver) WinCount(ctx context.Context, obj *model.QualityIndicators) (int, error) {
+	fmt.Println("MIDD", obj.WinCount)
+	return int(obj.WinCount), nil
+	// var bhs []blocks.BlockHeader
+	// var winsum int
+	// err := r.DB.Model(&bhs).ColumnExpr("SUM(win_count) AS wins").Where("miner_id = ?", obj.Miner.ID).Select(&winsum)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// return &winsum, nil
+}
+
+func (r *qualityIndicatorsResolver) FaultySectors(ctx context.Context, obj *model.QualityIndicators) (int, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *qualityIndicatorsResolver) BlocksMined(ctx context.Context, obj *model.QualityIndicators) (*int, error) {
+func (r *qualityIndicatorsResolver) BlocksMined(ctx context.Context, obj *model.QualityIndicators) (int, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *qualityIndicatorsResolver) MiningEfficiency(ctx context.Context, obj *model.QualityIndicators) (*string, error) {
+func (r *qualityIndicatorsResolver) MiningEfficiency(ctx context.Context, obj *model.QualityIndicators) (int, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
@@ -196,11 +235,15 @@ func (r *sectorResolver) Faults(ctx context.Context, obj *model.Sector) ([]*mode
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *serviceDetailsResolver) MinPieceSize(ctx context.Context, obj *model.ServiceDetails) (*int, error) {
+func (r *serviceDetailsResolver) Miner(ctx context.Context, obj *model.ServiceDetails) (*model.Miner, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *serviceDetailsResolver) MaxPieceSize(ctx context.Context, obj *model.ServiceDetails) (*int, error) {
+func (r *serviceDetailsResolver) MinPieceSize(ctx context.Context, obj *model.ServiceDetails) (int, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
+func (r *serviceDetailsResolver) MaxPieceSize(ctx context.Context, obj *model.ServiceDetails) (int, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
@@ -223,6 +266,9 @@ func (r *transactionResolver) Miner(ctx context.Context, obj *model.Transaction)
 func (r *workerResolver) Miner(ctx context.Context, obj *model.Worker) (*model.Miner, error) {
 	panic(fmt.Errorf("not implemented"))
 }
+
+// Contact returns generated.ContactResolver implementation.
+func (r *Resolver) Contact() generated.ContactResolver { return &contactResolver{r} }
 
 // FinanceMetrics returns generated.FinanceMetricsResolver implementation.
 func (r *Resolver) FinanceMetrics() generated.FinanceMetricsResolver {
@@ -257,6 +303,7 @@ func (r *Resolver) Transaction() generated.TransactionResolver { return &transac
 // Worker returns generated.WorkerResolver implementation.
 func (r *Resolver) Worker() generated.WorkerResolver { return &workerResolver{r} }
 
+type contactResolver struct{ *Resolver }
 type financeMetricsResolver struct{ *Resolver }
 type minerResolver struct{ *Resolver }
 type ownerResolver struct{ *Resolver }

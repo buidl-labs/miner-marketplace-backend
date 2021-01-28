@@ -36,6 +36,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Contact() ContactResolver
 	FinanceMetrics() FinanceMetricsResolver
 	Miner() MinerResolver
 	Mutation() MutationResolver
@@ -56,6 +57,7 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	Contact struct {
 		Email   func(childComplexity int) int
+		Miner   func(childComplexity int) int
 		Slack   func(childComplexity int) int
 		Twitter func(childComplexity int) int
 		Website func(childComplexity int) int
@@ -86,6 +88,7 @@ type ComplexityRoot struct {
 	FinanceMetrics struct {
 		Expenditure func(childComplexity int) int
 		Funds       func(childComplexity int) int
+		ID          func(childComplexity int) int
 		Income      func(childComplexity int) int
 		Miner       func(childComplexity int) int
 	}
@@ -173,6 +176,7 @@ type ComplexityRoot struct {
 		DataStored           func(childComplexity int) int
 		FaultySectors        func(childComplexity int) int
 		FeeDebt              func(childComplexity int) int
+		Miner                func(childComplexity int) int
 		MiningEfficiency     func(childComplexity int) int
 		QualityAdjPower      func(childComplexity int) int
 		QualityAdjPowerRatio func(childComplexity int) int
@@ -205,6 +209,7 @@ type ComplexityRoot struct {
 	ServiceDetails struct {
 		MaxPieceSize      func(childComplexity int) int
 		MinPieceSize      func(childComplexity int) int
+		Miner             func(childComplexity int) int
 		OfflineDeals      func(childComplexity int) int
 		OnlineDeals       func(childComplexity int) int
 		Repair            func(childComplexity int) int
@@ -266,7 +271,11 @@ type ComplexityRoot struct {
 	}
 }
 
+type ContactResolver interface {
+	Miner(ctx context.Context, obj *model.Contact) (*model.Miner, error)
+}
 type FinanceMetricsResolver interface {
+	ID(ctx context.Context, obj *model.FinanceMetrics) (string, error)
 	Miner(ctx context.Context, obj *model.FinanceMetrics) (*model.Miner, error)
 	Income(ctx context.Context, obj *model.FinanceMetrics) (*model.Income, error)
 	Expenditure(ctx context.Context, obj *model.FinanceMetrics) (*model.Expenditure, error)
@@ -302,12 +311,14 @@ type OwnerResolver interface {
 	Miners(ctx context.Context, obj *model.Owner) ([]*model.Miner, error)
 }
 type QualityIndicatorsResolver interface {
-	WinCount(ctx context.Context, obj *model.QualityIndicators) (*int, error)
-	FaultySectors(ctx context.Context, obj *model.QualityIndicators) (*int, error)
+	Miner(ctx context.Context, obj *model.QualityIndicators) (*model.Miner, error)
 
-	BlocksMined(ctx context.Context, obj *model.QualityIndicators) (*int, error)
+	WinCount(ctx context.Context, obj *model.QualityIndicators) (int, error)
+	FaultySectors(ctx context.Context, obj *model.QualityIndicators) (int, error)
 
-	MiningEfficiency(ctx context.Context, obj *model.QualityIndicators) (*string, error)
+	BlocksMined(ctx context.Context, obj *model.QualityIndicators) (int, error)
+
+	MiningEfficiency(ctx context.Context, obj *model.QualityIndicators) (int, error)
 }
 type QueryResolver interface {
 	ParsedTill(ctx context.Context) (*int, error)
@@ -324,8 +335,10 @@ type SectorResolver interface {
 	Faults(ctx context.Context, obj *model.Sector) ([]*model.Fault, error)
 }
 type ServiceDetailsResolver interface {
-	MinPieceSize(ctx context.Context, obj *model.ServiceDetails) (*int, error)
-	MaxPieceSize(ctx context.Context, obj *model.ServiceDetails) (*int, error)
+	Miner(ctx context.Context, obj *model.ServiceDetails) (*model.Miner, error)
+
+	MinPieceSize(ctx context.Context, obj *model.ServiceDetails) (int, error)
+	MaxPieceSize(ctx context.Context, obj *model.ServiceDetails) (int, error)
 }
 type StorageDealResolver interface {
 	Miner(ctx context.Context, obj *model.StorageDeal) (*model.Miner, error)
@@ -364,6 +377,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Contact.Email(childComplexity), true
+
+	case "Contact.miner":
+		if e.complexity.Contact.Miner == nil {
+			break
+		}
+
+		return e.complexity.Contact.Miner(childComplexity), true
 
 	case "Contact.slack":
 		if e.complexity.Contact.Slack == nil {
@@ -490,6 +510,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FinanceMetrics.Funds(childComplexity), true
+
+	case "FinanceMetrics.id":
+		if e.complexity.FinanceMetrics.ID == nil {
+			break
+		}
+
+		return e.complexity.FinanceMetrics.ID(childComplexity), true
 
 	case "FinanceMetrics.income":
 		if e.complexity.FinanceMetrics.Income == nil {
@@ -986,6 +1013,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.QualityIndicators.FeeDebt(childComplexity), true
 
+	case "QualityIndicators.miner":
+		if e.complexity.QualityIndicators.Miner == nil {
+			break
+		}
+
+		return e.complexity.QualityIndicators.Miner(childComplexity), true
+
 	case "QualityIndicators.miningEfficiency":
 		if e.complexity.QualityIndicators.MiningEfficiency == nil {
 			break
@@ -1171,6 +1205,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ServiceDetails.MinPieceSize(childComplexity), true
+
+	case "ServiceDetails.miner":
+		if e.complexity.ServiceDetails.Miner == nil {
+			break
+		}
+
+		return e.complexity.ServiceDetails.Miner(childComplexity), true
 
 	case "ServiceDetails.offlineDeals":
 		if e.complexity.ServiceDetails.OfflineDeals == nil {
@@ -1660,6 +1701,8 @@ input NewTodo {
 }
 
 type ServiceDetails {
+  # id: ID!
+  miner: Miner! @goField(forceResolver: true)
   storage: Boolean
   retrieval: Boolean
   repair: Boolean
@@ -1667,27 +1710,30 @@ type ServiceDetails {
   offlineDeals: Boolean
   storageAskPrice: String # FIL/GB/epoch
   retrievalAskPrice: String
-  minPieceSize: Int # Bytes
-  maxPieceSize: Int
+  minPieceSize: Int! # Bytes
+  maxPieceSize: Int!
 }
 
 type QualityIndicators {
+  # id: ID!
+  miner: Miner! @goField(forceResolver: true)
   qualityAdjPower: String
   rawBytePower: String
   qualityAdjPowerRatio: String
   rawBytePowerRatio: String
-  winCount: Int
-  faultySectors: Int
+  winCount: Int!
+  faultySectors: Int!
   dataStored: String
-  blocksMined: Int
+  blocksMined: Int!
   feeDebt: String
-  miningEfficiency: String
+  miningEfficiency: Int!
 }
 
 type FinanceMetrics {
   # @goModel(
   #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.FinanceMetrics"
   # ) {
+  id: ID!
   miner: Miner! @goField(forceResolver: true)
   income: Income @goField(forceResolver: true)
   expenditure: Expenditure @goField(forceResolver: true)
@@ -1714,6 +1760,7 @@ type Funds {
 }
 
 type Contact {
+  miner: Miner! @goField(forceResolver: true)
   email: String
   slack: String
   website: String
@@ -2338,6 +2385,41 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
+func (ec *executionContext) _Contact_miner(ctx context.Context, field graphql.CollectedField, obj *model.Contact) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Contact",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Contact().Miner(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Miner)
+	fc.Result = res
+	return ec.marshalNMiner2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐMiner(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Contact_email(ctx context.Context, field graphql.CollectedField, obj *model.Contact) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2904,6 +2986,41 @@ func (ec *executionContext) _Fault_timestamp(ctx context.Context, field graphql.
 	res := resTmp.(time.Time)
 	fc.Result = res
 	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _FinanceMetrics_id(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "FinanceMetrics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.FinanceMetrics().ID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _FinanceMetrics_miner(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
@@ -4930,6 +5047,41 @@ func (ec *executionContext) _Penalty_timestamp(ctx context.Context, field graphq
 	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _QualityIndicators_miner(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "QualityIndicators",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.QualityIndicators().Miner(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Miner)
+	fc.Result = res
+	return ec.marshalNMiner2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐMiner(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _QualityIndicators_qualityAdjPower(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -5083,11 +5235,14 @@ func (ec *executionContext) _QualityIndicators_winCount(ctx context.Context, fie
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_faultySectors(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -5115,11 +5270,14 @@ func (ec *executionContext) _QualityIndicators_faultySectors(ctx context.Context
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_dataStored(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -5179,11 +5337,14 @@ func (ec *executionContext) _QualityIndicators_blocksMined(ctx context.Context, 
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _QualityIndicators_feeDebt(ctx context.Context, field graphql.CollectedField, obj *model.QualityIndicators) (ret graphql.Marshaler) {
@@ -5243,11 +5404,14 @@ func (ec *executionContext) _QualityIndicators_miningEfficiency(ctx context.Cont
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_parsedTill(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -5845,6 +6009,41 @@ func (ec *executionContext) _Sector_faults(ctx context.Context, field graphql.Co
 	return ec.marshalOFault2ᚕᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐFaultᚄ(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _ServiceDetails_miner(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ServiceDetails",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ServiceDetails().Miner(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Miner)
+	fc.Result = res
+	return ec.marshalNMiner2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐMiner(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _ServiceDetails_storage(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -6094,11 +6293,14 @@ func (ec *executionContext) _ServiceDetails_minPieceSize(ctx context.Context, fi
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _ServiceDetails_maxPieceSize(ctx context.Context, field graphql.CollectedField, obj *model.ServiceDetails) (ret graphql.Marshaler) {
@@ -6126,11 +6328,14 @@ func (ec *executionContext) _ServiceDetails_maxPieceSize(ctx context.Context, fi
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _StorageDeal_id(ctx context.Context, field graphql.CollectedField, obj *model.StorageDeal) (ret graphql.Marshaler) {
@@ -8520,6 +8725,20 @@ func (ec *executionContext) _Contact(ctx context.Context, sel ast.SelectionSet, 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Contact")
+		case "miner":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Contact_miner(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "email":
 			out.Values[i] = ec._Contact_email(ctx, field, obj)
 		case "slack":
@@ -8666,6 +8885,20 @@ func (ec *executionContext) _FinanceMetrics(ctx context.Context, sel ast.Selecti
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("FinanceMetrics")
+		case "id":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._FinanceMetrics_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "miner":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -9263,6 +9496,20 @@ func (ec *executionContext) _QualityIndicators(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("QualityIndicators")
+		case "miner":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._QualityIndicators_miner(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "qualityAdjPower":
 			out.Values[i] = ec._QualityIndicators_qualityAdjPower(ctx, field, obj)
 		case "rawBytePower":
@@ -9280,6 +9527,9 @@ func (ec *executionContext) _QualityIndicators(ctx context.Context, sel ast.Sele
 					}
 				}()
 				res = ec._QualityIndicators_winCount(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "faultySectors":
@@ -9291,6 +9541,9 @@ func (ec *executionContext) _QualityIndicators(ctx context.Context, sel ast.Sele
 					}
 				}()
 				res = ec._QualityIndicators_faultySectors(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "dataStored":
@@ -9304,6 +9557,9 @@ func (ec *executionContext) _QualityIndicators(ctx context.Context, sel ast.Sele
 					}
 				}()
 				res = ec._QualityIndicators_blocksMined(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "feeDebt":
@@ -9317,6 +9573,9 @@ func (ec *executionContext) _QualityIndicators(ctx context.Context, sel ast.Sele
 					}
 				}()
 				res = ec._QualityIndicators_miningEfficiency(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:
@@ -9513,6 +9772,20 @@ func (ec *executionContext) _ServiceDetails(ctx context.Context, sel ast.Selecti
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("ServiceDetails")
+		case "miner":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ServiceDetails_miner(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "storage":
 			out.Values[i] = ec._ServiceDetails_storage(ctx, field, obj)
 		case "retrieval":
@@ -9536,6 +9809,9 @@ func (ec *executionContext) _ServiceDetails(ctx context.Context, sel ast.Selecti
 					}
 				}()
 				res = ec._ServiceDetails_minPieceSize(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "maxPieceSize":
@@ -9547,6 +9823,9 @@ func (ec *executionContext) _ServiceDetails(ctx context.Context, sel ast.Selecti
 					}
 				}()
 				res = ec._ServiceDetails_maxPieceSize(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:
