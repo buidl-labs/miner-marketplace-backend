@@ -106,7 +106,7 @@ type Owner struct {
 	ID                  string   `json:"id"`
 	Miners              []*Miner `json:"miners"`
 	Address             string   `json:"address"`
-	Actor               *Actor   `json:"actor"`
+	Actor               Actor    `json:"actor"`
 	Balance             string   `json:"balance"`
 	Messages            int      `json:"messages"`
 	CreatedAt           int64    `json:"createdAt"`
@@ -169,7 +169,7 @@ type ServiceDetails struct {
 }
 
 type StorageDeal struct {
-	ID                string `json:"id"`
+	ID                int    `json:"id"`
 	Miner             *Miner `json:"miner"`
 	MessageID         string `json:"messageId"`
 	ClientID          string `json:"clientId"`
@@ -205,7 +205,7 @@ type Worker struct {
 	ID                  string `json:"id"`
 	Miner               *Miner `json:"miner"`
 	Address             string `json:"address"`
-	Actor               *Actor `json:"actor"`
+	Actor               Actor  `json:"actor"`
 	Balance             string `json:"balance"`
 	Messages            int    `json:"messages"`
 	CreatedAt           int64  `json:"createdAt"`

@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/model/indexing"
+	"github.com/buidl-labs/filecoin-chain-indexer/model/market"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/miner"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
@@ -67,11 +68,88 @@ func (r *queryResolver) AllMiners(ctx context.Context) ([]*model.Miner, error) {
 }
 
 func (r *queryResolver) StorageDeal(ctx context.Context, id string) (*model.StorageDeal, error) {
-	panic(fmt.Errorf("not implemented"))
+	mdp := new(market.MarketDealProposal)
+	err := r.DB.Model(mdp).Where("deal_id = ?", id).Select()
+	if err != nil {
+		panic(err)
+	}
+
+	pt := new(indexing.ParsedTill)
+	err = r.DB.Model(pt).Limit(1).Select()
+	if err != nil {
+		panic(err)
+	}
+	mi := new(miner.MinerInfo)
+	err = r.DB.Model(mi).Where("miner_id = ? AND height = ?", mdp.ProviderID, pt.Height).Select()
+	if err != nil {
+		panic(err)
+	}
+
+	m := &model.Miner{
+		ID:       mi.MinerID,
+		Address:  mi.Address,
+		PeerID:   mi.PeerID,
+		Name:     "",
+		Bio:      "",
+		Verified: false,
+	}
+
+	storagedeal := &model.StorageDeal{
+		ID:                int(mdp.DealID),
+		ClientID:          mdp.ClientID,
+		StartEpoch:        mdp.StartEpoch,
+		EndEpoch:          mdp.EndEpoch,
+		PaddedPieceSize:   mdp.PaddedPieceSize,
+		UnPaddedPieceSize: mdp.UnpaddedPieceSize,
+		PieceCid:          mdp.PieceCID,
+		Verified:          mdp.IsVerified,
+		Miner:             m,
+	}
+	return storagedeal, nil
 }
 
 func (r *queryResolver) AllStorageDeals(ctx context.Context, since *int, till *int) ([]*model.StorageDeal, error) {
-	panic(fmt.Errorf("not implemented"))
+	var mdps []market.MarketDealProposal
+	err := r.DB.Model(&mdps).Select()
+	if err != nil {
+		panic(err)
+	}
+
+	var storagedeals []*model.StorageDeal
+	for _, mdp := range mdps {
+		pt := new(indexing.ParsedTill)
+		err = r.DB.Model(pt).Limit(1).Select()
+		if err != nil {
+			panic(err)
+		}
+		mi := new(miner.MinerInfo)
+		err = r.DB.Model(mi).Where("miner_id = ? AND height = ?", mdp.ProviderID, pt.Height).Select()
+		if err != nil {
+			panic(err)
+		}
+
+		m := &model.Miner{
+			ID:       mi.MinerID,
+			Address:  mi.Address,
+			PeerID:   mi.PeerID,
+			Name:     "",
+			Bio:      "",
+			Verified: false,
+		}
+
+		storagedeals = append(storagedeals, &model.StorageDeal{
+			ID:                int(mdp.DealID),
+			ClientID:          mdp.ClientID,
+			StartEpoch:        mdp.StartEpoch,
+			EndEpoch:          mdp.EndEpoch,
+			PaddedPieceSize:   mdp.PaddedPieceSize,
+			UnPaddedPieceSize: mdp.UnpaddedPieceSize,
+			PieceCid:          mdp.PieceCID,
+			Verified:          mdp.IsVerified,
+			Miner:             m,
+		})
+	}
+	return storagedeals, nil
 }
 
 func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Transaction, error) {

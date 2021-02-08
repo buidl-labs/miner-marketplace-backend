@@ -1,0 +1,6 @@
+[submodule "extern/fil-blst"]
+	path = extern/fil-blst
+	url = https://github.com/filecoin-project/fil-blst
+[submodule "fil-blst"]
+	path = fil-blst
+	url = https://github.com/filecoin-project/fil-blst

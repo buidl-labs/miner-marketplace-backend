@@ -36,10 +36,16 @@ func main() {
 
 func NewDB() (*pg.DB, error) {
 	// dburl postgres://rajdeep@localhost/filecoinminermarketplace?sslmode=disable
-	db := pg.Connect(&pg.Options{
-		Addr:     ":5432",
-		User:     "rajdeep",
-		Database: "filecoinminermarketplace",
-	})
+	// db := pg.Connect(&pg.Options{
+	// 	Addr:     ":5432",
+	// 	User:     "rajdeep",
+	// 	Database: "filecoinminermarketplace",
+	// })
+	opt, err := pg.ParseURL(os.Getenv("DB"))
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	db := pg.Connect(opt)
 	return db, nil
 }

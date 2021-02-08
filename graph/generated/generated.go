@@ -88,7 +88,6 @@ type ComplexityRoot struct {
 	FinanceMetrics struct {
 		Expenditure func(childComplexity int) int
 		Funds       func(childComplexity int) int
-		ID          func(childComplexity int) int
 		Income      func(childComplexity int) int
 		Miner       func(childComplexity int) int
 	}
@@ -275,7 +274,6 @@ type ContactResolver interface {
 	Miner(ctx context.Context, obj *model.Contact) (*model.Miner, error)
 }
 type FinanceMetricsResolver interface {
-	ID(ctx context.Context, obj *model.FinanceMetrics) (string, error)
 	Miner(ctx context.Context, obj *model.FinanceMetrics) (*model.Miner, error)
 	Income(ctx context.Context, obj *model.FinanceMetrics) (*model.Income, error)
 	Expenditure(ctx context.Context, obj *model.FinanceMetrics) (*model.Expenditure, error)
@@ -510,13 +508,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FinanceMetrics.Funds(childComplexity), true
-
-	case "FinanceMetrics.id":
-		if e.complexity.FinanceMetrics.ID == nil {
-			break
-		}
-
-		return e.complexity.FinanceMetrics.ID(childComplexity), true
 
 	case "FinanceMetrics.income":
 		if e.complexity.FinanceMetrics.Income == nil {
@@ -1733,7 +1724,7 @@ type FinanceMetrics {
   # @goModel(
   #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.FinanceMetrics"
   # ) {
-  id: ID!
+  # id: ID!
   miner: Miner! @goField(forceResolver: true)
   income: Income @goField(forceResolver: true)
   expenditure: Expenditure @goField(forceResolver: true)
@@ -2986,41 +2977,6 @@ func (ec *executionContext) _Fault_timestamp(ctx context.Context, field graphql.
 	res := resTmp.(time.Time)
 	fc.Result = res
 	return ec.marshalOTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _FinanceMetrics_id(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "FinanceMetrics",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().ID(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(string)
-	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _FinanceMetrics_miner(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
@@ -4608,9 +4564,9 @@ func (ec *executionContext) _Owner_actor(ctx context.Context, field graphql.Coll
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.Actor)
+	res := resTmp.(model.Actor)
 	fc.Result = res
-	return ec.marshalOActor2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐActor(ctx, field.Selections, res)
+	return ec.marshalOActor2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐActor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Owner_balance(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
@@ -6368,9 +6324,9 @@ func (ec *executionContext) _StorageDeal_id(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _StorageDeal_miner(ctx context.Context, field graphql.CollectedField, obj *model.StorageDeal) (ret graphql.Marshaler) {
@@ -7435,9 +7391,9 @@ func (ec *executionContext) _Worker_actor(ctx context.Context, field graphql.Col
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*model.Actor)
+	res := resTmp.(model.Actor)
 	fc.Result = res
-	return ec.marshalOActor2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐActor(ctx, field.Selections, res)
+	return ec.marshalOActor2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐActor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Worker_balance(ctx context.Context, field graphql.CollectedField, obj *model.Worker) (ret graphql.Marshaler) {
@@ -8885,20 +8841,6 @@ func (ec *executionContext) _FinanceMetrics(ctx context.Context, sel ast.Selecti
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("FinanceMetrics")
-		case "id":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_id(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		case "miner":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -10446,6 +10388,21 @@ func (ec *executionContext) marshalNFinanceMetrics2ᚖgithubᚗcomᚋbuidlᚑlab
 	return ec._FinanceMetrics(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNID2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNID2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	res := graphql.MarshalInt(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -10842,19 +10799,13 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) unmarshalOActor2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐActor(ctx context.Context, v interface{}) (*model.Actor, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(model.Actor)
+func (ec *executionContext) unmarshalOActor2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐActor(ctx context.Context, v interface{}) (model.Actor, error) {
+	var res model.Actor
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOActor2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐActor(ctx context.Context, sel ast.SelectionSet, v *model.Actor) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
+func (ec *executionContext) marshalOActor2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐActor(ctx context.Context, sel ast.SelectionSet, v model.Actor) graphql.Marshaler {
 	return v
 }
 

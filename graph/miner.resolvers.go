@@ -10,22 +10,21 @@ import (
 	"time"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
+	"github.com/buidl-labs/filecoin-chain-indexer/model/indexing"
+	"github.com/buidl-labs/filecoin-chain-indexer/model/market"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/miner"
+	"github.com/buidl-labs/filecoin-chain-indexer/model/power"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
 )
 
 func (r *contactResolver) Miner(ctx context.Context, obj *model.Contact) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
-func (r *financeMetricsResolver) ID(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 func (r *financeMetricsResolver) Miner(ctx context.Context, obj *model.FinanceMetrics) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 func (r *financeMetricsResolver) Income(ctx context.Context, obj *model.FinanceMetrics) (*model.Income, error) {
@@ -47,7 +46,8 @@ func (r *minerResolver) Owner(ctx context.Context, obj *model.Miner) (*model.Own
 		panic(err)
 	}
 	o := &model.Owner{
-		ID: ownerID,
+		ID:    ownerID,
+		Actor: model.ActorAccount,
 	}
 	return o, nil
 }
@@ -59,13 +59,22 @@ func (r *minerResolver) Worker(ctx context.Context, obj *model.Miner) (*model.Wo
 		panic(err)
 	}
 	w := &model.Worker{
-		ID: workerID,
+		ID:    workerID,
+		Miner: obj,
+		Actor: model.ActorAccount,
 	}
 	return w, nil
 }
 
 func (r *minerResolver) Contact(ctx context.Context, obj *model.Miner) (*model.Contact, error) {
-	panic(fmt.Errorf("not implemented"))
+	c := &model.Contact{
+		Miner:   obj,
+		Email:   "",
+		Slack:   "",
+		Website: "",
+		Twitter: "",
+	}
+	return c, nil
 }
 
 func (r *minerResolver) ServiceDetails(ctx context.Context, obj *model.Miner) (*model.ServiceDetails, error) {
@@ -98,6 +107,17 @@ func (r *minerResolver) QualityIndicators(ctx context.Context, obj *model.Miner,
 		panic(err)
 	}
 
+	pt := new(indexing.ParsedTill)
+	err = r.DB.Model(pt).Limit(1).Select()
+	if err != nil {
+		panic(err)
+	}
+	cp := new(power.PowerActorClaim)
+	err = r.DB.Model(cp).Where("miner_id = ? AND height = ?", obj.ID, pt.Height).Select()
+	if err != nil {
+		panic(err)
+	}
+
 	// var res []struct {
 	// 	Wins int64
 	// }
@@ -106,7 +126,9 @@ func (r *minerResolver) QualityIndicators(ctx context.Context, obj *model.Miner,
 	// panic(fmt.Errorf("not implemented"))
 
 	qi := &model.QualityIndicators{
-		WinCount: winsum,
+		WinCount:        winsum,
+		RawBytePower:    cp.RawBytePower,
+		QualityAdjPower: cp.QualityAdjPower,
 	}
 	return qi, nil
 }
@@ -128,11 +150,44 @@ func (r *minerResolver) AllFinanceMetrics(ctx context.Context, obj *model.Miner,
 }
 
 func (r *minerResolver) StorageDeal(ctx context.Context, obj *model.Miner, id string) (*model.StorageDeal, error) {
-	panic(fmt.Errorf("not implemented"))
+	mdp := new(market.MarketDealProposal)
+	err := r.DB.Model(mdp).Where("deal_id = ?", id).Select()
+	if err != nil {
+		panic(err)
+	}
+	storagedeal := &model.StorageDeal{
+		ID:                int(mdp.DealID),
+		ClientID:          mdp.ClientID,
+		StartEpoch:        mdp.StartEpoch,
+		EndEpoch:          mdp.EndEpoch,
+		PaddedPieceSize:   mdp.PaddedPieceSize,
+		UnPaddedPieceSize: mdp.UnpaddedPieceSize,
+		PieceCid:          mdp.PieceCID,
+		Verified:          mdp.IsVerified,
+		Miner:             obj,
+	}
+	return storagedeal, nil
 }
 
 func (r *minerResolver) Transaction(ctx context.Context, obj *model.Miner, id string) (*model.Transaction, error) {
-	panic(fmt.Errorf("not implemented"))
+	txn := new(messages.Transaction)
+	err := r.DB.Model(txn).Where("cid = ?", id).Select()
+	if err != nil {
+		panic(err)
+	}
+	transaction := &model.Transaction{
+		ID:              txn.Cid,
+		Miner:           obj,
+		Amount:          txn.Amount,
+		Sender:          txn.Sender,
+		Receiver:        txn.Receiver,
+		Height:          txn.Height,
+		NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
+		Timestamp:       time.Now(),
+		TransactionType: "",
+	}
+
+	return transaction, nil
 }
 
 func (r *minerResolver) Sector(ctx context.Context, obj *model.Miner, id string) (*model.Sector, error) {
@@ -148,7 +203,26 @@ func (r *minerResolver) Deadline(ctx context.Context, obj *model.Miner, id strin
 }
 
 func (r *minerResolver) StorageDeals(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.StorageDeal, error) {
-	panic(fmt.Errorf("not implemented"))
+	var mdps []market.MarketDealProposal
+	err := r.DB.Model(&mdps).Where("provider_id = ?", obj.ID).Select()
+	if err != nil {
+		panic(err)
+	}
+	var storagedeals []*model.StorageDeal
+	for _, mdp := range mdps {
+		storagedeals = append(storagedeals, &model.StorageDeal{
+			ID:                int(mdp.DealID),
+			ClientID:          mdp.ClientID,
+			StartEpoch:        mdp.StartEpoch,
+			EndEpoch:          mdp.EndEpoch,
+			PaddedPieceSize:   mdp.PaddedPieceSize,
+			UnPaddedPieceSize: mdp.UnpaddedPieceSize,
+			PieceCid:          mdp.PieceCID,
+			Verified:          mdp.IsVerified,
+			Miner:             obj,
+		})
+	}
+	return storagedeals, nil
 }
 
 func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Transaction, error) {
@@ -159,10 +233,9 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 	}
 
 	var txns []messages.Transaction
-	// txn := new(messages.Transaction)
-	err = r.DB.Model(&txns).Where("from_addr = ? OR to_addr = ?",
-		obj.ID, obj.ID).WhereOr("from_addr = ? OR to_addr = ?",
-		mi.OwnerID, mi.OwnerID).WhereOr("from_addr = ? OR to_addr = ?",
+	err = r.DB.Model(&txns).Where("sender = ? OR receiver = ?",
+		obj.ID, obj.ID).WhereOr("sender = ? OR receiver = ?",
+		mi.OwnerID, mi.OwnerID).WhereOr("sender = ? OR receiver = ?",
 		mi.WorkerID, mi.WorkerID).Select()
 	if err != nil {
 		panic(err)
@@ -171,9 +244,10 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 	for _, txn := range txns {
 		transactions = append(transactions, &model.Transaction{
 			ID:              txn.Cid,
+			Miner:           obj,
 			Amount:          txn.Amount,
-			Sender:          txn.FromAddr,
-			Receiver:        txn.ToAddr,
+			Sender:          txn.Sender,
+			Receiver:        txn.Receiver,
 			Height:          txn.Height,
 			NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
 			Timestamp:       time.Now(),
@@ -240,31 +314,31 @@ func (r *serviceDetailsResolver) Miner(ctx context.Context, obj *model.ServiceDe
 }
 
 func (r *serviceDetailsResolver) MinPieceSize(ctx context.Context, obj *model.ServiceDetails) (int, error) {
-	panic(fmt.Errorf("not implemented"))
+	return int(obj.MinPieceSize), nil
 }
 
 func (r *serviceDetailsResolver) MaxPieceSize(ctx context.Context, obj *model.ServiceDetails) (int, error) {
-	panic(fmt.Errorf("not implemented"))
+	return int(obj.MaxPieceSize), nil
 }
 
 func (r *storageDealResolver) Miner(ctx context.Context, obj *model.StorageDeal) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 func (r *storageDealResolver) PaddedPieceSize(ctx context.Context, obj *model.StorageDeal) (int, error) {
-	panic(fmt.Errorf("not implemented"))
+	return int(obj.PaddedPieceSize), nil
 }
 
 func (r *storageDealResolver) UnpaddedPieceSize(ctx context.Context, obj *model.StorageDeal) (int, error) {
-	panic(fmt.Errorf("not implemented"))
+	return int(obj.UnPaddedPieceSize), nil
 }
 
 func (r *transactionResolver) Miner(ctx context.Context, obj *model.Transaction) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 func (r *workerResolver) Miner(ctx context.Context, obj *model.Worker) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 // Contact returns generated.ContactResolver implementation.

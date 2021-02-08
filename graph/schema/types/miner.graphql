@@ -71,7 +71,7 @@ type FinanceMetrics {
   # @goModel(
   #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.FinanceMetrics"
   # ) {
-  id: ID!
+  # id: ID!
   miner: Miner! @goField(forceResolver: true)
   income: Income @goField(forceResolver: true)
   expenditure: Expenditure @goField(forceResolver: true)
