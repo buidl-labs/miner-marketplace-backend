@@ -73,9 +73,22 @@ type FinanceMetrics {
   # ) {
   # id: ID!
   miner: Miner! @goField(forceResolver: true)
-  income: Income @goField(forceResolver: true)
-  expenditure: Expenditure @goField(forceResolver: true)
-  funds: Funds @goField(forceResolver: true)
+  # income: Income @goField(forceResolver: true)
+  # expenditure: Expenditure @goField(forceResolver: true)
+  # funds: Funds @goField(forceResolver: true)
+
+  totalIncome: String
+  blockRewards: String
+  storageDealPayments: String
+  retrievalDealPayments: String
+
+  networkFee: String
+  penalty: String
+
+  preCommitDeposits: String!
+  initialPledge: String!
+  lockedFunds: String!
+  availableFunds: String!
 }
 
 type Income {
@@ -110,10 +123,11 @@ type StorageDeal {
   #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal"
   # ) {
   id: ID! # dealID
-  miner: Miner! @goField(forceResolver: true)
+  miner: Miner @goField(forceResolver: true)
   messageId: String!
   clientId: String!
   clientAddress: String!
+  providerId: ID!
   price: String!
   startEpoch: Int!
   endEpoch: Int!
@@ -130,7 +144,7 @@ type Transaction {
   # ) {
   id: ID! # transaction cid
   miner: Miner @goField(forceResolver: true)
-  transactionType: TransactionType
+  transactionType: String
   amount: String!
   sender: String!
   receiver: String!
@@ -262,4 +276,16 @@ type PageInfo {
   hasPreviousPage: Boolean!
   startCursor: String
   endCursor: String
+}
+
+type MinersConnection {
+  pageInfo: PageInfo!
+  edges: [MinersEdge]
+  totalCount: Int
+  miners: [Miner!]
+}
+
+type MinersEdge {
+  node: Miner
+  cursor: String!
 }

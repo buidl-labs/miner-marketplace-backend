@@ -2,11 +2,28 @@ type Query {
   parsedTill: Int
 
   miner(id: ID!): Miner
-  allMiners: [Miner!]
+  allMiners(
+    after: ID
+    first: Int
+    before: ID
+    last: Int
+    since: Int # chain height
+    till: Int # chain height
+  ): [Miner!]
 
   storageDeal(id: ID!): StorageDeal
-  allStorageDeals(since: Int, till: Int): [StorageDeal!]
+  allStorageDeals(
+    after: ID
+    first: Int
+    before: ID
+    last: Int
+    since: Int # startepoch chain height
+    till: Int # startepoch chain height
+  ): [StorageDeal!]
 
   transaction(id: ID!): Transaction
-  allTransactions(since: Int, till: Int): [Transaction!]
+  allTransactions(
+    since: Int # chain height
+    till: Int # chain height
+  ): [Transaction!]
 }

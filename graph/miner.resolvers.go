@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/indexing"
@@ -27,16 +26,68 @@ func (r *financeMetricsResolver) Miner(ctx context.Context, obj *model.FinanceMe
 	return obj.Miner, nil
 }
 
-func (r *financeMetricsResolver) Income(ctx context.Context, obj *model.FinanceMetrics) (*model.Income, error) {
+func (r *financeMetricsResolver) TotalIncome(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *financeMetricsResolver) Expenditure(ctx context.Context, obj *model.FinanceMetrics) (*model.Expenditure, error) {
+func (r *financeMetricsResolver) BlockRewards(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
 	panic(fmt.Errorf("not implemented"))
 }
 
-func (r *financeMetricsResolver) Funds(ctx context.Context, obj *model.FinanceMetrics) (*model.Funds, error) {
+func (r *financeMetricsResolver) StorageDealPayments(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
 	panic(fmt.Errorf("not implemented"))
+}
+
+func (r *financeMetricsResolver) RetrievalDealPayments(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
+func (r *financeMetricsResolver) NetworkFee(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
+func (r *financeMetricsResolver) Penalty(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
+func (r *financeMetricsResolver) PreCommitDeposits(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
+	minerID := obj.Miner.ID
+	mf := new(miner.MinerFund)
+	err := r.DB.Model(mf).Where("miner_id = ?", minerID).Limit(1).Select()
+	if err != nil {
+		panic(err)
+	}
+	return mf.PreCommitDeposits, nil
+}
+
+func (r *financeMetricsResolver) InitialPledge(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
+	minerID := obj.Miner.ID
+	mf := new(miner.MinerFund)
+	err := r.DB.Model(mf).Where("miner_id = ?", minerID).Limit(1).Select()
+	if err != nil {
+		panic(err)
+	}
+	return mf.InitialPledge, nil
+}
+
+func (r *financeMetricsResolver) LockedFunds(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
+	minerID := obj.Miner.ID
+	mf := new(miner.MinerFund)
+	err := r.DB.Model(mf).Where("miner_id = ?", minerID).Limit(1).Select()
+	if err != nil {
+		panic(err)
+	}
+	return mf.LockedFunds, nil
+}
+
+func (r *financeMetricsResolver) AvailableFunds(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
+	minerID := obj.Miner.ID
+	mf := new(miner.MinerFund)
+	err := r.DB.Model(mf).Where("miner_id = ?", minerID).Limit(1).Select()
+	if err != nil {
+		panic(err)
+	}
+	return mf.AvailableBalance, nil
 }
 
 func (r *minerResolver) Owner(ctx context.Context, obj *model.Miner) (*model.Owner, error) {
@@ -134,7 +185,10 @@ func (r *minerResolver) QualityIndicators(ctx context.Context, obj *model.Miner,
 }
 
 func (r *minerResolver) FinanceMetrics(ctx context.Context, obj *model.Miner, since *int, till *int) (*model.FinanceMetrics, error) {
-	panic(fmt.Errorf("not implemented"))
+	fm := &model.FinanceMetrics{
+		Miner: obj,
+	}
+	return fm, nil
 }
 
 func (r *minerResolver) AllServiceDetails(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.ServiceDetails, error) {
@@ -158,6 +212,7 @@ func (r *minerResolver) StorageDeal(ctx context.Context, obj *model.Miner, id st
 	storagedeal := &model.StorageDeal{
 		ID:                int(mdp.DealID),
 		ClientID:          mdp.ClientID,
+		ProviderID:        mdp.ProviderID,
 		StartEpoch:        mdp.StartEpoch,
 		EndEpoch:          mdp.EndEpoch,
 		PaddedPieceSize:   mdp.PaddedPieceSize,
@@ -183,15 +238,26 @@ func (r *minerResolver) Transaction(ctx context.Context, obj *model.Miner, id st
 		Receiver:        txn.Receiver,
 		Height:          txn.Height,
 		NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
-		Timestamp:       time.Now(),
-		TransactionType: "",
+		TransactionType: txn.MethodName,
 	}
 
 	return transaction, nil
 }
 
 func (r *minerResolver) Sector(ctx context.Context, obj *model.Miner, id string) (*model.Sector, error) {
-	panic(fmt.Errorf("not implemented"))
+	sec := new(miner.MinerSectorInfo)
+	err := r.DB.Model(sec).Where("sector_id = ? AND miner_id = ?", id, obj.ID).Limit(1).Select()
+	if err != nil {
+		panic(err)
+	}
+	return &model.Sector{
+		ID:              id,
+		Miner:           obj,
+		Size:            "",
+		ActivationEpoch: sec.ActivationEpoch,
+		ExpirationEpoch: sec.ExpirationEpoch,
+		InitialPledge:   sec.InitialPledge,
+	}, nil
 }
 
 func (r *minerResolver) Penalty(ctx context.Context, obj *model.Miner, id string) (*model.Penalty, error) {
@@ -213,6 +279,7 @@ func (r *minerResolver) StorageDeals(ctx context.Context, obj *model.Miner, sinc
 		storagedeals = append(storagedeals, &model.StorageDeal{
 			ID:                int(mdp.DealID),
 			ClientID:          mdp.ClientID,
+			ProviderID:        mdp.ProviderID,
 			StartEpoch:        mdp.StartEpoch,
 			EndEpoch:          mdp.EndEpoch,
 			PaddedPieceSize:   mdp.PaddedPieceSize,
@@ -250,8 +317,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 			Receiver:        txn.Receiver,
 			Height:          txn.Height,
 			NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
-			Timestamp:       time.Now(),
-			TransactionType: "",
+			TransactionType: txn.MethodName,
 		})
 	}
 	return transactions, nil
@@ -302,11 +368,22 @@ func (r *qualityIndicatorsResolver) MiningEfficiency(ctx context.Context, obj *m
 }
 
 func (r *sectorResolver) Miner(ctx context.Context, obj *model.Sector) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 func (r *sectorResolver) Faults(ctx context.Context, obj *model.Sector) ([]*model.Fault, error) {
-	panic(fmt.Errorf("not implemented"))
+	var msfs []*miner.MinerSectorFault
+	err := r.DB.Model(&msfs).Where("sector_id = ? AND miner_id = ?", obj.ID, obj.Miner.ID).Select()
+	if err != nil {
+		panic(err)
+	}
+	var faults []*model.Fault
+	for _, msf := range msfs {
+		faults = append(faults, &model.Fault{
+			Height: msf.Height,
+		})
+	}
+	return faults, nil
 }
 
 func (r *serviceDetailsResolver) Miner(ctx context.Context, obj *model.ServiceDetails) (*model.Miner, error) {
@@ -387,3 +464,19 @@ type serviceDetailsResolver struct{ *Resolver }
 type storageDealResolver struct{ *Resolver }
 type transactionResolver struct{ *Resolver }
 type workerResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *financeMetricsResolver) Income(ctx context.Context, obj *model.FinanceMetrics) (*model.Income, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+func (r *financeMetricsResolver) Expenditure(ctx context.Context, obj *model.FinanceMetrics) (*model.Expenditure, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+func (r *financeMetricsResolver) Funds(ctx context.Context, obj *model.FinanceMetrics) (*model.Funds, error) {
+	panic(fmt.Errorf("not implemented"))
+}

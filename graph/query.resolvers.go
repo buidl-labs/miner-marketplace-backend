@@ -48,12 +48,68 @@ func (r *queryResolver) Miner(ctx context.Context, id string) (*model.Miner, err
 	return m, nil
 }
 
-func (r *queryResolver) AllMiners(ctx context.Context) ([]*model.Miner, error) {
+func (r *queryResolver) AllMiners(ctx context.Context, after *string, first *int, before *string, last *int, since *int, till *int) ([]*model.Miner, error) {
+	// TODO: implement *before, *last, *since, *till
 	var mis []miner.MinerInfo // this is the indexer model (db)
-	err := r.DB.Model(&mis).Select()
-	if err != nil {
-		panic(err)
+	if after != nil {
+		if first != nil {
+			// err := r.DB.Model(&mis).Where("miner_id > ?", *after).Limit(*first).Select()
+			res, err := r.DB.Model(&mis).Exec(`
+				with maxht as (
+					select miner_id, max(height) maxh
+					from miner_infos 
+					group by miner_id
+				)
+				select miner_infos.miner_id, miner_infos.height, miner_infos.owner_id, 
+				miner_infos.address, miner_infos.peer_id, miner_infos.worker_id,
+				miner_infos.state_root, miner_infos.storage_ask_price,
+				miner_infos.min_piece_size, miner_infos.max_piece_size
+				from maxht inner join miner_infos
+				on miner_infos.miner_id=maxht.miner_id and miner_infos.height=maxht.maxh
+				where miner_infos.miner_id > '` + fmt.Sprint(*after) + `' limit ` + fmt.Sprint(*first) + `;
+			`)
+			// mht := 0
+			// r.DB.Model(&mis).Where()
+			if err != nil {
+				panic(err)
+			} else {
+				fmt.Println("RES", res)
+			}
+		} else {
+			fmt.Println("AFTER", *after)
+			// err := r.DB.Model(&mis).Where("miner_id > ?", *after).Limit(*first).Select()
+			res, err := r.DB.Model(&mis).Exec(`
+				with maxht as (
+					select miner_id, max(height) maxh
+					from miner_infos 
+					group by miner_id
+				)
+				select miner_infos.miner_id, miner_infos.height, miner_infos.owner_id, 
+				miner_infos.address, miner_infos.peer_id, miner_infos.worker_id,
+				miner_infos.state_root, miner_infos.storage_ask_price,
+				miner_infos.min_piece_size, miner_infos.max_piece_size
+				from maxht inner join miner_infos
+				on miner_infos.miner_id=maxht.miner_id and miner_infos.height=maxht.maxh
+				where miner_infos.miner_id > '` + fmt.Sprint(*after) + `';
+			`)
+			if err != nil {
+				panic(err)
+			} else {
+				fmt.Println("RES", res)
+			}
+		}
+	} else {
+		err := r.DB.Model(&mis).Select()
+		if err != nil {
+			panic(err)
+		}
 	}
+	fmt.Println("MIS", mis, &mis)
+	// var mis []miner.MinerInfo // this is the indexer model (db)
+	// err := r.DB.Model(&mis).Select()
+	// if err != nil {
+	// 	panic(err)
+	// }
 	var miners []*model.Miner // this is the webapp model (graphql)
 	// TODO: do this in sql instead of looping again
 	for _, mi := range mis {
@@ -76,79 +132,102 @@ func (r *queryResolver) StorageDeal(ctx context.Context, id string) (*model.Stor
 		panic(err)
 	}
 
-	pt := new(indexing.ParsedTill)
-	err = r.DB.Model(pt).Limit(1).Select()
-	if err != nil {
-		panic(err)
-	}
-	mi := new(miner.MinerInfo)
-	err = r.DB.Model(mi).Where("miner_id = ? AND height = ?", mdp.ProviderID, pt.Height).Select()
-	if err != nil {
-		panic(err)
-	}
+	// pt := new(indexing.ParsedTill)
+	// err = r.DB.Model(pt).Limit(1).Select()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// mi := new(miner.MinerInfo)
+	// err = r.DB.Model(mi).Where("miner_id = ? AND height = ?", mdp.ProviderID, pt.Height).Select()
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	m := &model.Miner{
-		ID:       mi.MinerID,
-		Address:  mi.Address,
-		PeerID:   mi.PeerID,
-		Name:     "",
-		Bio:      "",
-		Verified: false,
-	}
+	// m := &model.Miner{
+	// 	ID:       mi.MinerID,
+	// 	Address:  mi.Address,
+	// 	PeerID:   mi.PeerID,
+	// 	Name:     "",
+	// 	Bio:      "",
+	// 	Verified: false,
+	// }
 
 	storagedeal := &model.StorageDeal{
 		ID:                int(mdp.DealID),
 		ClientID:          mdp.ClientID,
+		ProviderID:        mdp.ProviderID,
 		StartEpoch:        mdp.StartEpoch,
 		EndEpoch:          mdp.EndEpoch,
 		PaddedPieceSize:   mdp.PaddedPieceSize,
 		UnPaddedPieceSize: mdp.UnpaddedPieceSize,
 		PieceCid:          mdp.PieceCID,
 		Verified:          mdp.IsVerified,
-		Miner:             m,
+		// Miner:             m,
 	}
 	return storagedeal, nil
 }
 
-func (r *queryResolver) AllStorageDeals(ctx context.Context, since *int, till *int) ([]*model.StorageDeal, error) {
+func (r *queryResolver) AllStorageDeals(ctx context.Context, after *string, first *int, before *string, last *int, since *int, till *int) ([]*model.StorageDeal, error) {
 	var mdps []market.MarketDealProposal
-	err := r.DB.Model(&mdps).Select()
-	if err != nil {
-		panic(err)
+	if since != nil {
+		if till != nil {
+			err := r.DB.Model(&mdps).Where("start_epoch >= ? AND start_epoch <= ?", *since, *till).Select()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := r.DB.Model(&mdps).Where("start_epoch >= ?", *since).Select()
+			if err != nil {
+				panic(err)
+			}
+		}
+	} else {
+		if till != nil {
+			err := r.DB.Model(&mdps).Where("start_epoch <= ?", *till).Select()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := r.DB.Model(&mdps).Select()
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 
 	var storagedeals []*model.StorageDeal
 	for _, mdp := range mdps {
-		pt := new(indexing.ParsedTill)
-		err = r.DB.Model(pt).Limit(1).Select()
-		if err != nil {
-			panic(err)
-		}
-		mi := new(miner.MinerInfo)
-		err = r.DB.Model(mi).Where("miner_id = ? AND height = ?", mdp.ProviderID, pt.Height).Select()
-		if err != nil {
-			panic(err)
-		}
+		// pt := new(indexing.ParsedTill)
+		// err = r.DB.Model(pt).Limit(1).Select()
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// mi := new(miner.MinerInfo)
+		// err = r.DB.Model(mi).Where("miner_id = ? AND height = ?", mdp.ProviderID, pt.Height).Select()
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		m := &model.Miner{
-			ID:       mi.MinerID,
-			Address:  mi.Address,
-			PeerID:   mi.PeerID,
-			Name:     "",
-			Bio:      "",
-			Verified: false,
-		}
+		// m := &model.Miner{
+		// 	ID:       mi.MinerID,
+		// 	Address:  mi.Address,
+		// 	PeerID:   mi.PeerID,
+		// 	Name:     "",
+		// 	Bio:      "",
+		// 	Verified: false,
+		// }
 
 		storagedeals = append(storagedeals, &model.StorageDeal{
 			ID:                int(mdp.DealID),
 			ClientID:          mdp.ClientID,
+			ProviderID:        mdp.ProviderID,
 			StartEpoch:        mdp.StartEpoch,
 			EndEpoch:          mdp.EndEpoch,
 			PaddedPieceSize:   mdp.PaddedPieceSize,
 			UnPaddedPieceSize: mdp.UnpaddedPieceSize,
 			PieceCid:          mdp.PieceCID,
 			Verified:          mdp.IsVerified,
-			Miner:             m,
+			// Miner:             m,
 		})
 	}
 	return storagedeals, nil
@@ -161,15 +240,13 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Tran
 		panic(err)
 	}
 	transaction := &model.Transaction{
-		ID: txn.Cid,
-		// Miner:           obj,
-		Amount:     txn.Amount,
-		Sender:     txn.Sender,
-		Receiver:   txn.Receiver,
-		Height:     txn.Height,
-		NetworkFee: strconv.Itoa(int(txn.GasUsed)),
-		// Timestamp:       time.Now(),
-		TransactionType: "",
+		ID:              txn.Cid,
+		Amount:          txn.Amount,
+		Sender:          txn.Sender,
+		Receiver:        txn.Receiver,
+		Height:          txn.Height,
+		NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
+		TransactionType: txn.MethodName,
 	}
 
 	return transaction, nil
@@ -177,10 +254,32 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Tran
 
 func (r *queryResolver) AllTransactions(ctx context.Context, since *int, till *int) ([]*model.Transaction, error) {
 	var txns []*messages.Transaction
-	err := r.DB.Model(&txns).Select()
-	if err != nil {
-		panic(err)
+	if since != nil {
+		if till != nil {
+			err := r.DB.Model(&txns).Where("height >= ? AND height <= ?", *since, *till).Select()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := r.DB.Model(&txns).Where("height >= ?", *since).Select()
+			if err != nil {
+				panic(err)
+			}
+		}
+	} else {
+		if till != nil {
+			err := r.DB.Model(&txns).Where("height <= ?", *till).Select()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := r.DB.Model(&txns).Select()
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
+
 	var transactions []*model.Transaction
 	for _, txn := range txns {
 		fmt.Println("some txn", txn)
@@ -191,7 +290,7 @@ func (r *queryResolver) AllTransactions(ctx context.Context, since *int, till *i
 			Receiver:        txn.Receiver,
 			Height:          txn.Height,
 			NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
-			TransactionType: "",
+			TransactionType: txn.MethodName,
 		})
 	}
 	return transactions, nil

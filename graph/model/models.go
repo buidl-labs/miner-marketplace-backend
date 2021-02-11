@@ -43,10 +43,20 @@ type Fault struct {
 
 type FinanceMetrics struct {
 	// ID          string       `json:"id"`
-	Miner       *Miner       `json:"miner"`
-	Income      *Income      `json:"income"`
-	Expenditure *Expenditure `json:"expenditure"`
-	Funds       *Funds       `json:"funds"`
+	// Income      *Income      `json:"income"`
+	// Expenditure *Expenditure `json:"expenditure"`
+	// Funds       *Funds       `json:"funds"`
+	Miner                 *Miner `json:"miner"`
+	TotalIncome           string `json:"totalIncome"`
+	BlockRewards          string `json:"blockRewards"`
+	StorageDealPayments   string `json:"storageDealPayments"`
+	RetrievalDealPayments string `json:"retrievalDealPayments"`
+	NetworkFee            string `json:"networkFee"`
+	Penalty               string `json:"penalty"`
+	PreCommitDeposits     string `json:"preCommitDeposits"`
+	InitialPledge         string `json:"initialPledge"`
+	LockedFunds           string `json:"lockedFunds"`
+	AvailableFunds        string `json:"availableFunds"`
 }
 
 type Fun struct {
@@ -173,6 +183,7 @@ type StorageDeal struct {
 	Miner             *Miner `json:"miner"`
 	MessageID         string `json:"messageId"`
 	ClientID          string `json:"clientId"`
+	ProviderID        string `json:"providerId"`
 	ClientAddress     string `json:"clientAddress"`
 	Price             string `json:"price"`
 	StartEpoch        int64  `json:"startEpoch"`
@@ -185,15 +196,15 @@ type StorageDeal struct {
 }
 
 type Transaction struct {
-	ID              string          `json:"id"`
-	Miner           *Miner          `json:"miner"`
-	TransactionType TransactionType `json:"transactionType"`
-	Amount          string          `json:"amount"`
-	Sender          string          `json:"sender"`
-	Receiver        string          `json:"receiver"`
-	Height          int64           `json:"height"`
-	Timestamp       time.Time       `json:"timestamp"`
-	NetworkFee      string          `json:"networkFee"`
+	ID              string    `json:"id"`
+	Miner           *Miner    `json:"miner"`
+	TransactionType string    `json:"transactionType"`
+	Amount          string    `json:"amount"`
+	Sender          string    `json:"sender"`
+	Receiver        string    `json:"receiver"`
+	Height          int64     `json:"height"`
+	Timestamp       time.Time `json:"timestamp"`
+	NetworkFee      string    `json:"networkFee"`
 }
 
 type User struct {
