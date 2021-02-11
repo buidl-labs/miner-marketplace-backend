@@ -4,8 +4,9 @@ go 1.15
 
 require (
 	github.com/99designs/gqlgen v0.13.0
-	github.com/buidl-labs/filecoin-chain-indexer v0.0.0-20210208150437-4352a908186e
+	github.com/buidl-labs/filecoin-chain-indexer v0.0.0-20210210120742-27116d1ab134
 	github.com/go-pg/pg/v10 v10.7.5
+	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
 	github.com/vektah/gqlparser/v2 v2.1.0
 	golang.org/x/exp v0.0.0-20200924195034-c827fd4f18b9 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.4 // indirect

@@ -6,9 +6,11 @@ package graph
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/model/indexing"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/market"
+	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/miner"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
@@ -153,11 +155,47 @@ func (r *queryResolver) AllStorageDeals(ctx context.Context, since *int, till *i
 }
 
 func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Transaction, error) {
-	panic(fmt.Errorf("not implemented"))
+	txn := new(messages.Transaction)
+	err := r.DB.Model(txn).Where("cid = ?", id).Select()
+	if err != nil {
+		panic(err)
+	}
+	transaction := &model.Transaction{
+		ID: txn.Cid,
+		// Miner:           obj,
+		Amount:     txn.Amount,
+		Sender:     txn.Sender,
+		Receiver:   txn.Receiver,
+		Height:     txn.Height,
+		NetworkFee: strconv.Itoa(int(txn.GasUsed)),
+		// Timestamp:       time.Now(),
+		TransactionType: "",
+	}
+
+	return transaction, nil
 }
 
 func (r *queryResolver) AllTransactions(ctx context.Context, since *int, till *int) ([]*model.Transaction, error) {
-	panic(fmt.Errorf("not implemented"))
+	var txns []*messages.Transaction
+	err := r.DB.Model(&txns).Select()
+	if err != nil {
+		panic(err)
+	}
+	var transactions []*model.Transaction
+	for _, txn := range txns {
+		fmt.Println("some txn", txn)
+		transactions = append(transactions, &model.Transaction{
+			ID:              txn.Cid,
+			Amount:          txn.Amount,
+			Sender:          txn.Sender,
+			Receiver:        txn.Receiver,
+			Height:          txn.Height,
+			NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
+			TransactionType: "",
+		})
+	}
+	return transactions, nil
+	// panic(fmt.Errorf("not implemented"))
 }
 
 // Query returns generated.QueryResolver implementation.
