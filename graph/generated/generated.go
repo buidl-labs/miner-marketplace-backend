@@ -208,7 +208,6 @@ type ComplexityRoot struct {
 		AllStorageDeals func(childComplexity int, after *string, first *int, before *string, last *int, since *int, till *int) int
 		AllTransactions func(childComplexity int, since *int, till *int) int
 		Miner           func(childComplexity int, id string) int
-		ParsedTill      func(childComplexity int) int
 		StorageDeal     func(childComplexity int, id string) int
 		Transaction     func(childComplexity int, id string) int
 	}
@@ -295,16 +294,6 @@ type ContactResolver interface {
 }
 type FinanceMetricsResolver interface {
 	Miner(ctx context.Context, obj *model.FinanceMetrics) (*model.Miner, error)
-	TotalIncome(ctx context.Context, obj *model.FinanceMetrics) (*string, error)
-	BlockRewards(ctx context.Context, obj *model.FinanceMetrics) (*string, error)
-	StorageDealPayments(ctx context.Context, obj *model.FinanceMetrics) (*string, error)
-	RetrievalDealPayments(ctx context.Context, obj *model.FinanceMetrics) (*string, error)
-	NetworkFee(ctx context.Context, obj *model.FinanceMetrics) (*string, error)
-	Penalty(ctx context.Context, obj *model.FinanceMetrics) (*string, error)
-	PreCommitDeposits(ctx context.Context, obj *model.FinanceMetrics) (string, error)
-	InitialPledge(ctx context.Context, obj *model.FinanceMetrics) (string, error)
-	LockedFunds(ctx context.Context, obj *model.FinanceMetrics) (string, error)
-	AvailableFunds(ctx context.Context, obj *model.FinanceMetrics) (string, error)
 }
 type MinerResolver interface {
 	Owner(ctx context.Context, obj *model.Miner) (*model.Owner, error)
@@ -346,7 +335,6 @@ type QualityIndicatorsResolver interface {
 	MiningEfficiency(ctx context.Context, obj *model.QualityIndicators) (int, error)
 }
 type QueryResolver interface {
-	ParsedTill(ctx context.Context) (*int, error)
 	Miner(ctx context.Context, id string) (*model.Miner, error)
 	AllMiners(ctx context.Context, after *string, first *int, before *string, last *int, since *int, till *int) ([]*model.Miner, error)
 	StorageDeal(ctx context.Context, id string) (*model.StorageDeal, error)
@@ -1219,13 +1207,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Miner(childComplexity, args["id"].(string)), true
 
-	case "Query.parsedTill":
-		if e.complexity.Query.ParsedTill == nil {
-			break
-		}
-
-		return e.complexity.Query.ParsedTill(childComplexity), true
-
 	case "Query.storageDeal":
 		if e.complexity.Query.StorageDeal == nil {
 			break
@@ -1714,7 +1695,7 @@ directive @goField(
 }
 `, BuiltIn: false},
 	{Name: "graph/schema/query.graphql", Input: `type Query {
-  parsedTill: Int
+  # parsedTill: Int
 
   miner(id: ID!): Miner
   allMiners(
@@ -3294,14 +3275,14 @@ func (ec *executionContext) _FinanceMetrics_totalIncome(ctx context.Context, fie
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().TotalIncome(rctx, obj)
+		return obj.TotalIncome, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3310,9 +3291,9 @@ func (ec *executionContext) _FinanceMetrics_totalIncome(ctx context.Context, fie
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _FinanceMetrics_blockRewards(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
@@ -3326,14 +3307,14 @@ func (ec *executionContext) _FinanceMetrics_blockRewards(ctx context.Context, fi
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().BlockRewards(rctx, obj)
+		return obj.BlockRewards, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3342,9 +3323,9 @@ func (ec *executionContext) _FinanceMetrics_blockRewards(ctx context.Context, fi
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _FinanceMetrics_storageDealPayments(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
@@ -3358,14 +3339,14 @@ func (ec *executionContext) _FinanceMetrics_storageDealPayments(ctx context.Cont
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().StorageDealPayments(rctx, obj)
+		return obj.StorageDealPayments, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3374,9 +3355,9 @@ func (ec *executionContext) _FinanceMetrics_storageDealPayments(ctx context.Cont
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _FinanceMetrics_retrievalDealPayments(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
@@ -3390,14 +3371,14 @@ func (ec *executionContext) _FinanceMetrics_retrievalDealPayments(ctx context.Co
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().RetrievalDealPayments(rctx, obj)
+		return obj.RetrievalDealPayments, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3406,9 +3387,9 @@ func (ec *executionContext) _FinanceMetrics_retrievalDealPayments(ctx context.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _FinanceMetrics_networkFee(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
@@ -3422,14 +3403,14 @@ func (ec *executionContext) _FinanceMetrics_networkFee(ctx context.Context, fiel
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().NetworkFee(rctx, obj)
+		return obj.NetworkFee, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3438,9 +3419,9 @@ func (ec *executionContext) _FinanceMetrics_networkFee(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _FinanceMetrics_penalty(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
@@ -3454,14 +3435,14 @@ func (ec *executionContext) _FinanceMetrics_penalty(ctx context.Context, field g
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().Penalty(rctx, obj)
+		return obj.Penalty, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3470,9 +3451,9 @@ func (ec *executionContext) _FinanceMetrics_penalty(ctx context.Context, field g
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _FinanceMetrics_preCommitDeposits(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
@@ -3486,14 +3467,14 @@ func (ec *executionContext) _FinanceMetrics_preCommitDeposits(ctx context.Contex
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().PreCommitDeposits(rctx, obj)
+		return obj.PreCommitDeposits, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3521,14 +3502,14 @@ func (ec *executionContext) _FinanceMetrics_initialPledge(ctx context.Context, f
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().InitialPledge(rctx, obj)
+		return obj.InitialPledge, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3556,14 +3537,14 @@ func (ec *executionContext) _FinanceMetrics_lockedFunds(ctx context.Context, fie
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().LockedFunds(rctx, obj)
+		return obj.LockedFunds, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3591,14 +3572,14 @@ func (ec *executionContext) _FinanceMetrics_availableFunds(ctx context.Context, 
 		Object:     "FinanceMetrics",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FinanceMetrics().AvailableFunds(rctx, obj)
+		return obj.AvailableFunds, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -6071,38 +6052,6 @@ func (ec *executionContext) _QualityIndicators_miningEfficiency(ctx context.Cont
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Query_parsedTill(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ParsedTill(rctx)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*int)
-	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_miner(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -9598,127 +9547,37 @@ func (ec *executionContext) _FinanceMetrics(ctx context.Context, sel ast.Selecti
 				return res
 			})
 		case "totalIncome":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_totalIncome(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_totalIncome(ctx, field, obj)
 		case "blockRewards":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_blockRewards(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_blockRewards(ctx, field, obj)
 		case "storageDealPayments":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_storageDealPayments(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_storageDealPayments(ctx, field, obj)
 		case "retrievalDealPayments":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_retrievalDealPayments(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_retrievalDealPayments(ctx, field, obj)
 		case "networkFee":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_networkFee(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_networkFee(ctx, field, obj)
 		case "penalty":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_penalty(ctx, field, obj)
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_penalty(ctx, field, obj)
 		case "preCommitDeposits":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_preCommitDeposits(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_preCommitDeposits(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "initialPledge":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_initialPledge(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_initialPledge(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "lockedFunds":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_lockedFunds(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_lockedFunds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "availableFunds":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FinanceMetrics_availableFunds(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
+			out.Values[i] = ec._FinanceMetrics_availableFunds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10439,17 +10298,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Query")
-		case "parsedTill":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_parsedTill(ctx, field)
-				return res
-			})
 		case "miner":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

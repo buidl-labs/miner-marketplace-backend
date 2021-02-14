@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
-	"github.com/buidl-labs/filecoin-chain-indexer/model/indexing"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/market"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/miner"
@@ -26,74 +25,18 @@ func (r *financeMetricsResolver) Miner(ctx context.Context, obj *model.FinanceMe
 	return obj.Miner, nil
 }
 
-func (r *financeMetricsResolver) TotalIncome(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
-func (r *financeMetricsResolver) BlockRewards(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
-func (r *financeMetricsResolver) StorageDealPayments(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
-func (r *financeMetricsResolver) RetrievalDealPayments(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
-func (r *financeMetricsResolver) NetworkFee(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
-func (r *financeMetricsResolver) Penalty(ctx context.Context, obj *model.FinanceMetrics) (*string, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-
-func (r *financeMetricsResolver) PreCommitDeposits(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
-	minerID := obj.Miner.ID
-	mf := new(miner.MinerFund)
-	err := r.DB.Model(mf).Where("miner_id = ?", minerID).Limit(1).Select()
-	if err != nil {
-		panic(err)
-	}
-	return mf.PreCommitDeposits, nil
-}
-
-func (r *financeMetricsResolver) InitialPledge(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
-	minerID := obj.Miner.ID
-	mf := new(miner.MinerFund)
-	err := r.DB.Model(mf).Where("miner_id = ?", minerID).Limit(1).Select()
-	if err != nil {
-		panic(err)
-	}
-	return mf.InitialPledge, nil
-}
-
-func (r *financeMetricsResolver) LockedFunds(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
-	minerID := obj.Miner.ID
-	mf := new(miner.MinerFund)
-	err := r.DB.Model(mf).Where("miner_id = ?", minerID).Limit(1).Select()
-	if err != nil {
-		panic(err)
-	}
-	return mf.LockedFunds, nil
-}
-
-func (r *financeMetricsResolver) AvailableFunds(ctx context.Context, obj *model.FinanceMetrics) (string, error) {
-	minerID := obj.Miner.ID
-	mf := new(miner.MinerFund)
-	err := r.DB.Model(mf).Where("miner_id = ?", minerID).Limit(1).Select()
-	if err != nil {
-		panic(err)
-	}
-	return mf.AvailableBalance, nil
-}
-
 func (r *minerResolver) Owner(ctx context.Context, obj *model.Miner) (*model.Owner, error) {
-	var ownerID string
-	err := r.DB.Model((*miner.MinerInfo)(nil)).Column("owner_id").Where("miner_id = ?", obj.ID).Select(&ownerID)
+	mi := new(miner.MinerInfo)
+	var maxHeight int
+	fmt.Println("minerid", obj.ID)
+	err := r.DB.Model(mi).ColumnExpr("max(height)").Where("miner_id = ?", obj.ID).Select(&maxHeight)
 	if err != nil {
+		panic(err)
+	}
+	var ownerID string
+	err = r.DB.Model((*miner.MinerInfo)(nil)).Column("owner_id").Where("miner_id = ? and height = ?", obj.ID, maxHeight).Select(&ownerID)
+	if err != nil {
+		fmt.Println("myerr", err)
 		panic(err)
 	}
 	o := &model.Owner{
@@ -104,8 +47,15 @@ func (r *minerResolver) Owner(ctx context.Context, obj *model.Miner) (*model.Own
 }
 
 func (r *minerResolver) Worker(ctx context.Context, obj *model.Miner) (*model.Worker, error) {
+	mi := new(miner.MinerInfo)
+	var maxHeight int
+	fmt.Println("minerid", obj.ID)
+	err := r.DB.Model(mi).ColumnExpr("max(height)").Where("miner_id = ?", obj.ID).Select(&maxHeight)
+	if err != nil {
+		panic(err)
+	}
 	var workerID string
-	err := r.DB.Model((*miner.MinerInfo)(nil)).Column("worker_id").Where("miner_id = ?", obj.ID).Select(&workerID)
+	err = r.DB.Model((*miner.MinerInfo)(nil)).Column("worker_id").Where("miner_id = ? and height = ?", obj.ID, maxHeight).Select(&workerID)
 	if err != nil {
 		panic(err)
 	}
@@ -136,6 +86,7 @@ func (r *minerResolver) ServiceDetails(ctx context.Context, obj *model.Miner) (*
 	}
 
 	sd := &model.ServiceDetails{
+		Miner:           obj,
 		Storage:         true,
 		Retrieval:       true,
 		Repair:          false,
@@ -149,8 +100,6 @@ func (r *minerResolver) ServiceDetails(ctx context.Context, obj *model.Miner) (*
 }
 
 func (r *minerResolver) QualityIndicators(ctx context.Context, obj *model.Miner, since *int, till *int) (*model.QualityIndicators, error) {
-	// select miner_id, sum(win_count) from block_headers group by miner_id;
-
 	var bhs []blocks.BlockHeader
 	var winsum uint64
 	err := r.DB.Model(&bhs).ColumnExpr("SUM(win_count) AS wins").Where("miner_id = ?", obj.ID).Select(&winsum)
@@ -158,25 +107,20 @@ func (r *minerResolver) QualityIndicators(ctx context.Context, obj *model.Miner,
 		panic(err)
 	}
 
-	pt := new(indexing.ParsedTill)
-	err = r.DB.Model(pt).Limit(1).Select()
-	if err != nil {
-		panic(err)
-	}
 	cp := new(power.PowerActorClaim)
-	err = r.DB.Model(cp).Where("miner_id = ? AND height = ?", obj.ID, pt.Height).Select()
+	var maxHeight int
+	err = r.DB.Model(cp).ColumnExpr("max(height)").Where("miner_id = ?", obj.ID).Select(&maxHeight)
 	if err != nil {
 		panic(err)
 	}
-
-	// var res []struct {
-	// 	Wins int64
-	// }
-	// r.DB.Model(&bhs).ColumnExpr("SUM(win_count) AS wins").Group("miner_id").Select(&res)
-	// fmt.Println("res", res, &res)
-	// panic(fmt.Errorf("not implemented"))
+	fmt.Println("maxHeight ", maxHeight)
+	err = r.DB.Model(cp).Where("miner_id = ? AND height = ?", obj.ID, maxHeight).Select()
+	if err != nil {
+		panic(err)
+	}
 
 	qi := &model.QualityIndicators{
+		Miner:           obj,
 		WinCount:        winsum,
 		RawBytePower:    cp.RawBytePower,
 		QualityAdjPower: cp.QualityAdjPower,
@@ -185,8 +129,29 @@ func (r *minerResolver) QualityIndicators(ctx context.Context, obj *model.Miner,
 }
 
 func (r *minerResolver) FinanceMetrics(ctx context.Context, obj *model.Miner, since *int, till *int) (*model.FinanceMetrics, error) {
+	minerID := obj.ID
+	mf := new(miner.MinerFund)
+	var maxHeight int
+	fmt.Println("minerid", obj.ID)
+	err := r.DB.Model(mf).ColumnExpr("max(height)").Where("miner_id = ?", obj.ID).Select(&maxHeight)
+	if err != nil {
+		panic(err)
+	}
+	err = r.DB.Model(mf).Where("miner_id = ? and height = ?", minerID, maxHeight).Select()
+	if err != nil {
+		panic(err)
+	}
 	fm := &model.FinanceMetrics{
-		Miner: obj,
+		TotalIncome:           "",
+		BlockRewards:          "",
+		StorageDealPayments:   "",
+		RetrievalDealPayments: "",
+		NetworkFee:            "",
+		Penalty:               "",
+		PreCommitDeposits:     mf.PreCommitDeposits,
+		InitialPledge:         mf.InitialPledge,
+		LockedFunds:           mf.LockedFunds,
+		AvailableFunds:        mf.AvailableBalance,
 	}
 	return fm, nil
 }
@@ -324,7 +289,22 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 }
 
 func (r *minerResolver) Sectors(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Sector, error) {
-	panic(fmt.Errorf("not implemented"))
+	var sectors []miner.MinerSectorInfo
+	err := r.DB.Model(&sectors).Where("miner_id = ?", obj.ID).Select()
+	if err != nil {
+		panic(err)
+	}
+	var sects []*model.Sector
+	for _, s := range sectors {
+		sects = append(sects, &model.Sector{
+			ID:              strconv.Itoa(int(s.SectorID)),
+			ActivationEpoch: s.ActivationEpoch,
+			ExpirationEpoch: s.ExpirationEpoch,
+			Size:            "",
+			InitialPledge:   s.InitialPledge,
+		})
+	}
+	return sects, nil
 }
 
 func (r *minerResolver) Penalties(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Penalty, error) {
@@ -340,23 +320,21 @@ func (r *ownerResolver) Miners(ctx context.Context, obj *model.Owner) ([]*model.
 }
 
 func (r *qualityIndicatorsResolver) Miner(ctx context.Context, obj *model.QualityIndicators) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 func (r *qualityIndicatorsResolver) WinCount(ctx context.Context, obj *model.QualityIndicators) (int, error) {
-	fmt.Println("MIDD", obj.WinCount)
 	return int(obj.WinCount), nil
-	// var bhs []blocks.BlockHeader
-	// var winsum int
-	// err := r.DB.Model(&bhs).ColumnExpr("SUM(win_count) AS wins").Where("miner_id = ?", obj.Miner.ID).Select(&winsum)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// return &winsum, nil
 }
 
 func (r *qualityIndicatorsResolver) FaultySectors(ctx context.Context, obj *model.QualityIndicators) (int, error) {
-	panic(fmt.Errorf("not implemented"))
+	var msfs []*miner.MinerSectorFault
+	var faultyCount int
+	err := r.DB.Model(&msfs).ColumnExpr("count(*)").Where("miner_id = ?", obj.Miner.ID).Select(&faultyCount)
+	if err != nil {
+		panic(err)
+	}
+	return faultyCount, nil
 }
 
 func (r *qualityIndicatorsResolver) BlocksMined(ctx context.Context, obj *model.QualityIndicators) (int, error) {
@@ -387,7 +365,7 @@ func (r *sectorResolver) Faults(ctx context.Context, obj *model.Sector) ([]*mode
 }
 
 func (r *serviceDetailsResolver) Miner(ctx context.Context, obj *model.ServiceDetails) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 func (r *serviceDetailsResolver) MinPieceSize(ctx context.Context, obj *model.ServiceDetails) (int, error) {
@@ -464,19 +442,3 @@ type serviceDetailsResolver struct{ *Resolver }
 type storageDealResolver struct{ *Resolver }
 type transactionResolver struct{ *Resolver }
 type workerResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *financeMetricsResolver) Income(ctx context.Context, obj *model.FinanceMetrics) (*model.Income, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-func (r *financeMetricsResolver) Expenditure(ctx context.Context, obj *model.FinanceMetrics) (*model.Expenditure, error) {
-	panic(fmt.Errorf("not implemented"))
-}
-func (r *financeMetricsResolver) Funds(ctx context.Context, obj *model.FinanceMetrics) (*model.Funds, error) {
-	panic(fmt.Errorf("not implemented"))
-}

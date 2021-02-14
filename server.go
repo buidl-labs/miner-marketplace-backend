@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/go-pg/pg/v10"
+	// pq postgresql driver
+	_ "github.com/lib/pq"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -25,7 +28,18 @@ func main() {
 	if err != nil {
 		log.Fatal("connecting to db: ", err)
 	}
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{DB: myNewDB}}))
+	myNewPqDB, err := NewPqDB()
+	if err != nil {
+		log.Fatal("connecting to db: ", err)
+	}
+	srv := handler.NewDefaultServer(
+		generated.NewExecutableSchema(generated.Config{
+			Resolvers: &graph.Resolver{
+				DB:   myNewDB,
+				PQDB: myNewPqDB,
+			},
+		}),
+	)
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
@@ -47,5 +61,14 @@ func NewDB() (*pg.DB, error) {
 		return nil, err
 	}
 	db := pg.Connect(opt)
+	return db, nil
+}
+
+func NewPqDB() (*sql.DB, error) {
+	db, err := sql.Open("postgres", os.Getenv("DB"))
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
 	return db, nil
 }

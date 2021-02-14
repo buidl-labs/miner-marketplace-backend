@@ -1,32 +1,5 @@
 package dataloader
 
-//go:generate go run github.com/vektah/dataloaden MinerLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Miner
-//go:generate go run github.com/vektah/dataloaden MinerSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Miner
-//go:generate go run github.com/vektah/dataloaden StorageDealLoader int *github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal
-//go:generate go run github.com/vektah/dataloaden StorageDealSliceLoader int []*github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal
-//go:generate go run github.com/vektah/dataloaden TransactionLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction
-//go:generate go run github.com/vektah/dataloaden TransactionSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction
-
-//go:generate go run github.com/vektah/dataloaden OwnerLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Owner
-//go:generate go run github.com/vektah/dataloaden WorkerLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Worker
-//go:generate go run github.com/vektah/dataloaden ContactLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Contact
-//go:generate go run github.com/vektah/dataloaden ServiceDetailsLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.ServiceDetails
-//go:generate go run github.com/vektah/dataloaden QualityIndicatorsLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.QualityIndicators
-//go:generate go run github.com/vektah/dataloaden FinanceMetricsLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.FinanceMetrics
-//go:generate go run github.com/vektah/dataloaden ServiceDetailsSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.ServiceDetails
-//go:generate go run github.com/vektah/dataloaden QualityIndicatorsSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.QualityIndicators
-//go:generate go run github.com/vektah/dataloaden FinanceMetricsSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.FinanceMetrics
-//go:generate go run github.com/vektah/dataloaden StorageDealLoader int *github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal
-//go:generate go run github.com/vektah/dataloaden TransactionLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction
-//go:generate go run github.com/vektah/dataloaden SectorLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Sector
-//go:generate go run github.com/vektah/dataloaden PenaltyLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Penalty
-//go:generate go run github.com/vektah/dataloaden DeadlineLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Deadline
-//go:generate go run github.com/vektah/dataloaden StorageDealSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal
-//go:generate go run github.com/vektah/dataloaden TransactionSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction
-//go:generate go run github.com/vektah/dataloaden SectorSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Sector
-//go:generate go run github.com/vektah/dataloaden PenaltySliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Penalty
-//go:generate go run github.com/vektah/dataloaden DeadlineSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Deadline
-
 // "context"
 // "database/sql"
 // "net/http"
@@ -88,3 +61,32 @@ package dataloader
 // func For(ctx context.Context) *Loaders {
 // 	return ctx.Value(loadersKey).(*Loaders)
 // }
+
+/*
+go:generate go run github.com/vektah/dataloaden MinerLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Miner
+go:generate go run github.com/vektah/dataloaden MinerSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Miner
+go:generate go run github.com/vektah/dataloaden StorageDealLoader int *github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal
+go:generate go run github.com/vektah/dataloaden StorageDealSliceLoader int []*github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal
+go:generate go run github.com/vektah/dataloaden TransactionLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction
+go:generate go run github.com/vektah/dataloaden TransactionSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction
+
+go:generate go run github.com/vektah/dataloaden OwnerLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Owner
+go:generate go run github.com/vektah/dataloaden WorkerLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Worker
+go:generate go run github.com/vektah/dataloaden ContactLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Contact
+go:generate go run github.com/vektah/dataloaden ServiceDetailsLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.ServiceDetails
+go:generate go run github.com/vektah/dataloaden QualityIndicatorsLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.QualityIndicators
+go:generate go run github.com/vektah/dataloaden FinanceMetricsLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.FinanceMetrics
+go:generate go run github.com/vektah/dataloaden ServiceDetailsSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.ServiceDetails
+go:generate go run github.com/vektah/dataloaden QualityIndicatorsSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.QualityIndicators
+go:generate go run github.com/vektah/dataloaden FinanceMetricsSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.FinanceMetrics
+go:generate go run github.com/vektah/dataloaden StorageDealLoader int *github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal
+go:generate go run github.com/vektah/dataloaden TransactionLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction
+go:generate go run github.com/vektah/dataloaden SectorLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Sector
+go:generate go run github.com/vektah/dataloaden PenaltyLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Penalty
+go:generate go run github.com/vektah/dataloaden DeadlineLoader string *github.com/buidl-labs/miner-marketplace-backend/graph/model.Deadline
+go:generate go run github.com/vektah/dataloaden StorageDealSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.StorageDeal
+go:generate go run github.com/vektah/dataloaden TransactionSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction
+go:generate go run github.com/vektah/dataloaden SectorSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Sector
+go:generate go run github.com/vektah/dataloaden PenaltySliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Penalty
+go:generate go run github.com/vektah/dataloaden DeadlineSliceLoader string []*github.com/buidl-labs/miner-marketplace-backend/graph/model.Deadline
+*/
