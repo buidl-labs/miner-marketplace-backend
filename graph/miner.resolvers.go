@@ -252,7 +252,7 @@ func (r *minerResolver) Transaction(ctx context.Context, obj *model.Miner, id st
 		Receiver:        txn.Receiver,
 		Height:          txn.Height,
 		NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
-		TransactionType: txn.MethodName,
+		TransactionType: GetTransactionType(txn.MethodName),
 	}
 
 	return transaction, nil
@@ -331,7 +331,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 			Receiver:        txn.Receiver,
 			Height:          txn.Height,
 			NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
-			TransactionType: txn.MethodName,
+			TransactionType: GetTransactionType(txn.MethodName),
 		})
 	}
 	return transactions, nil

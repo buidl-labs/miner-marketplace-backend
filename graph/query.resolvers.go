@@ -303,7 +303,7 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Tran
 		Receiver:        txn.Receiver,
 		Height:          txn.Height,
 		NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
-		TransactionType: txn.MethodName,
+		TransactionType: GetTransactionType(txn.MethodName),
 	}
 	return transaction, nil
 }
@@ -345,7 +345,7 @@ func (r *queryResolver) AllTransactions(ctx context.Context, since *int, till *i
 			Receiver:        txn.Receiver,
 			Height:          txn.Height,
 			NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
-			TransactionType: txn.MethodName,
+			TransactionType: GetTransactionType(txn.MethodName),
 		})
 	}
 	return transactions, nil
