@@ -6,6 +6,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"strconv"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
@@ -141,8 +142,56 @@ func (r *minerResolver) FinanceMetrics(ctx context.Context, obj *model.Miner, si
 	if err != nil {
 		panic(err)
 	}
+
+	// txn := new(messages.Transaction)
+	var txns []messages.Transaction
+	var txns1 []messages.Transaction
+	var totalIncome *big.Int
+	var amts []string
+	err = r.DB.Model(&txns).Column("amount").Where("receiver = ?", obj.ID).Select(&amts)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("amts", amts)
+	totalIncome = big.NewInt(0)
+	for _, amt := range amts {
+		n := new(big.Int)
+		n, ok := n.SetString(amt, 10)
+		if !ok {
+			fmt.Println("SetString: error")
+		}
+		fmt.Println(n)
+		totalIncome.Add(totalIncome, n)
+	}
+	// err = r.DB.Model(&txns).ColumnExpr("SUM(amount::bigint) AS ti").Where("receiver = ?", obj.ID).Select(&totalIncome)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	var totalExpenditure *big.Int
+	var amts1 []string
+	err = r.DB.Model(&txns1).Column("amount").Where("sender = ?", obj.ID).Select(&amts1)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("amts1", amts1)
+	totalExpenditure = big.NewInt(0)
+	for _, amt := range amts1 {
+		n := new(big.Int)
+		n, ok := n.SetString(amt, 10)
+		if !ok {
+			fmt.Println("SetString: error")
+		}
+		fmt.Println(n)
+		totalExpenditure.Add(totalExpenditure, n)
+	}
+	// err = r.DB.Model(&txns1).ColumnExpr("SUM(amount::bigint) AS te").Where("sender = ?", obj.ID).Select(&totalExpenditure)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	fmt.Println("inc ", totalIncome, " exp ", totalExpenditure)
 	fm := &model.FinanceMetrics{
-		TotalIncome:           "",
+		TotalIncome:           totalIncome.String(),      // strconv.Itoa(int(totalIncome)),
+		TotalExpenditure:      totalExpenditure.String(), //  strconv.Itoa(int(totalExpenditure)),
 		BlockRewards:          "",
 		StorageDealPayments:   "",
 		RetrievalDealPayments: "",

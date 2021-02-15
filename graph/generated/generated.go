@@ -96,6 +96,7 @@ type ComplexityRoot struct {
 		PreCommitDeposits     func(childComplexity int) int
 		RetrievalDealPayments func(childComplexity int) int
 		StorageDealPayments   func(childComplexity int) int
+		TotalExpenditure      func(childComplexity int) int
 		TotalIncome           func(childComplexity int) int
 	}
 
@@ -579,6 +580,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.FinanceMetrics.StorageDealPayments(childComplexity), true
+
+	case "FinanceMetrics.totalExpenditure":
+		if e.complexity.FinanceMetrics.TotalExpenditure == nil {
+			break
+		}
+
+		return e.complexity.FinanceMetrics.TotalExpenditure(childComplexity), true
 
 	case "FinanceMetrics.totalIncome":
 		if e.complexity.FinanceMetrics.TotalIncome == nil {
@@ -1865,6 +1873,7 @@ type FinanceMetrics {
 
   networkFee: String
   penalty: String
+  totalExpenditure: String
 
   preCommitDeposits: String!
   initialPledge: String!
@@ -3443,6 +3452,38 @@ func (ec *executionContext) _FinanceMetrics_penalty(ctx context.Context, field g
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Penalty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _FinanceMetrics_totalExpenditure(ctx context.Context, field graphql.CollectedField, obj *model.FinanceMetrics) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "FinanceMetrics",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalExpenditure, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9558,6 +9599,8 @@ func (ec *executionContext) _FinanceMetrics(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._FinanceMetrics_networkFee(ctx, field, obj)
 		case "penalty":
 			out.Values[i] = ec._FinanceMetrics_penalty(ctx, field, obj)
+		case "totalExpenditure":
+			out.Values[i] = ec._FinanceMetrics_totalExpenditure(ctx, field, obj)
 		case "preCommitDeposits":
 			out.Values[i] = ec._FinanceMetrics_preCommitDeposits(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

@@ -48,6 +48,7 @@ type FinanceMetrics struct {
 	// Funds       *Funds       `json:"funds"`
 	Miner                 *Miner `json:"miner"`
 	TotalIncome           string `json:"totalIncome"`
+	TotalExpenditure      string `json:"totalExpenditure"`
 	BlockRewards          string `json:"blockRewards"`
 	StorageDealPayments   string `json:"storageDealPayments"`
 	RetrievalDealPayments string `json:"retrievalDealPayments"`

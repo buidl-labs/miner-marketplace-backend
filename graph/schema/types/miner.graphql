@@ -84,6 +84,7 @@ type FinanceMetrics {
 
   networkFee: String
   penalty: String
+  totalExpenditure: String
 
   preCommitDeposits: String!
   initialPledge: String!
