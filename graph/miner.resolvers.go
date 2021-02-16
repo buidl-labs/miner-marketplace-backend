@@ -9,6 +9,8 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/go-pg/pg/v10/orm"
+
 	"github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/market"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
@@ -260,7 +262,8 @@ func (r *minerResolver) Transaction(ctx context.Context, obj *model.Miner, id st
 
 func (r *minerResolver) Sector(ctx context.Context, obj *model.Miner, id string) (*model.Sector, error) {
 	sec := new(miner.MinerSectorInfo)
-	err := r.DB.Model(sec).Where("sector_id = ? AND miner_id = ?", id, obj.ID).Limit(1).Select()
+	fmt.Println("mid ", obj.ID, " sid ", id)
+	err := r.DB.Model(sec).Where("sector_id = ? AND miner_id = ?", id, obj.ID).Select()
 	if err != nil {
 		panic(err)
 	}
@@ -284,10 +287,32 @@ func (r *minerResolver) Deadline(ctx context.Context, obj *model.Miner, id strin
 
 func (r *minerResolver) StorageDeals(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.StorageDeal, error) {
 	var mdps []market.MarketDealProposal
-	err := r.DB.Model(&mdps).Where("provider_id = ?", obj.ID).Select()
-	if err != nil {
-		panic(err)
+	if since != nil {
+		if till != nil {
+			err := r.DB.Model(&mdps).Where("start_epoch >= ? AND start_epoch <= ? AND provider_id = ?", *since, *till, obj.ID).Select()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := r.DB.Model(&mdps).Where("start_epoch >= ? AND provider_id = ?", *since, obj.ID).Select()
+			if err != nil {
+				panic(err)
+			}
+		}
+	} else {
+		if till != nil {
+			err := r.DB.Model(&mdps).Where("start_epoch <= ? AND provider_id = ?", *till, obj.ID).Select()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := r.DB.Model(&mdps).Where("provider_id = ?", obj.ID).Select()
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
+
 	var storagedeals []*model.StorageDeal
 	for _, mdp := range mdps {
 		storagedeals = append(storagedeals, &model.StorageDeal{
@@ -314,13 +339,64 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 	}
 
 	var txns []messages.Transaction
-	err = r.DB.Model(&txns).Where("sender = ? OR receiver = ?",
-		obj.ID, obj.ID).WhereOr("sender = ? OR receiver = ?",
-		mi.OwnerID, mi.OwnerID).WhereOr("sender = ? OR receiver = ?",
-		mi.WorkerID, mi.WorkerID).Select()
-	if err != nil {
-		panic(err)
+	if since != nil {
+		if till != nil {
+			err := r.DB.Model(&txns).Where("height >= ? AND height <= ?", *since, *till).
+				WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+					q = q.WhereOr("sender = ? OR receiver = ?",
+						obj.ID, obj.ID).
+						WhereOr("sender = ? OR receiver = ?",
+							mi.OwnerID, mi.OwnerID).
+						WhereOr("sender = ? OR receiver = ?",
+							mi.WorkerID, mi.WorkerID)
+					return q, nil
+				}).Select()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := r.DB.Model(&txns).Where("height >= ?", *since).WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+				q = q.WhereOr("sender = ? OR receiver = ?",
+					obj.ID, obj.ID).
+					WhereOr("sender = ? OR receiver = ?",
+						mi.OwnerID, mi.OwnerID).
+					WhereOr("sender = ? OR receiver = ?",
+						mi.WorkerID, mi.WorkerID)
+				return q, nil
+			}).Select()
+			if err != nil {
+				panic(err)
+			}
+		}
+	} else {
+		if till != nil {
+			err := r.DB.Model(&txns).Where("height <= ?", *till).
+				WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+					q = q.WhereOr("sender = ? OR receiver = ?",
+						obj.ID, obj.ID).
+						WhereOr("sender = ? OR receiver = ?",
+							mi.OwnerID, mi.OwnerID).
+						WhereOr("sender = ? OR receiver = ?",
+							mi.WorkerID, mi.WorkerID)
+					return q, nil
+				}).Select()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := r.DB.Model(&txns).Select()
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
+	// err = r.DB.Model(&txns).Where("sender = ? OR receiver = ?",
+	// 	obj.ID, obj.ID).WhereOr("sender = ? OR receiver = ?",
+	// 	mi.OwnerID, mi.OwnerID).WhereOr("sender = ? OR receiver = ?",
+	// 	mi.WorkerID, mi.WorkerID).Select()
+	// if err != nil {
+	// 	panic(err)
+	// }
 	var transactions []*model.Transaction
 	for _, txn := range txns {
 		transactions = append(transactions, &model.Transaction{
@@ -400,6 +476,7 @@ func (r *sectorResolver) Miner(ctx context.Context, obj *model.Sector) (*model.M
 
 func (r *sectorResolver) Faults(ctx context.Context, obj *model.Sector) ([]*model.Fault, error) {
 	var msfs []*miner.MinerSectorFault
+	fmt.Println("mid ", obj.Miner.ID, " sid ", obj.ID)
 	err := r.DB.Model(&msfs).Where("sector_id = ? AND miner_id = ?", obj.ID, obj.Miner.ID).Select()
 	if err != nil {
 		panic(err)
