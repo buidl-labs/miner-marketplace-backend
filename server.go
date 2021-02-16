@@ -14,6 +14,8 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/buidl-labs/miner-marketplace-backend/graph"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
+	"github.com/go-chi/chi"
+	"github.com/rs/cors"
 )
 
 const defaultPort = "8080"
@@ -32,6 +34,15 @@ func main() {
 	if err != nil {
 		log.Fatal("connecting to db: ", err)
 	}
+
+	router := chi.NewRouter()
+
+	router.Use(cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		Debug:            true,
+	}).Handler)
+
 	srv := handler.NewDefaultServer(
 		generated.NewExecutableSchema(generated.Config{
 			Resolvers: &graph.Resolver{
@@ -41,11 +52,11 @@ func main() {
 		}),
 	)
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	router.Handle("/query", srv)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }
 
 func NewDB() (*pg.DB, error) {
