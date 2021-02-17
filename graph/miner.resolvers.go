@@ -109,6 +109,12 @@ func (r *minerResolver) QualityIndicators(ctx context.Context, obj *model.Miner,
 	if err != nil {
 		panic(err)
 	}
+	var bhs2 []blocks.BlockHeader
+	var blocksMined uint64
+	err = r.DB.Model(&bhs2).ColumnExpr("COUNT(miner_id) AS blocksmined").Where("miner_id = ?", obj.ID).Select(&blocksMined)
+	if err != nil {
+		panic(err)
+	}
 
 	cp := new(power.PowerActorClaim)
 	var maxHeight int
@@ -121,10 +127,12 @@ func (r *minerResolver) QualityIndicators(ctx context.Context, obj *model.Miner,
 	if err != nil {
 		panic(err)
 	}
-
+	// datastored
+	// select sum(padded_piece_size) from market_deal_proposals where provider_id = 'f023534';
 	qi := &model.QualityIndicators{
 		Miner:           obj,
 		WinCount:        winsum,
+		BlocksMined:     blocksMined,
 		RawBytePower:    cp.RawBytePower,
 		QualityAdjPower: cp.QualityAdjPower,
 	}
@@ -463,7 +471,7 @@ func (r *qualityIndicatorsResolver) FaultySectors(ctx context.Context, obj *mode
 }
 
 func (r *qualityIndicatorsResolver) BlocksMined(ctx context.Context, obj *model.QualityIndicators) (int, error) {
-	panic(fmt.Errorf("not implemented"))
+	return int(obj.BlocksMined), nil
 }
 
 func (r *qualityIndicatorsResolver) MiningEfficiency(ctx context.Context, obj *model.QualityIndicators) (int, error) {
