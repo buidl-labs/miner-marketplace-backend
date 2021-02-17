@@ -9,8 +9,6 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/go-pg/pg/v10/orm"
-
 	"github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/market"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
@@ -18,6 +16,7 @@ import (
 	"github.com/buidl-labs/filecoin-chain-indexer/model/power"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
+	"github.com/go-pg/pg/v10/orm"
 )
 
 func (r *contactResolver) Miner(ctx context.Context, obj *model.Contact) (*model.Miner, error) {

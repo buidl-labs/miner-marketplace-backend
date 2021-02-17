@@ -88,6 +88,7 @@ type Miner struct {
 	Worker               *Worker              `json:"worker"`
 	Name                 string               `json:"name"`
 	Bio                  string               `json:"bio"`
+	Location             string               `json:"location"`
 	Contact              *Contact             `json:"contact"`
 	Verified             bool                 `json:"verified"`
 	ServiceDetails       *ServiceDetails      `json:"serviceDetails"`

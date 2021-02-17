@@ -7,6 +7,7 @@ type Miner {
   worker: Worker @goField(forceResolver: true)
   name: String
   bio: String
+  location: String
   contact: Contact @goField(forceResolver: true)
   verified: Boolean!
 
