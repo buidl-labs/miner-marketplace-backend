@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"strconv"
 
-	// pq postgresql driver
-	_ "github.com/lib/pq"
-
 	"github.com/buidl-labs/filecoin-chain-indexer/model/market"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 	"github.com/buidl-labs/filecoin-chain-indexer/model/miner"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
+	// pq postgresql driver
+	_ "github.com/lib/pq"
 )
 
 func (r *queryResolver) Miner(ctx context.Context, id string) (*model.Miner, error) {
@@ -38,6 +37,7 @@ func (r *queryResolver) Miner(ctx context.Context, id string) (*model.Miner, err
 		PeerID:   mi.PeerID,
 		Name:     "",
 		Bio:      "",
+		Location: "",
 		Verified: false,
 	}
 	return m, nil
@@ -217,6 +217,7 @@ func (r *queryResolver) AllMiners(ctx context.Context, after *string, first *int
 			PeerID:   mi.PeerID,
 			Name:     "",
 			Bio:      "",
+			Location: "",
 			Verified: false,
 		})
 	}

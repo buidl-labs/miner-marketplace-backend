@@ -131,6 +131,7 @@ type ComplexityRoot struct {
 		Deadlines            func(childComplexity int) int
 		FinanceMetrics       func(childComplexity int, since *int, till *int) int
 		ID                   func(childComplexity int) int
+		Location             func(childComplexity int) int
 		Name                 func(childComplexity int) int
 		Owner                func(childComplexity int) int
 		PeerID               func(childComplexity int) int
@@ -766,6 +767,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Miner.ID(childComplexity), true
+
+	case "Miner.location":
+		if e.complexity.Miner.Location == nil {
+			break
+		}
+
+		return e.complexity.Miner.Location(childComplexity), true
 
 	case "Miner.name":
 		if e.complexity.Miner.Name == nil {
@@ -1796,6 +1804,7 @@ input NewTodo {
   worker: Worker @goField(forceResolver: true)
   name: String
   bio: String
+  location: String
   contact: Contact @goField(forceResolver: true)
   verified: Boolean!
 
@@ -4230,6 +4239,38 @@ func (ec *executionContext) _Miner_bio(ctx context.Context, field graphql.Collec
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.Bio, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Miner_location(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Miner",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Location, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9793,6 +9834,8 @@ func (ec *executionContext) _Miner(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Miner_name(ctx, field, obj)
 		case "bio":
 			out.Values[i] = ec._Miner_bio(ctx, field, obj)
+		case "location":
+			out.Values[i] = ec._Miner_location(ctx, field, obj)
 		case "contact":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
