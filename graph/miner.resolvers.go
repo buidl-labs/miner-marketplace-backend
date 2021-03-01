@@ -82,7 +82,7 @@ func (r *minerResolver) Contact(ctx context.Context, obj *model.Miner) (*model.C
 
 func (r *minerResolver) ServiceDetails(ctx context.Context, obj *model.Miner) (*model.ServiceDetails, error) {
 	mi := new(miner.MinerInfo)
-	err := r.DB.Model(mi).Where("miner_id = ?", obj.ID).Select()
+	err := r.DB.Model(mi).Where("miner_id = ?", obj.ID).Limit(1).Select()
 	if err != nil {
 		panic(err)
 	}
@@ -340,7 +340,7 @@ func (r *minerResolver) StorageDeals(ctx context.Context, obj *model.Miner, sinc
 
 func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Transaction, error) {
 	mi := new(miner.MinerInfo)
-	err := r.DB.Model(mi).Where("miner_id = ?", obj.ID).Select()
+	err := r.DB.Model(mi).Where("miner_id = ?", obj.ID).Limit(1).Select()
 	if err != nil {
 		panic(err)
 	}
