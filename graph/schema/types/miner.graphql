@@ -153,6 +153,11 @@ type Transaction {
   height: Int!
   timestamp: Time
   networkFee: String
+  minerFee: String
+  burnFee: String
+  direction: String
+  methodName: String
+  actorName: String
 }
 
 enum TransactionType {
