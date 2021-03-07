@@ -263,10 +263,15 @@ type ComplexityRoot struct {
 	}
 
 	Transaction struct {
+		ActorName       func(childComplexity int) int
 		Amount          func(childComplexity int) int
+		BurnFee         func(childComplexity int) int
+		Direction       func(childComplexity int) int
 		Height          func(childComplexity int) int
 		ID              func(childComplexity int) int
+		MethodName      func(childComplexity int) int
 		Miner           func(childComplexity int) int
+		MinerFee        func(childComplexity int) int
 		NetworkFee      func(childComplexity int) int
 		Receiver        func(childComplexity int) int
 		Sender          func(childComplexity int) int
@@ -1499,12 +1504,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Todo.User(childComplexity), true
 
+	case "Transaction.actorName":
+		if e.complexity.Transaction.ActorName == nil {
+			break
+		}
+
+		return e.complexity.Transaction.ActorName(childComplexity), true
+
 	case "Transaction.amount":
 		if e.complexity.Transaction.Amount == nil {
 			break
 		}
 
 		return e.complexity.Transaction.Amount(childComplexity), true
+
+	case "Transaction.burnFee":
+		if e.complexity.Transaction.BurnFee == nil {
+			break
+		}
+
+		return e.complexity.Transaction.BurnFee(childComplexity), true
+
+	case "Transaction.direction":
+		if e.complexity.Transaction.Direction == nil {
+			break
+		}
+
+		return e.complexity.Transaction.Direction(childComplexity), true
 
 	case "Transaction.height":
 		if e.complexity.Transaction.Height == nil {
@@ -1520,12 +1546,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Transaction.ID(childComplexity), true
 
+	case "Transaction.methodName":
+		if e.complexity.Transaction.MethodName == nil {
+			break
+		}
+
+		return e.complexity.Transaction.MethodName(childComplexity), true
+
 	case "Transaction.miner":
 		if e.complexity.Transaction.Miner == nil {
 			break
 		}
 
 		return e.complexity.Transaction.Miner(childComplexity), true
+
+	case "Transaction.minerFee":
+		if e.complexity.Transaction.MinerFee == nil {
+			break
+		}
+
+		return e.complexity.Transaction.MinerFee(childComplexity), true
 
 	case "Transaction.networkFee":
 		if e.complexity.Transaction.NetworkFee == nil {
@@ -1950,6 +1990,11 @@ type Transaction {
   height: Int!
   timestamp: Time
   networkFee: String
+  minerFee: String
+  burnFee: String
+  direction: String
+  methodName: String
+  actorName: String
 }
 
 enum TransactionType {
@@ -7962,6 +8007,166 @@ func (ec *executionContext) _Transaction_networkFee(ctx context.Context, field g
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Transaction_minerFee(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MinerFee, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Transaction_burnFee(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BurnFee, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Transaction_direction(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Direction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Transaction_methodName(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MethodName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Transaction_actorName(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ActorName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -10825,6 +11030,16 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._Transaction_timestamp(ctx, field, obj)
 		case "networkFee":
 			out.Values[i] = ec._Transaction_networkFee(ctx, field, obj)
+		case "minerFee":
+			out.Values[i] = ec._Transaction_minerFee(ctx, field, obj)
+		case "burnFee":
+			out.Values[i] = ec._Transaction_burnFee(ctx, field, obj)
+		case "direction":
+			out.Values[i] = ec._Transaction_direction(ctx, field, obj)
+		case "methodName":
+			out.Values[i] = ec._Transaction_methodName(ctx, field, obj)
+		case "actorName":
+			out.Values[i] = ec._Transaction_actorName(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

@@ -207,6 +207,11 @@ type Transaction struct {
 	Height          int64     `json:"height"`
 	Timestamp       time.Time `json:"timestamp"`
 	NetworkFee      string    `json:"networkFee"`
+	MinerFee        string    `json:"minerFee"`
+	BurnFee         string    `json:"burnFee"`
+	Direction       string    `json:"direction"`
+	MethodName      string    `json:"methodName"`
+	ActorName       string    `json:"actorName"`
 }
 
 type User struct {

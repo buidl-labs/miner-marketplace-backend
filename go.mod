@@ -4,7 +4,7 @@ go 1.15
 
 require (
 	github.com/99designs/gqlgen v0.13.0
-	github.com/buidl-labs/filecoin-chain-indexer v0.0.0-20210214201836-6939b6be6de7
+	github.com/buidl-labs/filecoin-chain-indexer v0.0.0-20210306114009-82d6c5f7eb1c
 	github.com/go-chi/chi v3.3.2+incompatible
 	github.com/go-pg/pg/v10 v10.7.5
 	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
