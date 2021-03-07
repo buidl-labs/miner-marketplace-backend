@@ -612,24 +612,330 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 	}
 	fmt.Println(ownerDidChange, workerDidChange, controlDidChange)
 
+	var incoming []messages.Transaction
+	var outgoing []messages.Transaction
 	var txns []messages.Transaction
 	if since != nil {
 		if till != nil {
-			err := r.DB.Model(&txns).Where("height >= ? AND height <= ?", *since, *till).
+			// Find incoming txns
+			if ownerDidChange && workerDidChange {
+				var ownerIncoming []messages.Transaction
+				sort.Slice(currMAC.OwnerChanges[:], func(i, j int) bool {
+					return currMAC.OwnerChanges[i].Epoch < currMAC.OwnerChanges[j].Epoch
+				})
+				oc := currMAC.OwnerChanges[0]
+				var ownerIncoming0 []messages.Transaction
+
+				err = r.DB.Model(&ownerIncoming0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+					Where("height >= ? AND height <= ?", *since, *till).
+					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+						q = q.
+							WhereOr("height <= ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, "fil/3/storagemarket", 3, oc.From).
+							WhereOr("height <= ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, "fil/3/storageminer", 16, obj.ID)
+						return q, nil
+					}).Select()
+				if err != nil {
+					panic(err)
+				}
+				ownerIncoming = append(ownerIncoming, ownerIncoming0...)
+				for i, oc := range currMAC.OwnerChanges {
+					if i != len(currMAC.OwnerChanges)-1 {
+						var ownerIncomingNotLast []messages.Transaction
+						err := r.DB.Model(&ownerIncomingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+								q = q.
+									WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storagemarket", 3, oc.From).
+									WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storageminer", 16, obj.ID)
+								return q, nil
+							}).Select()
+						if err != nil {
+							panic(err)
+						}
+						ownerIncoming = append(ownerIncoming, ownerIncomingNotLast...)
+					} else {
+						var ownerIncomingLast []messages.Transaction
+						err := r.DB.Model(&ownerIncomingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+								q = q.
+									WhereOr("height >= ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, "fil/3/storagemarket", 3, oc.From).
+									WhereOr("height >= ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, "fil/3/storageminer", 16, obj.ID)
+								return q, nil
+							}).Select()
+						if err != nil {
+							panic(err)
+						}
+						ownerIncoming = append(ownerIncoming, ownerIncomingLast...)
+					}
+				}
+
+				incoming = append(incoming, ownerIncoming...)
+
+				var workerIncoming []messages.Transaction
+				sort.Slice(currMAC.WorkerChanges[:], func(i, j int) bool {
+					return currMAC.WorkerChanges[i].Epoch < currMAC.WorkerChanges[j].Epoch
+				})
+				wc := currMAC.WorkerChanges[0]
+				var workerIncoming0 []messages.Transaction
+
+				err = r.DB.Model(&workerIncoming0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+					Where("height >= ? AND height <= ?", *since, *till).
+					Where("height <= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
+					Select()
+				if err != nil {
+					panic(err)
+				}
+				workerIncoming = append(workerIncoming, workerIncoming0...)
+				for i, wc := range currMAC.WorkerChanges {
+					if i != len(currMAC.WorkerChanges)-1 {
+						var workerIncomingNotLast []messages.Transaction
+						err := r.DB.Model(&workerIncomingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, currMAC.WorkerChanges[i+1], "fil/3/storagemarket", 3, wc.From).
+							Select()
+						if err != nil {
+							panic(err)
+						}
+						workerIncoming = append(workerIncoming, workerIncomingNotLast...)
+					} else {
+						var workerIncomingLast []messages.Transaction
+						err := r.DB.Model(&workerIncomingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
+							Select()
+						if err != nil {
+							panic(err)
+						}
+						workerIncoming = append(workerIncoming, workerIncomingLast...)
+					}
+				}
+
+				incoming = append(incoming, workerIncoming...)
+			} else if ownerDidChange && !workerDidChange {
+				var ownerIncoming []messages.Transaction
+				sort.Slice(currMAC.OwnerChanges[:], func(i, j int) bool {
+					return currMAC.OwnerChanges[i].Epoch < currMAC.OwnerChanges[j].Epoch
+				})
+				oc := currMAC.OwnerChanges[0]
+				var ownerIncoming0 []messages.Transaction
+
+				err = r.DB.Model(&ownerIncoming0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+					Where("height >= ? AND height <= ?", *since, *till).
+					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+						q = q.
+							WhereOr("height <= ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, "fil/3/storagemarket", 3, oc.From).
+							WhereOr("height <= ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, "fil/3/storageminer", 16, obj.ID)
+						return q, nil
+					}).Select()
+				if err != nil {
+					panic(err)
+				}
+				ownerIncoming = append(ownerIncoming, ownerIncoming0...)
+				for i, oc := range currMAC.OwnerChanges {
+					if i != len(currMAC.OwnerChanges)-1 {
+						var ownerIncomingNotLast []messages.Transaction
+						err := r.DB.Model(&ownerIncomingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storagemarket", 3, oc.From).
+							WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storageminer", 16, obj.ID).
+							Select()
+						if err != nil {
+							panic(err)
+						}
+						ownerIncoming = append(ownerIncoming, ownerIncomingNotLast...)
+					} else {
+						var ownerIncomingLast []messages.Transaction
+						err := r.DB.Model(&ownerIncomingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, "fil/3/storagemarket", 3, oc.From).
+							WhereOr("height >= ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, "fil/3/storageminer", 16, obj.ID).
+							Select()
+						if err != nil {
+							panic(err)
+						}
+						ownerIncoming = append(ownerIncoming, ownerIncomingLast...)
+					}
+				}
+
+				incoming = append(incoming, ownerIncoming...)
+
+				var workerIncoming []messages.Transaction
+				err = r.DB.Model(&workerIncoming).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+					Where("height >= ? AND height <= ?", *since, *till).
+					Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Worker.ID).
+					Select()
+				if err != nil {
+					panic(err)
+				}
+				incoming = append(incoming, workerIncoming...)
+			} else if workerDidChange && !ownerDidChange {
+				var workerIncoming []messages.Transaction
+				sort.Slice(currMAC.WorkerChanges[:], func(i, j int) bool {
+					return currMAC.WorkerChanges[i].Epoch < currMAC.WorkerChanges[j].Epoch
+				})
+				wc := currMAC.WorkerChanges[0]
+				var workerIncoming0 []messages.Transaction
+
+				err = r.DB.Model(&workerIncoming0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+					Where("height >= ? AND height <= ?", *since, *till).
+					Where("height <= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
+					Select()
+				if err != nil {
+					panic(err)
+				}
+				workerIncoming = append(workerIncoming, workerIncoming0...)
+				for i, wc := range currMAC.WorkerChanges {
+					if i != len(currMAC.WorkerChanges)-1 {
+						var workerIncomingNotLast []messages.Transaction
+						err := r.DB.Model(&workerIncomingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, currMAC.WorkerChanges[i+1], "fil/3/storagemarket", 3, wc.From).
+							Select()
+						if err != nil {
+							panic(err)
+						}
+						workerIncoming = append(workerIncoming, workerIncomingNotLast...)
+					} else {
+						var workerIncomingLast []messages.Transaction
+						err := r.DB.Model(&workerIncomingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
+							Select()
+						if err != nil {
+							panic(err)
+						}
+						workerIncoming = append(workerIncoming, workerIncomingLast...)
+					}
+				}
+
+				incoming = append(incoming, workerIncoming...)
+
+				var ownerIncoming []messages.Transaction
+
+				err = r.DB.Model(&ownerIncoming).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+					Where("height >= ? AND height <= ?", *since, *till).
+					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+						q = q.
+							WhereOr("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Owner.ID).
+							WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 16, obj.ID)
+						return q, nil
+					}).Select()
+				if err != nil {
+					panic(err)
+				}
+				incoming = append(incoming, ownerIncoming...)
+			} else {
+				var ownerIncoming []messages.Transaction
+
+				err = r.DB.Model(&ownerIncoming).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+					Where("height >= ? AND height <= ?", *since, *till).
+					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+						q = q.
+							WhereOr("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Owner.ID).
+							WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 16, obj.ID)
+						return q, nil
+					}).Select()
+				if err != nil {
+					panic(err)
+				}
+				incoming = append(incoming, ownerIncoming...)
+
+				var workerIncoming []messages.Transaction
+				err = r.DB.Model(&workerIncoming).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+					Where("height >= ? AND height <= ?", *since, *till).
+					Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Worker.ID).
+					Select()
+				if err != nil {
+					panic(err)
+				}
+				incoming = append(incoming, workerIncoming...)
+			}
+			// end {Find incoming txns}
+
+			// Find outgoing txns
+			var outgoing0 []messages.Transaction
+			err = r.DB.Model(&outgoing0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				Where("height >= ? AND height <= ?", *since, *till).
 				WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 					q = q.
-						WhereOr("sender = ? OR receiver = ?",
-							obj.ID, obj.ID).
-						WhereOr("sender = ? OR receiver = ?",
-							mi.OwnerID, mi.OwnerID).
-						WhereOr("sender = ? OR receiver = ?",
-							mi.WorkerID, mi.WorkerID)
+						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 5, obj.ID).
+						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 3, obj.ID).
+						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 23, obj.ID)
 					return q, nil
-				}).Select()
+				}).
+				Select()
 			if err != nil {
 				panic(err)
 			}
+			outgoing = append(outgoing, outgoing0...)
+
+			if workerDidChange {
+				var workerOutgoing []messages.Transaction
+				sort.Slice(currMAC.WorkerChanges[:], func(i, j int) bool {
+					return currMAC.WorkerChanges[i].Epoch < currMAC.WorkerChanges[j].Epoch
+				})
+				wc := currMAC.WorkerChanges[0]
+				var workerOutgoing0 []messages.Transaction
+
+				err := r.DB.Model(&workerOutgoing0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+					Where("height >= ? AND height <= ?", *since, *till).
+					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+						q = q.
+							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 5).
+							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 3).
+							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 23).
+							WhereOr("height <= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.From, "fil/3/storageminer")
+
+						return q, nil
+					}).Select()
+				if err != nil {
+					panic(err)
+				}
+				workerOutgoing = append(workerOutgoing, workerOutgoing0...)
+
+				for i, wc := range currMAC.WorkerChanges {
+					if i != len(currMAC.WorkerChanges)-1 {
+						var workerOutgoingNotLast []messages.Transaction
+						err := r.DB.Model(&workerOutgoingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+								q = q.
+									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 5).
+									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 3).
+									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 23).
+									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer")
+								return q, nil
+							}).Select()
+						if err != nil {
+							panic(err)
+						}
+						workerOutgoing = append(workerOutgoing, workerOutgoingNotLast...)
+					} else {
+						var workerOutgoingLast []messages.Transaction
+						err := r.DB.Model(&workerOutgoingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+							Where("height >= ? AND height <= ?", *since, *till).
+							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+								q = q.
+									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 5).
+									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 3).
+									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 23).
+									WhereOr("height >= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.To, "fil/3/storageminer")
+								return q, nil
+							}).Select()
+						if err != nil {
+							panic(err)
+						}
+						workerOutgoing = append(workerOutgoing, workerOutgoingLast...)
+					}
+				}
+
+				outgoing = append(outgoing, workerOutgoing...)
+			}
+			// end {Find outgoing txns}
 		} else {
+			// FIXME: the below logic needs to be changed
+			// wrt changing miner addresses.
 			err := r.DB.Model(&txns).Where("height >= ?", *since).WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 				q = q.
 					WhereOr("sender = ? OR receiver = ?",
@@ -646,6 +952,8 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 		}
 	} else {
 		if till != nil {
+			// FIXME: the below logic needs to be changed
+			// wrt changing miner addresses.
 			err := r.DB.Model(&txns).Where("height <= ?", *till).
 				WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 					q = q.
@@ -661,6 +969,8 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				panic(err)
 			}
 		} else {
+			// FIXME: the below logic needs to be changed
+			// wrt changing miner addresses.
 			err := r.DB.Model(&txns).Select()
 			if err != nil {
 				panic(err)
@@ -675,7 +985,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 	// 	panic(err)
 	// }
 	var transactions []*model.Transaction
-	for _, txn := range txns {
+	for _, txn := range incoming {
 		amt := "0"
 		if txn.Amount == "0" {
 			if txn.Transferred != "0" {
@@ -693,7 +1003,30 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 			BurnFee:    txn.BaseFeeBurn,
 			MethodName: txn.MethodName,
 			ActorName:  txn.ActorName,
-			// Direction: dirxn,
+			Direction:  "INCOMING",
+			// NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
+			// TransactionType: GetTransactionType(txn.MethodName),
+		})
+	}
+	for _, txn := range outgoing {
+		amt := "0"
+		if txn.Amount == "0" {
+			if txn.Transferred != "0" {
+				amt = txn.Transferred
+			}
+		}
+		transactions = append(transactions, &model.Transaction{
+			ID:         txn.Cid,
+			Miner:      obj,
+			Amount:     amt,
+			Sender:     txn.Sender,
+			Receiver:   txn.Receiver,
+			Height:     txn.Height,
+			MinerFee:   txn.MinerTip,
+			BurnFee:    txn.BaseFeeBurn,
+			MethodName: txn.MethodName,
+			ActorName:  txn.ActorName,
+			Direction:  "OUTGOING",
 			// NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
 			// TransactionType: GetTransactionType(txn.MethodName),
 		})
