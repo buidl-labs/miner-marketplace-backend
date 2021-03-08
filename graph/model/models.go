@@ -212,6 +212,7 @@ type Transaction struct {
 	Direction       string    `json:"direction"`
 	MethodName      string    `json:"methodName"`
 	ActorName       string    `json:"actorName"`
+	ExitCode        int64     `json:"exitCode"`
 }
 
 type User struct {

@@ -158,6 +158,7 @@ type Transaction {
   direction: String
   methodName: String
   actorName: String
+  exitCode: Int
 }
 
 enum TransactionType {

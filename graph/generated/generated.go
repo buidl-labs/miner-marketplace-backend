@@ -267,6 +267,7 @@ type ComplexityRoot struct {
 		Amount          func(childComplexity int) int
 		BurnFee         func(childComplexity int) int
 		Direction       func(childComplexity int) int
+		ExitCode        func(childComplexity int) int
 		Height          func(childComplexity int) int
 		ID              func(childComplexity int) int
 		MethodName      func(childComplexity int) int
@@ -1532,6 +1533,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Transaction.Direction(childComplexity), true
 
+	case "Transaction.exitCode":
+		if e.complexity.Transaction.ExitCode == nil {
+			break
+		}
+
+		return e.complexity.Transaction.ExitCode(childComplexity), true
+
 	case "Transaction.height":
 		if e.complexity.Transaction.Height == nil {
 			break
@@ -1995,6 +2003,7 @@ type Transaction {
   direction: String
   methodName: String
   actorName: String
+  exitCode: Int
 }
 
 enum TransactionType {
@@ -8167,6 +8176,38 @@ func (ec *executionContext) _Transaction_actorName(ctx context.Context, field gr
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Transaction_exitCode(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExitCode, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -11040,6 +11081,8 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._Transaction_methodName(ctx, field, obj)
 		case "actorName":
 			out.Values[i] = ec._Transaction_actorName(ctx, field, obj)
+		case "exitCode":
+			out.Values[i] = ec._Transaction_exitCode(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
