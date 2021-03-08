@@ -146,293 +146,334 @@ func (r *minerResolver) FinanceMetrics(ctx context.Context, obj *model.Miner, si
 	fmt.Println("minerid", obj.ID)
 	err := r.DB.Model(mf).ColumnExpr("max(height)").Where("miner_id = ?", obj.ID).Select(&maxHeight)
 	if err != nil {
+		fmt.Println("get maxheight", err)
 		panic(err)
 	}
+	// TOFIX: mf is at some max height (that's present in db).
+	// This should be in the selected epoch range.
 	err = r.DB.Model(mf).Where("miner_id = ? and height = ?", minerID, maxHeight).Select()
 	if err != nil {
+		fmt.Println("mffff", err)
 		panic(err)
 	}
+	mi := new(miner.MinerInfo)
+	err = r.DB.Model(mi).Where("miner_id = ?", obj.ID).Limit(1).Select()
+	if err != nil {
+		fmt.Println("fmid", err)
+		panic(err)
+	}
+	fmt.Println("MINERFUND", mf)
 
 	var totalIncome *big.Int
 	var totalExpenditure *big.Int
 
 	totalIncome = big.NewInt(0)
 	totalExpenditure = big.NewInt(0)
+	totalIncome, totalExpenditure = ComputeIncomeExpenditure(r, obj, mi, since, till)
+	/*
+		// var txns []messages.Transaction
+		// var amts []string
+		// var minertips []string
+		// var basefeeburns []string
+		// var transfers []string
+		// err = r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+		// 	Where("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 5, obj.ID).
+		// 	WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 3, obj.ID).
+		// 	WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 23, obj.ID).
+		// 	Select(&amts, &minertips, &basefeeburns, &transfers)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// fmt.Println("amts", amts)
+		// // totalIncome = big.NewInt(0)
+		// totalIncome = ComputeBigIntSum(totalIncome, amts)
+		// // err = r.DB.Model(&txns).ColumnExpr("SUM(amount::bigint) AS ti").Where("receiver = ?", obj.ID).Select(&totalIncome)
+		// // if err != nil {
+		// // 	panic(err)
+		// // }
 
-	// var txns []messages.Transaction
-	// var amts []string
-	// var minertips []string
-	// var basefeeburns []string
-	// var transfers []string
-	// err = r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-	// 	Where("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 5, obj.ID).
-	// 	WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 3, obj.ID).
-	// 	WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 23, obj.ID).
-	// 	Select(&amts, &minertips, &basefeeburns, &transfers)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println("amts", amts)
-	// // totalIncome = big.NewInt(0)
-	// totalIncome = ComputeBigIntSum(totalIncome, amts)
-	// // err = r.DB.Model(&txns).ColumnExpr("SUM(amount::bigint) AS ti").Where("receiver = ?", obj.ID).Select(&totalIncome)
-	// // if err != nil {
-	// // 	panic(err)
-	// // }
+		ownerDidChange := false
 
-	ownerDidChange := false
+		workerDidChange := false
 
-	workerDidChange := false
-
-	minerAddressChanges := GetMinerAddressChanges()
-	val, ok := minerAddressChanges[obj.ID]
-	if ok {
-		fmt.Println("hhh", val)
-		if len(val.WorkerChanges) != 0 {
-			workerDidChange = true
+		minerAddressChanges := GetMinerAddressChanges()
+		val, ok := minerAddressChanges[obj.ID]
+		if ok {
+			fmt.Println("hhh", val)
+			if len(val.WorkerChanges) != 0 {
+				workerDidChange = true
+			}
+			if len(val.OwnerChanges) != 0 {
+				ownerDidChange = true
+			}
+		} else {
+			fmt.Println("hhhcantfind")
 		}
-		if len(val.OwnerChanges) != 0 {
-			ownerDidChange = true
-		}
-	} else {
-		fmt.Println("hhhcantfind")
-	}
 
-	if ownerDidChange {
-		var txns []messages.Transaction
-		var amts []string
-		var minertips []string
-		var basefeeburns []string
-		var transfers []string
+		if ownerDidChange {
+			var txns []messages.Transaction
+			var amts []string
+			var minertips []string
+			var basefeeburns []string
+			var transfers []string
 
-		sort.Slice(val.OwnerChanges[:], func(i, j int) bool {
-			return val.OwnerChanges[i].Epoch < val.OwnerChanges[j].Epoch
-		})
-		oc := val.OwnerChanges[0]
+			sort.Slice(val.OwnerChanges[:], func(i, j int) bool {
+				return val.OwnerChanges[i].Epoch < val.OwnerChanges[j].Epoch
+			})
+			oc := val.OwnerChanges[0]
 
-		err = r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-			Where("height <= ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, "fil/3/storagemarket", 3, oc.From).
-			WhereOr("height <= ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, "fil/3/storageminer", 16, obj.ID).
-			Select(&amts, &minertips, &basefeeburns, &transfers)
-		if err != nil {
-			panic(err)
-		}
-		totalIncome = ComputeBigIntSum(totalIncome, amts)
-		totalIncome = ComputeBigIntSum(totalIncome, minertips)
-		totalIncome = ComputeBigIntSum(totalIncome, basefeeburns)
-		totalIncome = ComputeBigIntSum(totalIncome, transfers)
-
-		for i, oc := range val.OwnerChanges {
-			if i != len(val.OwnerChanges)-1 {
-				// if not last
-				err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-					Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, val.OwnerChanges[i+1], "fil/3/storagemarket", 3, oc.From).
-					WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, val.OwnerChanges[i+1], "fil/3/storageminer", 16, obj.ID).
-					Select(&amts, &minertips, &basefeeburns, &transfers)
-				if err != nil {
-					panic(err)
-				}
+			err = r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				Where("height <= ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, "fil/3/storagemarket", 3, oc.From).
+				WhereOr("height <= ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, "fil/3/storageminer", 16, obj.ID).
+				Select(&amts, &minertips, &basefeeburns, &transfers)
+			if err != nil {
+				fmt.Println(err)
+				// panic(err)
+			} else {
 				totalIncome = ComputeBigIntSum(totalIncome, amts)
 				totalIncome = ComputeBigIntSum(totalIncome, minertips)
 				totalIncome = ComputeBigIntSum(totalIncome, basefeeburns)
 				totalIncome = ComputeBigIntSum(totalIncome, transfers)
-			} else {
-				err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-					Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, "fil/3/storagemarket", 3, oc.From).
-					WhereOr("height >= ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, "fil/3/storageminer", 16, obj.ID).
-					Select(&amts, &minertips, &basefeeburns, &transfers)
-				if err != nil {
-					panic(err)
+			}
+			for i, oc := range val.OwnerChanges {
+				if i != len(val.OwnerChanges)-1 {
+					// if not last
+					err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, val.OwnerChanges[i+1], "fil/3/storagemarket", 3, oc.From).
+						WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, val.OwnerChanges[i+1], "fil/3/storageminer", 16, obj.ID).
+						Select(&amts, &minertips, &basefeeburns, &transfers)
+					if err != nil {
+						fmt.Println(err)
+						// panic(err)
+					} else {
+						totalIncome = ComputeBigIntSum(totalIncome, amts)
+						totalIncome = ComputeBigIntSum(totalIncome, minertips)
+						totalIncome = ComputeBigIntSum(totalIncome, basefeeburns)
+						totalIncome = ComputeBigIntSum(totalIncome, transfers)
+					}
+				} else {
+					err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, "fil/3/storagemarket", 3, oc.From).
+						WhereOr("height >= ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, "fil/3/storageminer", 16, obj.ID).
+						Select(&amts, &minertips, &basefeeburns, &transfers)
+					if err != nil {
+						fmt.Println(err)
+						// panic(err)
+					} else {
+						totalIncome = ComputeBigIntSum(totalIncome, amts)
+						totalIncome = ComputeBigIntSum(totalIncome, minertips)
+						totalIncome = ComputeBigIntSum(totalIncome, basefeeburns)
+						totalIncome = ComputeBigIntSum(totalIncome, transfers)
+					}
 				}
+			}
+		} else {
+			var txns []messages.Transaction
+			var amts []string
+			var minertips []string
+			var basefeeburns []string
+			var transfers []string
+
+			err = r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, mi.OwnerID).
+				WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 16, obj.ID).
+				Select(&amts, &minertips, &basefeeburns, &transfers)
+			if err != nil {
+				fmt.Println(err)
+				// panic(err)
+			} else {
 				totalIncome = ComputeBigIntSum(totalIncome, amts)
 				totalIncome = ComputeBigIntSum(totalIncome, minertips)
 				totalIncome = ComputeBigIntSum(totalIncome, basefeeburns)
 				totalIncome = ComputeBigIntSum(totalIncome, transfers)
 			}
 		}
-	} else {
-		var txns []messages.Transaction
-		var amts []string
-		var minertips []string
-		var basefeeburns []string
-		var transfers []string
 
-		err = r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-			Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Owner.ID).
-			WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 16, obj.ID).
-			Select(&amts, &minertips, &basefeeburns, &transfers)
-		if err != nil {
-			panic(err)
+		if workerDidChange {
+			var txns []messages.Transaction
+			var amts []string
+			var minertips []string
+			var basefeeburns []string
+			var transfers []string
+
+			var txns1 []messages.Transaction
+			var amts1 []string
+			var minertips1 []string
+			var basefeeburns1 []string
+			var transfers1 []string
+
+			minEpoch := int64(10000000000000)
+
+			sort.Slice(val.WorkerChanges[:], func(i, j int) bool {
+				return val.WorkerChanges[i].Epoch < val.WorkerChanges[j].Epoch
+			})
+			wc := val.WorkerChanges[0]
+			err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				Where("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 5).
+				WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 3).
+				WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 23).
+				WhereOr("height <= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.From, "fil/3/storageminer").
+				Select(&amts, &minertips, &basefeeburns, &transfers)
+			if err != nil {
+				fmt.Println(err)
+				// panic(err)
+			} else {
+				totalExpenditure = ComputeBigIntSum(totalExpenditure, amts)
+				totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips)
+				totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns)
+				totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers)
+			}
+
+			err = r.DB.Model(&txns1).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				Where("height <= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
+				Select(&amts1, &minertips1, &basefeeburns1, &transfers1)
+			if err != nil {
+				fmt.Println(err)
+				// panic(err)
+			} else {
+				totalIncome = ComputeBigIntSum(totalIncome, amts1)
+				totalIncome = ComputeBigIntSum(totalIncome, minertips1)
+				totalIncome = ComputeBigIntSum(totalIncome, basefeeburns1)
+				totalIncome = ComputeBigIntSum(totalIncome, transfers1)
+			}
+
+			for i, wc := range val.WorkerChanges {
+				if wc.Epoch < minEpoch {
+					minEpoch = wc.Epoch
+				}
+				if i != len(val.WorkerChanges)-1 {
+					// if not last
+					err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						Where("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 5).
+						WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 3).
+						WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 23).
+						WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name != ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer").
+						Select(&amts, &minertips, &basefeeburns, &transfers)
+					if err != nil {
+						fmt.Println(err)
+						// panic(err)
+					} else {
+						totalExpenditure = ComputeBigIntSum(totalExpenditure, amts)
+						totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips)
+						totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns)
+						totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers)
+					}
+
+					err = r.DB.Model(&txns1).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, "fil/3/storagemarket", 3, wc.To).
+						Select(&amts1, &minertips1, &basefeeburns1, &transfers1)
+					if err != nil {
+						fmt.Println(err)
+						// panic(err)
+					} else {
+						totalIncome = ComputeBigIntSum(totalIncome, amts1)
+						totalIncome = ComputeBigIntSum(totalIncome, minertips1)
+						totalIncome = ComputeBigIntSum(totalIncome, basefeeburns1)
+						totalIncome = ComputeBigIntSum(totalIncome, transfers1)
+					}
+
+				} else {
+					err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						Where("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 5).
+						WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 3).
+						WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 23).
+						WhereOr("height >= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.To, "fil/3/storageminer").
+						Select(&amts, &minertips, &basefeeburns, &transfers)
+					if err != nil {
+						fmt.Println(err)
+						// panic(err)
+					} else {
+						totalExpenditure = ComputeBigIntSum(totalExpenditure, amts)
+						totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips)
+						totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns)
+						totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers)
+					}
+
+					err = r.DB.Model(&txns1).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.To).
+						Select(&amts1, &minertips1, &basefeeburns1, &transfers1)
+					if err != nil {
+						fmt.Println(err)
+						// panic(err)
+					} else {
+						totalIncome = ComputeBigIntSum(totalIncome, amts1)
+						totalIncome = ComputeBigIntSum(totalIncome, minertips1)
+						totalIncome = ComputeBigIntSum(totalIncome, basefeeburns1)
+						totalIncome = ComputeBigIntSum(totalIncome, transfers1)
+					}
+				}
+			}
+		} else {
+			// FIXME: get worker addr at epoch range
+			// Right now we are taking the saved workerID
+			// (this is at some random height, needs to be fixed)
+			var txns []messages.Transaction
+			var amts []string
+			var minertips []string
+			var basefeeburns []string
+			var transfers []string
+			err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				Where("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 5).
+				WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 3).
+				WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 23).
+				WhereOr("sender = ? AND actor_name != ?", mi.WorkerID, "fil/3/storageminer").
+				Select(&amts, &minertips, &basefeeburns, &transfers)
+			if err != nil {
+				fmt.Println(err)
+				// panic(err)
+			} else {
+				totalExpenditure = ComputeBigIntSum(totalExpenditure, amts)
+				totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips)
+				totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns)
+				totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers)
+			}
+
+			var txns1 []messages.Transaction
+			var amts1 []string
+			var minertips1 []string
+			var basefeeburns1 []string
+			var transfers1 []string
+			err = r.DB.Model(&txns1).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, mi.WorkerID).
+				Select(&amts1, &minertips1, &basefeeburns1, &transfers1)
+			if err != nil {
+				fmt.Println(err)
+				// panic(err)
+			} else {
+				totalIncome = ComputeBigIntSum(totalIncome, amts1)
+				totalIncome = ComputeBigIntSum(totalIncome, minertips1)
+				totalIncome = ComputeBigIntSum(totalIncome, basefeeburns1)
+				totalIncome = ComputeBigIntSum(totalIncome, transfers1)
+			}
 		}
-		totalIncome = ComputeBigIntSum(totalIncome, amts)
-		totalIncome = ComputeBigIntSum(totalIncome, minertips)
-		totalIncome = ComputeBigIntSum(totalIncome, basefeeburns)
-		totalIncome = ComputeBigIntSum(totalIncome, transfers)
-	}
-
-	if workerDidChange {
-		var txns []messages.Transaction
-		var amts []string
-		var minertips []string
-		var basefeeburns []string
-		var transfers []string
 
 		var txns1 []messages.Transaction
 		var amts1 []string
 		var minertips1 []string
 		var basefeeburns1 []string
 		var transfers1 []string
-
-		minEpoch := int64(10000000000000)
-
-		sort.Slice(val.WorkerChanges[:], func(i, j int) bool {
-			return val.WorkerChanges[i].Epoch < val.WorkerChanges[j].Epoch
-		})
-		wc := val.WorkerChanges[0]
-		err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-			Where("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 5).
-			WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 3).
-			WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 23).
-			WhereOr("height <= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.From, "fil/3/storageminer").
-			Select(&amts, &minertips, &basefeeburns, &transfers)
-		if err != nil {
-			panic(err)
-		}
-		totalExpenditure = ComputeBigIntSum(totalExpenditure, amts)
-		totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips)
-		totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns)
-		totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers)
-
 		err = r.DB.Model(&txns1).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-			Where("height <= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
+			Where("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 5, obj.ID).
+			WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 3, obj.ID).
+			WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 23, obj.ID).
 			Select(&amts1, &minertips1, &basefeeburns1, &transfers1)
 		if err != nil {
-			panic(err)
+			fmt.Println(err)
+			// panic(err)
+		} else {
+			fmt.Println("amts1", amts1)
+			// totalExpenditure = big.NewInt(0)
+			totalExpenditure = ComputeBigIntSum(totalExpenditure, amts1)
+			totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips1)
+			totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns1)
+			totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers1)
 		}
-		totalIncome = ComputeBigIntSum(totalIncome, amts1)
-		totalIncome = ComputeBigIntSum(totalIncome, minertips1)
-		totalIncome = ComputeBigIntSum(totalIncome, basefeeburns1)
-		totalIncome = ComputeBigIntSum(totalIncome, transfers1)
-
-		for i, wc := range val.WorkerChanges {
-			if wc.Epoch < minEpoch {
-				minEpoch = wc.Epoch
-			}
-			if i != len(val.WorkerChanges)-1 {
-				// if not last
-				err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-					Where("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 5).
-					WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 3).
-					WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 23).
-					WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name != ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer").
-					Select(&amts, &minertips, &basefeeburns, &transfers)
-				if err != nil {
-					panic(err)
-				}
-				totalExpenditure = ComputeBigIntSum(totalExpenditure, amts)
-				totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips)
-				totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns)
-				totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers)
-
-				err = r.DB.Model(&txns1).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-					Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, val.WorkerChanges[i+1].Epoch, "fil/3/storagemarket", 3, wc.To).
-					Select(&amts1, &minertips1, &basefeeburns1, &transfers1)
-				if err != nil {
-					panic(err)
-				}
-				totalIncome = ComputeBigIntSum(totalIncome, amts1)
-				totalIncome = ComputeBigIntSum(totalIncome, minertips1)
-				totalIncome = ComputeBigIntSum(totalIncome, basefeeburns1)
-				totalIncome = ComputeBigIntSum(totalIncome, transfers1)
-
-			} else {
-				err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-					Where("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 5).
-					WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 3).
-					WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 23).
-					WhereOr("height >= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.To, "fil/3/storageminer").
-					Select(&amts, &minertips, &basefeeburns, &transfers)
-				if err != nil {
-					panic(err)
-				}
-				totalExpenditure = ComputeBigIntSum(totalExpenditure, amts)
-				totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips)
-				totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns)
-				totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers)
-
-				err = r.DB.Model(&txns1).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-					Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.To).
-					Select(&amts1, &minertips1, &basefeeburns1, &transfers1)
-				if err != nil {
-					panic(err)
-				}
-				totalIncome = ComputeBigIntSum(totalIncome, amts1)
-				totalIncome = ComputeBigIntSum(totalIncome, minertips1)
-				totalIncome = ComputeBigIntSum(totalIncome, basefeeburns1)
-				totalIncome = ComputeBigIntSum(totalIncome, transfers1)
-			}
-		}
-	} else {
-		// FIXME: get worker addr at epoch range
-		// Right now we are taking the saved workerID
-		// (this is at some random height, needs to be fixed)
-		var txns []messages.Transaction
-		var amts []string
-		var minertips []string
-		var basefeeburns []string
-		var transfers []string
-		err := r.DB.Model(&txns).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-			Where("sender = ? AND actor_name = ? AND method != ?", obj.Worker.ID, "fil/3/storageminer", 5).
-			WhereOr("sender = ? AND actor_name = ? AND method != ?", obj.Worker.ID, "fil/3/storageminer", 3).
-			WhereOr("sender = ? AND actor_name = ? AND method != ?", obj.Worker.ID, "fil/3/storageminer", 23).
-			WhereOr("sender = ? AND actor_name != ?", obj.Worker.ID, "fil/3/storageminer").
-			Select(&amts, &minertips, &basefeeburns, &transfers)
-		if err != nil {
-			panic(err)
-		}
-		totalExpenditure = ComputeBigIntSum(totalExpenditure, amts)
-		totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips)
-		totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns)
-		totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers)
-
-		var txns1 []messages.Transaction
-		var amts1 []string
-		var minertips1 []string
-		var basefeeburns1 []string
-		var transfers1 []string
-		err = r.DB.Model(&txns1).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-			Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Worker.ID).
-			Select(&amts1, &minertips1, &basefeeburns1, &transfers1)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	var txns1 []messages.Transaction
-	var amts1 []string
-	var minertips1 []string
-	var basefeeburns1 []string
-	var transfers1 []string
-	err = r.DB.Model(&txns1).Column("amount", "miner_tip", "base_fee_burn", "transferred").
-		Where("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 5, obj.ID).
-		WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 3, obj.ID).
-		WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 23, obj.ID).
-		Select(&amts1, &minertips1, &basefeeburns1, &transfers1)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("amts1", amts1)
-	// totalExpenditure = big.NewInt(0)
-	totalExpenditure = ComputeBigIntSum(totalExpenditure, amts1)
-	totalExpenditure = ComputeBigIntSum(totalExpenditure, minertips1)
-	totalExpenditure = ComputeBigIntSum(totalExpenditure, basefeeburns1)
-	totalExpenditure = ComputeBigIntSum(totalExpenditure, transfers1)
-
-	// err = r.DB.Model(&txns1).ColumnExpr("SUM(amount::bigint) AS te").Where("sender = ?", obj.ID).Select(&totalExpenditure)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	fmt.Println("inc ", totalIncome, " exp ", totalExpenditure)
+		// err = r.DB.Model(&txns1).ColumnExpr("SUM(amount::bigint) AS te").Where("sender = ?", obj.ID).Select(&totalExpenditure)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		fmt.Println("inc ", totalIncome, " exp ", totalExpenditure)
+	*/
 	fm := &model.FinanceMetrics{
 		TotalIncome:           totalIncome.String(),      // strconv.Itoa(int(totalIncome)),
 		TotalExpenditure:      totalExpenditure.String(), //  strconv.Itoa(int(totalExpenditure)),
@@ -505,6 +546,7 @@ func (r *minerResolver) Transaction(ctx context.Context, obj *model.Miner, id st
 		BurnFee:    txn.BaseFeeBurn,
 		MethodName: txn.MethodName,
 		ActorName:  txn.ActorName,
+		ExitCode:   txn.ExitCode,
 		// NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
 		// TransactionType: GetTransactionType(txn.MethodName),
 	}
@@ -626,7 +668,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				oc := currMAC.OwnerChanges[0]
 				var ownerIncoming0 []messages.Transaction
 
-				err = r.DB.Model(&ownerIncoming0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				err = r.DB.Model(&ownerIncoming0).
 					Where("height >= ? AND height <= ?", *since, *till).
 					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 						q = q.
@@ -641,7 +683,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				for i, oc := range currMAC.OwnerChanges {
 					if i != len(currMAC.OwnerChanges)-1 {
 						var ownerIncomingNotLast []messages.Transaction
-						err := r.DB.Model(&ownerIncomingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&ownerIncomingNotLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 								q = q.
@@ -655,7 +697,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 						ownerIncoming = append(ownerIncoming, ownerIncomingNotLast...)
 					} else {
 						var ownerIncomingLast []messages.Transaction
-						err := r.DB.Model(&ownerIncomingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&ownerIncomingLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 								q = q.
@@ -679,7 +721,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				wc := currMAC.WorkerChanges[0]
 				var workerIncoming0 []messages.Transaction
 
-				err = r.DB.Model(&workerIncoming0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				err = r.DB.Model(&workerIncoming0).
 					Where("height >= ? AND height <= ?", *since, *till).
 					Where("height <= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
 					Select()
@@ -690,7 +732,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				for i, wc := range currMAC.WorkerChanges {
 					if i != len(currMAC.WorkerChanges)-1 {
 						var workerIncomingNotLast []messages.Transaction
-						err := r.DB.Model(&workerIncomingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&workerIncomingNotLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, currMAC.WorkerChanges[i+1], "fil/3/storagemarket", 3, wc.From).
 							Select()
@@ -700,7 +742,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 						workerIncoming = append(workerIncoming, workerIncomingNotLast...)
 					} else {
 						var workerIncomingLast []messages.Transaction
-						err := r.DB.Model(&workerIncomingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&workerIncomingLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
 							Select()
@@ -720,7 +762,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				oc := currMAC.OwnerChanges[0]
 				var ownerIncoming0 []messages.Transaction
 
-				err = r.DB.Model(&ownerIncoming0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				err = r.DB.Model(&ownerIncoming0).
 					Where("height >= ? AND height <= ?", *since, *till).
 					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 						q = q.
@@ -735,7 +777,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				for i, oc := range currMAC.OwnerChanges {
 					if i != len(currMAC.OwnerChanges)-1 {
 						var ownerIncomingNotLast []messages.Transaction
-						err := r.DB.Model(&ownerIncomingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&ownerIncomingNotLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storagemarket", 3, oc.From).
 							WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storageminer", 16, obj.ID).
@@ -746,7 +788,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 						ownerIncoming = append(ownerIncoming, ownerIncomingNotLast...)
 					} else {
 						var ownerIncomingLast []messages.Transaction
-						err := r.DB.Model(&ownerIncomingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&ownerIncomingLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, "fil/3/storagemarket", 3, oc.From).
 							WhereOr("height >= ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, "fil/3/storageminer", 16, obj.ID).
@@ -761,9 +803,9 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				incoming = append(incoming, ownerIncoming...)
 
 				var workerIncoming []messages.Transaction
-				err = r.DB.Model(&workerIncoming).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				err = r.DB.Model(&workerIncoming).
 					Where("height >= ? AND height <= ?", *since, *till).
-					Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Worker.ID).
+					Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, mi.WorkerID).
 					Select()
 				if err != nil {
 					panic(err)
@@ -777,7 +819,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				wc := currMAC.WorkerChanges[0]
 				var workerIncoming0 []messages.Transaction
 
-				err = r.DB.Model(&workerIncoming0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				err = r.DB.Model(&workerIncoming0).
 					Where("height >= ? AND height <= ?", *since, *till).
 					Where("height <= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
 					Select()
@@ -788,7 +830,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				for i, wc := range currMAC.WorkerChanges {
 					if i != len(currMAC.WorkerChanges)-1 {
 						var workerIncomingNotLast []messages.Transaction
-						err := r.DB.Model(&workerIncomingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&workerIncomingNotLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, currMAC.WorkerChanges[i+1], "fil/3/storagemarket", 3, wc.From).
 							Select()
@@ -798,7 +840,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 						workerIncoming = append(workerIncoming, workerIncomingNotLast...)
 					} else {
 						var workerIncomingLast []messages.Transaction
-						err := r.DB.Model(&workerIncomingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&workerIncomingLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							Where("height >= ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, "fil/3/storagemarket", 3, wc.From).
 							Select()
@@ -813,11 +855,11 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 
 				var ownerIncoming []messages.Transaction
 
-				err = r.DB.Model(&ownerIncoming).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				err = r.DB.Model(&ownerIncoming).
 					Where("height >= ? AND height <= ?", *since, *till).
 					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 						q = q.
-							WhereOr("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Owner.ID).
+							WhereOr("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, mi.OwnerID).
 							WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 16, obj.ID)
 						return q, nil
 					}).Select()
@@ -828,11 +870,11 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 			} else {
 				var ownerIncoming []messages.Transaction
 
-				err = r.DB.Model(&ownerIncoming).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				err = r.DB.Model(&ownerIncoming).
 					Where("height >= ? AND height <= ?", *since, *till).
 					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 						q = q.
-							WhereOr("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Owner.ID).
+							WhereOr("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, mi.OwnerID).
 							WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 16, obj.ID)
 						return q, nil
 					}).Select()
@@ -842,20 +884,21 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				incoming = append(incoming, ownerIncoming...)
 
 				var workerIncoming []messages.Transaction
-				err = r.DB.Model(&workerIncoming).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				err = r.DB.Model(&workerIncoming).
 					Where("height >= ? AND height <= ?", *since, *till).
-					Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, obj.Worker.ID).
+					Where("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagemarket", 3, mi.WorkerID).
 					Select()
 				if err != nil {
 					panic(err)
 				}
 				incoming = append(incoming, workerIncoming...)
 			}
+			fmt.Println("ALLINCOMING", incoming)
 			// end {Find incoming txns}
 
 			// Find outgoing txns
 			var outgoing0 []messages.Transaction
-			err = r.DB.Model(&outgoing0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+			err = r.DB.Model(&outgoing0).
 				Where("height >= ? AND height <= ?", *since, *till).
 				WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 					q = q.
@@ -870,15 +913,16 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 			}
 			outgoing = append(outgoing, outgoing0...)
 
+			var workerOutgoing []messages.Transaction
+
 			if workerDidChange {
-				var workerOutgoing []messages.Transaction
 				sort.Slice(currMAC.WorkerChanges[:], func(i, j int) bool {
 					return currMAC.WorkerChanges[i].Epoch < currMAC.WorkerChanges[j].Epoch
 				})
 				wc := currMAC.WorkerChanges[0]
 				var workerOutgoing0 []messages.Transaction
 
-				err := r.DB.Model(&workerOutgoing0).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+				err := r.DB.Model(&workerOutgoing0).
 					Where("height >= ? AND height <= ?", *since, *till).
 					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 						q = q.
@@ -897,7 +941,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				for i, wc := range currMAC.WorkerChanges {
 					if i != len(currMAC.WorkerChanges)-1 {
 						var workerOutgoingNotLast []messages.Transaction
-						err := r.DB.Model(&workerOutgoingNotLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&workerOutgoingNotLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 								q = q.
@@ -913,7 +957,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 						workerOutgoing = append(workerOutgoing, workerOutgoingNotLast...)
 					} else {
 						var workerOutgoingLast []messages.Transaction
-						err := r.DB.Model(&workerOutgoingLast).Column("amount", "miner_tip", "base_fee_burn", "transferred").
+						err := r.DB.Model(&workerOutgoingLast).
 							Where("height >= ? AND height <= ?", *since, *till).
 							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 								q = q.
@@ -929,9 +973,29 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 						workerOutgoing = append(workerOutgoing, workerOutgoingLast...)
 					}
 				}
+			} else {
+				var workerOutgoing1 []messages.Transaction
 
-				outgoing = append(outgoing, workerOutgoing...)
+				err := r.DB.Model(&workerOutgoing1).
+					Where("height >= ? AND height <= ?", *since, *till).
+					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+						q = q.
+							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 5).
+							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 3).
+							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 23).
+							WhereOr("sender = ? AND actor_name != ?", mi.WorkerID, "fil/3/storageminer")
+
+						return q, nil
+					}).Select()
+				if err != nil {
+					panic(err)
+				}
+
+				workerOutgoing = append(workerOutgoing, workerOutgoing1...)
 			}
+			outgoing = append(outgoing, workerOutgoing...)
+
+			fmt.Println("ALLOUTGOING", outgoing)
 			// end {Find outgoing txns}
 		} else {
 			// FIXME: the below logic needs to be changed
@@ -984,9 +1048,10 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 	// if err != nil {
 	// 	panic(err)
 	// }
+	fmt.Println("LENS", len(incoming), len(outgoing))
 	var transactions []*model.Transaction
 	for _, txn := range incoming {
-		amt := "0"
+		amt := txn.Amount
 		if txn.Amount == "0" {
 			if txn.Transferred != "0" {
 				amt = txn.Transferred
@@ -1004,12 +1069,13 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 			MethodName: txn.MethodName,
 			ActorName:  txn.ActorName,
 			Direction:  "INCOMING",
+			ExitCode:   txn.ExitCode,
 			// NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
 			// TransactionType: GetTransactionType(txn.MethodName),
 		})
 	}
 	for _, txn := range outgoing {
-		amt := "0"
+		amt := txn.Amount
 		if txn.Amount == "0" {
 			if txn.Transferred != "0" {
 				amt = txn.Transferred
@@ -1027,6 +1093,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 			MethodName: txn.MethodName,
 			ActorName:  txn.ActorName,
 			Direction:  "OUTGOING",
+			ExitCode:   txn.ExitCode,
 			// NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
 			// TransactionType: GetTransactionType(txn.MethodName),
 		})
