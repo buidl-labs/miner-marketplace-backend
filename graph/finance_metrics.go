@@ -276,7 +276,7 @@ func ComputeIncomeExpenditure(r *minerResolver, obj *model.Miner, mi *miner.Mine
 				}
 				incoming = append(incoming, workerIncoming...)
 			}
-			fmt.Println("ALLINCOMING", incoming)
+			// fmt.Println("ALLINCOMING", incoming)
 			// end {Find incoming txns}
 
 			// Find outgoing txns
@@ -289,7 +289,9 @@ func ComputeIncomeExpenditure(r *minerResolver, obj *model.Miner, mi *miner.Mine
 						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 3, obj.ID).
 						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 23, obj.ID).
 						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 6, obj.ID).
-						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 7, obj.ID)
+						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 7, obj.ID).
+						WhereOr("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagepower", 2, mi.WorkerID).
+						WhereOr("actor_name = ? AND method = ? AND sender = ?", "fil/3/storagepower", 2, mi.OwnerID)
 					return q, nil
 				}).
 				Select()
@@ -298,97 +300,99 @@ func ComputeIncomeExpenditure(r *minerResolver, obj *model.Miner, mi *miner.Mine
 			}
 			outgoing = append(outgoing, outgoing0...)
 
-			var workerOutgoing []messages.Transaction
+			/*
+				var workerOutgoing []messages.Transaction
 
-			if workerDidChange {
-				sort.Slice(currMAC.WorkerChanges[:], func(i, j int) bool {
-					return currMAC.WorkerChanges[i].Epoch < currMAC.WorkerChanges[j].Epoch
-				})
-				wc := currMAC.WorkerChanges[0]
-				var workerOutgoing0 []messages.Transaction
+				if workerDidChange {
+					sort.Slice(currMAC.WorkerChanges[:], func(i, j int) bool {
+						return currMAC.WorkerChanges[i].Epoch < currMAC.WorkerChanges[j].Epoch
+					})
+					wc := currMAC.WorkerChanges[0]
+					var workerOutgoing0 []messages.Transaction
 
-				err := r.DB.Model(&workerOutgoing0).
-					Where("height >= ? AND height <= ?", *since, *till).
-					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
-						q = q.
-							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 5).
-							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 3).
-							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 23).
-							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 6).
-							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 7).
-							WhereOr("height <= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.From, "fil/3/storageminer")
+					err := r.DB.Model(&workerOutgoing0).
+						Where("height >= ? AND height <= ?", *since, *till).
+						WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+							q = q.
+								WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 5).
+								WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 3).
+								WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 23).
+								WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 6).
+								WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 7).
+								WhereOr("height <= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.From, "fil/3/storageminer")
 
-						return q, nil
-					}).Select()
-				if err != nil {
-					panic(err)
-				}
-				workerOutgoing = append(workerOutgoing, workerOutgoing0...)
-
-				for i, wc := range currMAC.WorkerChanges {
-					if i != len(currMAC.WorkerChanges)-1 {
-						var workerOutgoingNotLast []messages.Transaction
-						err := r.DB.Model(&workerOutgoingNotLast).
-							Where("height >= ? AND height <= ?", *since, *till).
-							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
-								q = q.
-									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 5).
-									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 3).
-									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 23).
-									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 6).
-									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 7).
-									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer")
-								return q, nil
-							}).Select()
-						if err != nil {
-							panic(err)
-						}
-						workerOutgoing = append(workerOutgoing, workerOutgoingNotLast...)
-					} else {
-						var workerOutgoingLast []messages.Transaction
-						err := r.DB.Model(&workerOutgoingLast).
-							Where("height >= ? AND height <= ?", *since, *till).
-							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
-								q = q.
-									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 5).
-									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 3).
-									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 23).
-									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 6).
-									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 7).
-									WhereOr("height >= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.To, "fil/3/storageminer")
-								return q, nil
-							}).Select()
-						if err != nil {
-							panic(err)
-						}
-						workerOutgoing = append(workerOutgoing, workerOutgoingLast...)
+							return q, nil
+						}).Select()
+					if err != nil {
+						panic(err)
 					}
+					workerOutgoing = append(workerOutgoing, workerOutgoing0...)
+
+					for i, wc := range currMAC.WorkerChanges {
+						if i != len(currMAC.WorkerChanges)-1 {
+							var workerOutgoingNotLast []messages.Transaction
+							err := r.DB.Model(&workerOutgoingNotLast).
+								Where("height >= ? AND height <= ?", *since, *till).
+								WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+									q = q.
+										WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 5).
+										WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 3).
+										WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 23).
+										WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 6).
+										WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 7).
+										WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer")
+									return q, nil
+								}).Select()
+							if err != nil {
+								panic(err)
+							}
+							workerOutgoing = append(workerOutgoing, workerOutgoingNotLast...)
+						} else {
+							var workerOutgoingLast []messages.Transaction
+							err := r.DB.Model(&workerOutgoingLast).
+								Where("height >= ? AND height <= ?", *since, *till).
+								WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+									q = q.
+										WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 5).
+										WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 3).
+										WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 23).
+										WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 6).
+										WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 7).
+										WhereOr("height >= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.To, "fil/3/storageminer")
+									return q, nil
+								}).Select()
+							if err != nil {
+								panic(err)
+							}
+							workerOutgoing = append(workerOutgoing, workerOutgoingLast...)
+						}
+					}
+				} else {
+					var workerOutgoing1 []messages.Transaction
+
+					err := r.DB.Model(&workerOutgoing1).
+						Where("height >= ? AND height <= ?", *since, *till).
+						WhereGroup(func(q *orm.Query) (*orm.Query, error) {
+							q = q.
+								WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 5).
+								WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 3).
+								WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 23).
+								WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 6).
+								WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 7).
+								WhereOr("sender = ? AND actor_name != ?", mi.WorkerID, "fil/3/storageminer")
+
+							return q, nil
+						}).Select()
+					if err != nil {
+						panic(err)
+					}
+
+					workerOutgoing = append(workerOutgoing, workerOutgoing1...)
 				}
-			} else {
-				var workerOutgoing1 []messages.Transaction
+				outgoing = append(outgoing, workerOutgoing...)
+			*/
 
-				err := r.DB.Model(&workerOutgoing1).
-					Where("height >= ? AND height <= ?", *since, *till).
-					WhereGroup(func(q *orm.Query) (*orm.Query, error) {
-						q = q.
-							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 5).
-							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 3).
-							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 23).
-							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 6).
-							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 7).
-							WhereOr("sender = ? AND actor_name != ?", mi.WorkerID, "fil/3/storageminer")
-
-						return q, nil
-					}).Select()
-				if err != nil {
-					panic(err)
-				}
-
-				workerOutgoing = append(workerOutgoing, workerOutgoing1...)
-			}
-			outgoing = append(outgoing, workerOutgoing...)
-
-			fmt.Println("ALLOUTGOING", outgoing)
+			// fmt.Println("ALLOUTGOING", outgoing)
 			// end {Find outgoing txns}
 		} else {
 			// FIXME: the below logic needs to be changed
