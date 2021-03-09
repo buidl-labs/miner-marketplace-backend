@@ -905,7 +905,8 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 5, obj.ID).
 						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 3, obj.ID).
 						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 23, obj.ID).
-						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 6, obj.ID)
+						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 6, obj.ID).
+						WhereOr("actor_name = ? AND method = ? AND receiver = ?", "fil/3/storageminer", 7, obj.ID)
 					return q, nil
 				}).
 				Select()
@@ -931,6 +932,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 3).
 							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 23).
 							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 6).
+							WhereOr("height <= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.From, "fil/3/storageminer", 7).
 							WhereOr("height <= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.From, "fil/3/storageminer")
 
 						return q, nil
@@ -951,6 +953,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 3).
 									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 23).
 									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 6).
+									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer", 7).
 									WhereOr("height >= ? AND height < ? AND sender = ? AND actor_name != ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, wc.To, "fil/3/storageminer")
 								return q, nil
 							}).Select()
@@ -968,6 +971,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 3).
 									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 23).
 									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 6).
+									WhereOr("height >= ? AND sender = ? AND actor_name = ? AND method != ?", wc.Epoch, wc.To, "fil/3/storageminer", 7).
 									WhereOr("height >= ? AND sender = ? AND actor_name != ?", wc.Epoch, wc.To, "fil/3/storageminer")
 								return q, nil
 							}).Select()
@@ -988,6 +992,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 3).
 							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 23).
 							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 6).
+							WhereOr("sender = ? AND actor_name = ? AND method != ?", mi.WorkerID, "fil/3/storageminer", 7).
 							WhereOr("sender = ? AND actor_name != ?", mi.WorkerID, "fil/3/storageminer")
 
 						return q, nil
