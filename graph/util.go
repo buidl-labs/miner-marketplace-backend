@@ -41,11 +41,13 @@ func GetMinerAddressChanges() map[string]MinerAddressChanges {
 	}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
+		fmt.Println("URLLL", url, " ERRORRR", err)
 		panic(err)
 	}
 	req.Header.Set("User-Agent", "miner-marketplace-app")
 	res, getErr := myClient.Do(req)
 	if getErr != nil {
+		fmt.Println("URLLL", url, " ERRORRR", err)
 		panic(getErr)
 	}
 	if res.Body != nil {
