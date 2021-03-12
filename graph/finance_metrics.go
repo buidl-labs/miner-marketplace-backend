@@ -68,8 +68,8 @@ func ComputeIncomeExpenditure(r *minerResolver, obj *model.Miner, mi *miner.Mine
 							Where("height >= ? AND height <= ?", *since, *till).
 							WhereGroup(func(q *orm.Query) (*orm.Query, error) {
 								q = q.
-									WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storagemarket", 3, oc.From).
-									WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storageminer", 16, obj.ID)
+									WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, currMAC.OwnerChanges[i+1].Epoch, "fil/3/storagemarket", 3, oc.From).
+									WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, currMAC.OwnerChanges[i+1].Epoch, "fil/3/storageminer", 16, obj.ID)
 								return q, nil
 							}).Select()
 						if err != nil {
@@ -115,7 +115,7 @@ func ComputeIncomeExpenditure(r *minerResolver, obj *model.Miner, mi *miner.Mine
 						var workerIncomingNotLast []messages.Transaction
 						err := r.DB.Model(&workerIncomingNotLast).
 							Where("height >= ? AND height <= ?", *since, *till).
-							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, currMAC.WorkerChanges[i+1], "fil/3/storagemarket", 3, wc.From).
+							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, "fil/3/storagemarket", 3, wc.From).
 							Select()
 						if err != nil {
 							panic(err)
@@ -160,8 +160,8 @@ func ComputeIncomeExpenditure(r *minerResolver, obj *model.Miner, mi *miner.Mine
 						var ownerIncomingNotLast []messages.Transaction
 						err := r.DB.Model(&ownerIncomingNotLast).
 							Where("height >= ? AND height <= ?", *since, *till).
-							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storagemarket", 3, oc.From).
-							WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, currMAC.OwnerChanges[i+1], "fil/3/storageminer", 16, obj.ID).
+							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", oc.Epoch, currMAC.OwnerChanges[i+1].Epoch, "fil/3/storagemarket", 3, oc.From).
+							WhereOr("height >= ? AND height < ? AND actor_name = ? AND method = ? AND receiver = ?", oc.Epoch, currMAC.OwnerChanges[i+1].Epoch, "fil/3/storageminer", 16, obj.ID).
 							Select()
 						if err != nil {
 							panic(err)
@@ -213,7 +213,7 @@ func ComputeIncomeExpenditure(r *minerResolver, obj *model.Miner, mi *miner.Mine
 						var workerIncomingNotLast []messages.Transaction
 						err := r.DB.Model(&workerIncomingNotLast).
 							Where("height >= ? AND height <= ?", *since, *till).
-							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, currMAC.WorkerChanges[i+1], "fil/3/storagemarket", 3, wc.From).
+							Where("height >= ? AND height < ? AND actor_name = ? AND method = ? AND sender = ?", wc.Epoch, currMAC.WorkerChanges[i+1].Epoch, "fil/3/storagemarket", 3, wc.From).
 							Select()
 						if err != nil {
 							panic(err)
