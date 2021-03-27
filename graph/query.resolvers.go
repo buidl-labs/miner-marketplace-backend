@@ -298,13 +298,16 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*model.Tran
 	}
 
 	transaction := &model.Transaction{
-		ID:              txn.Cid,
-		Amount:          txn.Amount,
-		Sender:          txn.Sender,
-		Receiver:        txn.Receiver,
-		Height:          txn.Height,
-		NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
-		TransactionType: GetTransactionType(txn.MethodName),
+		ID:         txn.Cid,
+		Amount:     txn.Amount,
+		Sender:     txn.Sender,
+		Receiver:   txn.Receiver,
+		Height:     txn.Height,
+		MinerFee:   txn.MinerTip,
+		BurnFee:    txn.BaseFeeBurn,
+		MethodName: txn.MethodName,
+		ActorName:  txn.ActorName,
+		ExitCode:   txn.ExitCode,
 	}
 	return transaction, nil
 }
@@ -340,13 +343,16 @@ func (r *queryResolver) AllTransactions(ctx context.Context, since *int, till *i
 	var transactions []*model.Transaction
 	for _, txn := range txns {
 		transactions = append(transactions, &model.Transaction{
-			ID:              txn.Cid,
-			Amount:          txn.Amount,
-			Sender:          txn.Sender,
-			Receiver:        txn.Receiver,
-			Height:          txn.Height,
-			NetworkFee:      strconv.Itoa(int(txn.GasUsed)),
-			TransactionType: GetTransactionType(txn.MethodName),
+			ID:         txn.Cid,
+			Amount:     txn.Amount,
+			Sender:     txn.Sender,
+			Receiver:   txn.Receiver,
+			Height:     txn.Height,
+			MinerFee:   txn.MinerTip,
+			BurnFee:    txn.BaseFeeBurn,
+			MethodName: txn.MethodName,
+			ActorName:  txn.ActorName,
+			ExitCode:   txn.ExitCode,
 		})
 	}
 	return transactions, nil
