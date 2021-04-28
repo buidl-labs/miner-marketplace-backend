@@ -3,6 +3,7 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"io/ioutil"
 	"math/big"
 	"net/http"
@@ -91,4 +92,13 @@ func GetTransactionType(methodName string) string {
 		return "NETWORK_FEE"
 	}
 	// return ""
+}
+
+func CalculateDealPrice(pricePerEpoch string, startEpoch int64, endEpoch int64) (string, error) {
+	pricePerEpochInt, err := strconv.ParseInt(pricePerEpoch, 10, 64)
+	if err != nil {
+		return "0", err
+	}
+	totalPrice := (endEpoch - startEpoch) * pricePerEpochInt
+	return fmt.Sprintf("%v", totalPrice), nil
 }

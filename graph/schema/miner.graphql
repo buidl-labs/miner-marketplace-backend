@@ -30,9 +30,9 @@ type Miner {
   penalty(id: ID!): Penalty @goField(forceResolver: true)
   deadline(id: ID!): Deadline @goField(forceResolver: true)
 
-  storageDeals(since: Int, till: Int): [StorageDeal!]
+  storageDeals(since: Int, till: Int, offset: Int, limit: Int): [StorageDeal!]
     @goField(forceResolver: true)
-  transactions(since: Int, till: Int): [Transaction!]
+  transactions(since: Int, till: Int, offset: Int, limit: Int): [Transaction!]
     @goField(forceResolver: true)
   sectors(since: Int, till: Int): [Sector!] @goField(forceResolver: true)
   penalties(since: Int, till: Int): [Penalty!] @goField(forceResolver: true)

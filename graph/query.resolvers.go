@@ -13,7 +13,6 @@ import (
 	"github.com/buidl-labs/filecoin-chain-indexer/model/miner"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
-	// pq postgresql driver
 	_ "github.com/lib/pq"
 )
 

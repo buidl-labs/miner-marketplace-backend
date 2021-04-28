@@ -142,9 +142,9 @@ type ComplexityRoot struct {
 		Sectors              func(childComplexity int, since *int, till *int) int
 		ServiceDetails       func(childComplexity int) int
 		StorageDeal          func(childComplexity int, id string) int
-		StorageDeals         func(childComplexity int, since *int, till *int) int
+		StorageDeals         func(childComplexity int, since *int, till *int, offset *int, limit *int) int
 		Transaction          func(childComplexity int, id string) int
-		Transactions         func(childComplexity int, since *int, till *int) int
+		Transactions         func(childComplexity int, since *int, till *int, offset *int, limit *int) int
 		Verified             func(childComplexity int) int
 		Worker               func(childComplexity int) int
 	}
@@ -320,8 +320,8 @@ type MinerResolver interface {
 	Sector(ctx context.Context, obj *model.Miner, id string) (*model.Sector, error)
 	Penalty(ctx context.Context, obj *model.Miner, id string) (*model.Penalty, error)
 	Deadline(ctx context.Context, obj *model.Miner, id string) (*model.Deadline, error)
-	StorageDeals(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.StorageDeal, error)
-	Transactions(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Transaction, error)
+	StorageDeals(ctx context.Context, obj *model.Miner, since *int, till *int, offset *int, limit *int) ([]*model.StorageDeal, error)
+	Transactions(ctx context.Context, obj *model.Miner, since *int, till *int, offset *int, limit *int) ([]*model.Transaction, error)
 	Sectors(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Sector, error)
 	Penalties(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Penalty, error)
 	Deadlines(ctx context.Context, obj *model.Miner) ([]*model.Deadline, error)
@@ -891,7 +891,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Miner.StorageDeals(childComplexity, args["since"].(*int), args["till"].(*int)), true
+		return e.complexity.Miner.StorageDeals(childComplexity, args["since"].(*int), args["till"].(*int), args["offset"].(*int), args["limit"].(*int)), true
 
 	case "Miner.transaction":
 		if e.complexity.Miner.Transaction == nil {
@@ -915,7 +915,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Miner.Transactions(childComplexity, args["since"].(*int), args["till"].(*int)), true
+		return e.complexity.Miner.Transactions(childComplexity, args["since"].(*int), args["till"].(*int), args["offset"].(*int), args["limit"].(*int)), true
 
 	case "Miner.verified":
 		if e.complexity.Miner.Verified == nil {
@@ -1754,96 +1754,7 @@ directive @goField(
   name: String
 ) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
 `, BuiltIn: false},
-	{Name: "graph/schema/mutation.graphql", Input: `type Mutation {
-  createTodo(input: NewTodo!): Todo!
-}
-`, BuiltIn: false},
-	{Name: "graph/schema/query.graphql", Input: `type Query {
-  # parsedTill: Int
-
-  miner(id: ID!): Miner
-  allMiners(
-    after: ID
-    first: Int
-    before: ID
-    last: Int
-    since: Int # chain height
-    till: Int # chain height
-  ): [Miner!]
-
-  storageDeal(id: ID!): StorageDeal
-  allStorageDeals(
-    after: ID
-    first: Int
-    before: ID
-    last: Int
-    since: Int # startepoch chain height
-    till: Int # startepoch chain height
-  ): [StorageDeal!]
-
-  transaction(id: ID!): Transaction
-  allTransactions(
-    since: Int # chain height
-    till: Int # chain height
-  ): [Transaction!]
-}
-`, BuiltIn: false},
-	{Name: "graph/schema/scalars.graphql", Input: `# gqlgen supports some custom scalars out of the box
-# Refer https://github.com/99designs/gqlgen/blob/master/docs/content/reference/scalars.md
-
-# resolves to time.Time
-scalar Time
-
-# resolves to map[string]interface{}
-scalar Map
-
-# resolves to interface{}
-scalar Any
-
-# resolves to the following struct
-# type Upload struct {
-# 	File        io.Reader
-# 	Filename    string
-# 	Size        int64
-# 	ContentType string
-# }
-scalar Upload
-`, BuiltIn: false},
-	{Name: "graph/schema/schema.graphql", Input: `schema {
-  query: Query
-  mutation: Mutation
-}
-
-# ignore stuff below
-
-type Fun {
-  id: ID!
-  meta: String!
-  text: String!
-}
-
-type Todo {
-  id: ID!
-  text: String!
-  done: Boolean!
-  user: User!
-}
-
-type User {
-  id: ID!
-  name: String!
-}
-
-# type Query {
-#   todos: [Todo!]!
-# }
-
-input NewTodo {
-  text: String!
-  userId: String!
-}
-`, BuiltIn: false},
-	{Name: "graph/schema/types/miner.graphql", Input: `type Miner {
+	{Name: "graph/schema/miner.graphql", Input: `type Miner {
   # @goModel(model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Miner") {
   id: ID!
   address: String!
@@ -1875,9 +1786,9 @@ input NewTodo {
   penalty(id: ID!): Penalty @goField(forceResolver: true)
   deadline(id: ID!): Deadline @goField(forceResolver: true)
 
-  storageDeals(since: Int, till: Int): [StorageDeal!]
+  storageDeals(since: Int, till: Int, offset: Int, limit: Int): [StorageDeal!]
     @goField(forceResolver: true)
-  transactions(since: Int, till: Int): [Transaction!]
+  transactions(since: Int, till: Int, offset: Int, limit: Int): [Transaction!]
     @goField(forceResolver: true)
   sectors(since: Int, till: Int): [Sector!] @goField(forceResolver: true)
   penalties(since: Int, till: Int): [Penalty!] @goField(forceResolver: true)
@@ -2143,6 +2054,95 @@ type MinersEdge {
   cursor: String!
 }
 `, BuiltIn: false},
+	{Name: "graph/schema/mutation.graphql", Input: `type Mutation {
+  createTodo(input: NewTodo!): Todo!
+}
+`, BuiltIn: false},
+	{Name: "graph/schema/query.graphql", Input: `type Query {
+  # parsedTill: Int
+
+  miner(id: ID!): Miner
+  allMiners(
+    after: ID
+    first: Int
+    before: ID
+    last: Int
+    since: Int # chain height
+    till: Int # chain height
+  ): [Miner!]
+
+  storageDeal(id: ID!): StorageDeal
+  allStorageDeals(
+    after: ID
+    first: Int
+    before: ID
+    last: Int
+    since: Int # startepoch chain height
+    till: Int # startepoch chain height
+  ): [StorageDeal!]
+
+  transaction(id: ID!): Transaction
+  allTransactions(
+    since: Int # chain height
+    till: Int # chain height
+  ): [Transaction!]
+}
+`, BuiltIn: false},
+	{Name: "graph/schema/scalars.graphql", Input: `# gqlgen supports some custom scalars out of the box
+# Refer https://github.com/99designs/gqlgen/blob/master/docs/content/reference/scalars.md
+
+# resolves to time.Time
+scalar Time
+
+# resolves to map[string]interface{}
+scalar Map
+
+# resolves to interface{}
+scalar Any
+
+# resolves to the following struct
+# type Upload struct {
+# 	File        io.Reader
+# 	Filename    string
+# 	Size        int64
+# 	ContentType string
+# }
+scalar Upload
+`, BuiltIn: false},
+	{Name: "graph/schema/schema.graphql", Input: `schema {
+  query: Query
+  mutation: Mutation
+}
+
+# ignore stuff below
+
+type Fun {
+  id: ID!
+  meta: String!
+  text: String!
+}
+
+type Todo {
+  id: ID!
+  text: String!
+  done: Boolean!
+  user: User!
+}
+
+type User {
+  id: ID!
+  name: String!
+}
+
+# type Query {
+#   todos: [Todo!]!
+# }
+
+input NewTodo {
+  text: String!
+  userId: String!
+}
+`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -2399,6 +2399,24 @@ func (ec *executionContext) field_Miner_storageDeals_args(ctx context.Context, r
 		}
 	}
 	args["till"] = arg1
+	var arg2 *int
+	if tmp, ok := rawArgs["offset"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg2
+	var arg3 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg3
 	return args, nil
 }
 
@@ -2438,6 +2456,24 @@ func (ec *executionContext) field_Miner_transactions_args(ctx context.Context, r
 		}
 	}
 	args["till"] = arg1
+	var arg2 *int
+	if tmp, ok := rawArgs["offset"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg2
+	var arg3 *int
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg3
 	return args, nil
 }
 
@@ -4852,7 +4888,7 @@ func (ec *executionContext) _Miner_storageDeals(ctx context.Context, field graph
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Miner().StorageDeals(rctx, obj, args["since"].(*int), args["till"].(*int))
+		return ec.resolvers.Miner().StorageDeals(rctx, obj, args["since"].(*int), args["till"].(*int), args["offset"].(*int), args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4891,7 +4927,7 @@ func (ec *executionContext) _Miner_transactions(ctx context.Context, field graph
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Miner().Transactions(rctx, obj, args["since"].(*int), args["till"].(*int))
+		return ec.resolvers.Miner().Transactions(rctx, obj, args["since"].(*int), args["till"].(*int), args["offset"].(*int), args["limit"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
