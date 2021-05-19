@@ -37,6 +37,34 @@ type Miner {
   sectors(since: Int, till: Int): [Sector!] @goField(forceResolver: true)
   penalties(since: Int, till: Int): [Penalty!] @goField(forceResolver: true)
   deadlines: [Deadline!] @goField(forceResolver: true)
+
+  estimatedIncome(days: Int!): EstimatedIncome! @goField(forceResolver: true)
+  estimatedExpenditure(days: Int!): EstimatedExpenditure!
+    @goField(forceResolver: true)
+}
+
+type EstimatedIncome {
+  dealPayments: DealPayments!
+  blockRewards: BlockRewards!
+}
+
+type DealPayments {
+  existingDeals: Int!
+  potentialFutureDeals: Int!
+}
+
+type BlockRewards {
+  blockRewards: Int! # 0 if not eligible
+  daysUntilEligible: Int! # 0 if eligible
+}
+
+type EstimatedExpenditure {
+  preCommitExpiryPenalty: Int
+  undeclaredFaultPenalty: Int
+  declaredFaultPenalty: Int
+  ongoingFaultPenalty: Int
+  terminationPenalty: Int
+  consensusFaultPenalty: Int
 }
 
 type ServiceDetails {
@@ -144,9 +172,10 @@ type Transaction {
   # @goModel(
   #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction"
   # ) {
-  id: ID! # transaction cid
+  id: ID! # transaction cid OR deal id
   miner: Miner @goField(forceResolver: true)
   transactionType: String
+  label: String
   amount: String!
   sender: String!
   receiver: String!
@@ -156,6 +185,7 @@ type Transaction {
   minerFee: String
   burnFee: String
   direction: String
+  gas: Boolean!
   methodName: String
   actorName: String
   exitCode: Int

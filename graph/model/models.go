@@ -81,32 +81,58 @@ type Income struct {
 }
 
 type Miner struct {
-	ID                   string               `json:"id"`
-	Address              string               `json:"address"`
-	PeerID               string               `json:"peerId"`
-	Owner                *Owner               `json:"owner"`
-	Worker               *Worker              `json:"worker"`
-	Name                 string               `json:"name"`
-	Bio                  string               `json:"bio"`
-	Location             string               `json:"location"`
-	Contact              *Contact             `json:"contact"`
-	Verified             bool                 `json:"verified"`
-	ServiceDetails       *ServiceDetails      `json:"serviceDetails"`
-	QualityIndicators    *QualityIndicators   `json:"qualityIndicators"`
-	FinanceMetrics       *FinanceMetrics      `json:"financeMetrics"`
-	AllServiceDetails    []*ServiceDetails    `json:"allServiceDetails"`
-	AllQualityIndicators []*QualityIndicators `json:"allQualityIndicators"`
-	AllFinanceMetrics    []*FinanceMetrics    `json:"allFinanceMetrics"`
-	StorageDeal          *StorageDeal         `json:"storageDeal"`
-	Transaction          *Transaction         `json:"transaction"`
-	Sector               *Sector              `json:"sector"`
-	Penalty              *Penalty             `json:"penalty"`
-	Deadline             *Deadline            `json:"deadline"`
-	StorageDeals         []*StorageDeal       `json:"storageDeals"`
-	Transactions         []*Transaction       `json:"transactions"`
-	Sectors              []*Sector            `json:"sectors"`
-	Penalties            []*Penalty           `json:"penalties"`
-	Deadlines            []*Deadline          `json:"deadlines"`
+	ID                   string                `json:"id"`
+	Address              string                `json:"address"`
+	PeerID               string                `json:"peerId"`
+	Owner                *Owner                `json:"owner"`
+	Worker               *Worker               `json:"worker"`
+	Name                 string                `json:"name"`
+	Bio                  string                `json:"bio"`
+	Location             string                `json:"location"`
+	Contact              *Contact              `json:"contact"`
+	Verified             bool                  `json:"verified"`
+	ServiceDetails       *ServiceDetails       `json:"serviceDetails"`
+	QualityIndicators    *QualityIndicators    `json:"qualityIndicators"`
+	FinanceMetrics       *FinanceMetrics       `json:"financeMetrics"`
+	AllServiceDetails    []*ServiceDetails     `json:"allServiceDetails"`
+	AllQualityIndicators []*QualityIndicators  `json:"allQualityIndicators"`
+	AllFinanceMetrics    []*FinanceMetrics     `json:"allFinanceMetrics"`
+	StorageDeal          *StorageDeal          `json:"storageDeal"`
+	Transaction          *Transaction          `json:"transaction"`
+	Sector               *Sector               `json:"sector"`
+	Penalty              *Penalty              `json:"penalty"`
+	Deadline             *Deadline             `json:"deadline"`
+	StorageDeals         []*StorageDeal        `json:"storageDeals"`
+	Transactions         []*Transaction        `json:"transactions"`
+	Sectors              []*Sector             `json:"sectors"`
+	Penalties            []*Penalty            `json:"penalties"`
+	Deadlines            []*Deadline           `json:"deadlines"`
+	EstimatedIncome      *EstimatedIncome      `json:"estimatedIncome"`
+	EstimatedExpenditure *EstimatedExpenditure `json:"estimatedExpenditure"`
+}
+
+type BlockRewards struct {
+	BlockRewards      int64 `json:"blockRewards"`
+	DaysUntilEligible int64 `json:"daysUntilEligible"`
+}
+
+type DealPayments struct {
+	ExistingDeals        int64 `json:"existingDeals"`
+	PotentialFutureDeals int64 `json:"potentialFutureDeals"`
+}
+
+type EstimatedExpenditure struct {
+	PreCommitExpiryPenalty int64 `json:"preCommitExpiryPenalty"`
+	UndeclaredFaultPenalty int64 `json:"undeclaredFaultPenalty"`
+	DeclaredFaultPenalty   int64 `json:"declaredFaultPenalty"`
+	OngoingFaultPenalty    int64 `json:"ongoingFaultPenalty"`
+	TerminationPenalty     int64 `json:"terminationPenalty"`
+	ConsensusFaultPenalty  int64 `json:"consensusFaultPenalty"`
+}
+
+type EstimatedIncome struct {
+	DealPayments *DealPayments `json:"dealPayments"`
+	BlockRewards *BlockRewards `json:"blockRewards"`
 }
 
 type NewTodo struct {
@@ -201,6 +227,7 @@ type Transaction struct {
 	ID              string    `json:"id"`
 	Miner           *Miner    `json:"miner"`
 	TransactionType string    `json:"transactionType"`
+	Label           string    `json:"label"`
 	Amount          string    `json:"amount"`
 	Sender          string    `json:"sender"`
 	Receiver        string    `json:"receiver"`
@@ -210,6 +237,7 @@ type Transaction struct {
 	MinerFee        string    `json:"minerFee"`
 	BurnFee         string    `json:"burnFee"`
 	Direction       string    `json:"direction"`
+	Gas             bool      `json:"gas"`
 	MethodName      string    `json:"methodName"`
 	ActorName       string    `json:"actorName"`
 	ExitCode        int64     `json:"exitCode"`

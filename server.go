@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/buidl-labs/filecoin-chain-indexer/config"
+	"github.com/buidl-labs/filecoin-chain-indexer/lens/lotus"
 	"github.com/go-pg/pg/v10"
-	// pq postgresql driver
 	_ "github.com/lib/pq"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -43,11 +45,28 @@ func main() {
 		Debug:            true,
 	}).Handler)
 
+	lensOpener, lensCloser, err := lotus.NewAPIOpener(config.Config{
+		FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
+		CacheSize:       1,
+	}, context.Background())
+	if err != nil {
+		log.Fatal("creating lotus API opener: ", err)
+	}
+	defer func() {
+		lensCloser()
+	}()
+	node, closer, err := lensOpener.Open(context.Background())
+	if err != nil {
+		log.Fatal("opening lotus lens API: ", err)
+	}
+	defer closer()
+
 	srv := handler.NewDefaultServer(
 		generated.NewExecutableSchema(generated.Config{
 			Resolvers: &graph.Resolver{
-				DB:   myNewDB,
-				PQDB: myNewPqDB,
+				DB:      myNewDB,
+				PQDB:    myNewPqDB,
+				LensAPI: node,
 			},
 		}),
 	)
@@ -60,12 +79,6 @@ func main() {
 }
 
 func NewDB() (*pg.DB, error) {
-	// dburl postgres://rajdeep@localhost/filecoinminermarketplace?sslmode=disable
-	// db := pg.Connect(&pg.Options{
-	// 	Addr:     ":5432",
-	// 	User:     "rajdeep",
-	// 	Database: "filecoinminermarketplace",
-	// })
 	opt, err := pg.ParseURL(os.Getenv("DB"))
 	if err != nil {
 		log.Fatal(err)

@@ -55,6 +55,11 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	BlockRewards struct {
+		BlockRewards      func(childComplexity int) int
+		DaysUntilEligible func(childComplexity int) int
+	}
+
 	Contact struct {
 		Email   func(childComplexity int) int
 		Miner   func(childComplexity int) int
@@ -71,6 +76,25 @@ type ComplexityRoot struct {
 		ID            func(childComplexity int) int
 		Open          func(childComplexity int) int
 		PeriodStart   func(childComplexity int) int
+	}
+
+	DealPayments struct {
+		ExistingDeals        func(childComplexity int) int
+		PotentialFutureDeals func(childComplexity int) int
+	}
+
+	EstimatedExpenditure struct {
+		ConsensusFaultPenalty  func(childComplexity int) int
+		DeclaredFaultPenalty   func(childComplexity int) int
+		OngoingFaultPenalty    func(childComplexity int) int
+		PreCommitExpiryPenalty func(childComplexity int) int
+		TerminationPenalty     func(childComplexity int) int
+		UndeclaredFaultPenalty func(childComplexity int) int
+	}
+
+	EstimatedIncome struct {
+		BlockRewards func(childComplexity int) int
+		DealPayments func(childComplexity int) int
 	}
 
 	Expenditure struct {
@@ -129,6 +153,8 @@ type ComplexityRoot struct {
 		Contact              func(childComplexity int) int
 		Deadline             func(childComplexity int, id string) int
 		Deadlines            func(childComplexity int) int
+		EstimatedExpenditure func(childComplexity int, days int) int
+		EstimatedIncome      func(childComplexity int, days int) int
 		FinanceMetrics       func(childComplexity int, since *int, till *int) int
 		ID                   func(childComplexity int) int
 		Location             func(childComplexity int) int
@@ -268,8 +294,10 @@ type ComplexityRoot struct {
 		BurnFee         func(childComplexity int) int
 		Direction       func(childComplexity int) int
 		ExitCode        func(childComplexity int) int
+		Gas             func(childComplexity int) int
 		Height          func(childComplexity int) int
 		ID              func(childComplexity int) int
+		Label           func(childComplexity int) int
 		MethodName      func(childComplexity int) int
 		Miner           func(childComplexity int) int
 		MinerFee        func(childComplexity int) int
@@ -325,6 +353,8 @@ type MinerResolver interface {
 	Sectors(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Sector, error)
 	Penalties(ctx context.Context, obj *model.Miner, since *int, till *int) ([]*model.Penalty, error)
 	Deadlines(ctx context.Context, obj *model.Miner) ([]*model.Deadline, error)
+	EstimatedIncome(ctx context.Context, obj *model.Miner, days int) (*model.EstimatedIncome, error)
+	EstimatedExpenditure(ctx context.Context, obj *model.Miner, days int) (*model.EstimatedExpenditure, error)
 }
 type MutationResolver interface {
 	CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error)
@@ -391,6 +421,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	ec := executionContext{nil, e}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "BlockRewards.blockRewards":
+		if e.complexity.BlockRewards.BlockRewards == nil {
+			break
+		}
+
+		return e.complexity.BlockRewards.BlockRewards(childComplexity), true
+
+	case "BlockRewards.daysUntilEligible":
+		if e.complexity.BlockRewards.DaysUntilEligible == nil {
+			break
+		}
+
+		return e.complexity.BlockRewards.DaysUntilEligible(childComplexity), true
 
 	case "Contact.email":
 		if e.complexity.Contact.Email == nil {
@@ -475,6 +519,76 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Deadline.PeriodStart(childComplexity), true
+
+	case "DealPayments.existingDeals":
+		if e.complexity.DealPayments.ExistingDeals == nil {
+			break
+		}
+
+		return e.complexity.DealPayments.ExistingDeals(childComplexity), true
+
+	case "DealPayments.potentialFutureDeals":
+		if e.complexity.DealPayments.PotentialFutureDeals == nil {
+			break
+		}
+
+		return e.complexity.DealPayments.PotentialFutureDeals(childComplexity), true
+
+	case "EstimatedExpenditure.consensusFaultPenalty":
+		if e.complexity.EstimatedExpenditure.ConsensusFaultPenalty == nil {
+			break
+		}
+
+		return e.complexity.EstimatedExpenditure.ConsensusFaultPenalty(childComplexity), true
+
+	case "EstimatedExpenditure.declaredFaultPenalty":
+		if e.complexity.EstimatedExpenditure.DeclaredFaultPenalty == nil {
+			break
+		}
+
+		return e.complexity.EstimatedExpenditure.DeclaredFaultPenalty(childComplexity), true
+
+	case "EstimatedExpenditure.ongoingFaultPenalty":
+		if e.complexity.EstimatedExpenditure.OngoingFaultPenalty == nil {
+			break
+		}
+
+		return e.complexity.EstimatedExpenditure.OngoingFaultPenalty(childComplexity), true
+
+	case "EstimatedExpenditure.preCommitExpiryPenalty":
+		if e.complexity.EstimatedExpenditure.PreCommitExpiryPenalty == nil {
+			break
+		}
+
+		return e.complexity.EstimatedExpenditure.PreCommitExpiryPenalty(childComplexity), true
+
+	case "EstimatedExpenditure.terminationPenalty":
+		if e.complexity.EstimatedExpenditure.TerminationPenalty == nil {
+			break
+		}
+
+		return e.complexity.EstimatedExpenditure.TerminationPenalty(childComplexity), true
+
+	case "EstimatedExpenditure.undeclaredFaultPenalty":
+		if e.complexity.EstimatedExpenditure.UndeclaredFaultPenalty == nil {
+			break
+		}
+
+		return e.complexity.EstimatedExpenditure.UndeclaredFaultPenalty(childComplexity), true
+
+	case "EstimatedIncome.blockRewards":
+		if e.complexity.EstimatedIncome.BlockRewards == nil {
+			break
+		}
+
+		return e.complexity.EstimatedIncome.BlockRewards(childComplexity), true
+
+	case "EstimatedIncome.dealPayments":
+		if e.complexity.EstimatedIncome.DealPayments == nil {
+			break
+		}
+
+		return e.complexity.EstimatedIncome.DealPayments(childComplexity), true
 
 	case "Expenditure.networkFee":
 		if e.complexity.Expenditure.NetworkFee == nil {
@@ -754,6 +868,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Miner.Deadlines(childComplexity), true
+
+	case "Miner.estimatedExpenditure":
+		if e.complexity.Miner.EstimatedExpenditure == nil {
+			break
+		}
+
+		args, err := ec.field_Miner_estimatedExpenditure_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Miner.EstimatedExpenditure(childComplexity, args["days"].(int)), true
+
+	case "Miner.estimatedIncome":
+		if e.complexity.Miner.EstimatedIncome == nil {
+			break
+		}
+
+		args, err := ec.field_Miner_estimatedIncome_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Miner.EstimatedIncome(childComplexity, args["days"].(int)), true
 
 	case "Miner.financeMetrics":
 		if e.complexity.Miner.FinanceMetrics == nil {
@@ -1540,6 +1678,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Transaction.ExitCode(childComplexity), true
 
+	case "Transaction.gas":
+		if e.complexity.Transaction.Gas == nil {
+			break
+		}
+
+		return e.complexity.Transaction.Gas(childComplexity), true
+
 	case "Transaction.height":
 		if e.complexity.Transaction.Height == nil {
 			break
@@ -1553,6 +1698,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Transaction.ID(childComplexity), true
+
+	case "Transaction.label":
+		if e.complexity.Transaction.Label == nil {
+			break
+		}
+
+		return e.complexity.Transaction.Label(childComplexity), true
 
 	case "Transaction.methodName":
 		if e.complexity.Transaction.MethodName == nil {
@@ -1793,6 +1945,34 @@ directive @goField(
   sectors(since: Int, till: Int): [Sector!] @goField(forceResolver: true)
   penalties(since: Int, till: Int): [Penalty!] @goField(forceResolver: true)
   deadlines: [Deadline!] @goField(forceResolver: true)
+
+  estimatedIncome(days: Int!): EstimatedIncome! @goField(forceResolver: true)
+  estimatedExpenditure(days: Int!): EstimatedExpenditure!
+    @goField(forceResolver: true)
+}
+
+type EstimatedIncome {
+  dealPayments: DealPayments!
+  blockRewards: BlockRewards!
+}
+
+type DealPayments {
+  existingDeals: Int!
+  potentialFutureDeals: Int!
+}
+
+type BlockRewards {
+  blockRewards: Int! # 0 if not eligible
+  daysUntilEligible: Int! # 0 if eligible
+}
+
+type EstimatedExpenditure {
+  preCommitExpiryPenalty: Int
+  undeclaredFaultPenalty: Int
+  declaredFaultPenalty: Int
+  ongoingFaultPenalty: Int
+  terminationPenalty: Int
+  consensusFaultPenalty: Int
 }
 
 type ServiceDetails {
@@ -1900,9 +2080,10 @@ type Transaction {
   # @goModel(
   #   model: "github.com/buidl-labs/miner-marketplace-backend/graph/model.Transaction"
   # ) {
-  id: ID! # transaction cid
+  id: ID! # transaction cid OR deal id
   miner: Miner @goField(forceResolver: true)
   transactionType: String
+  label: String
   amount: String!
   sender: String!
   receiver: String!
@@ -1912,6 +2093,7 @@ type Transaction {
   minerFee: String
   burnFee: String
   direction: String
+  gas: Boolean!
   methodName: String
   actorName: String
   exitCode: Int
@@ -2234,6 +2416,36 @@ func (ec *executionContext) field_Miner_deadline_args(ctx context.Context, rawAr
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Miner_estimatedExpenditure_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["days"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("days"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["days"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Miner_estimatedIncome_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["days"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("days"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["days"] = arg0
 	return args, nil
 }
 
@@ -2734,6 +2946,76 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 
 // region    **************************** field.gotpl *****************************
 
+func (ec *executionContext) _BlockRewards_blockRewards(ctx context.Context, field graphql.CollectedField, obj *model.BlockRewards) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BlockRewards",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BlockRewards, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _BlockRewards_daysUntilEligible(ctx context.Context, field graphql.CollectedField, obj *model.BlockRewards) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "BlockRewards",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DaysUntilEligible, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Contact_miner(ctx context.Context, field graphql.CollectedField, obj *model.Contact) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -3140,6 +3422,338 @@ func (ec *executionContext) _Deadline_faultCutoff(ctx context.Context, field gra
 	res := resTmp.(int64)
 	fc.Result = res
 	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _DealPayments_existingDeals(ctx context.Context, field graphql.CollectedField, obj *model.DealPayments) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "DealPayments",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExistingDeals, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _DealPayments_potentialFutureDeals(ctx context.Context, field graphql.CollectedField, obj *model.DealPayments) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "DealPayments",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PotentialFutureDeals, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EstimatedExpenditure_preCommitExpiryPenalty(ctx context.Context, field graphql.CollectedField, obj *model.EstimatedExpenditure) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EstimatedExpenditure",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PreCommitExpiryPenalty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EstimatedExpenditure_undeclaredFaultPenalty(ctx context.Context, field graphql.CollectedField, obj *model.EstimatedExpenditure) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EstimatedExpenditure",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UndeclaredFaultPenalty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EstimatedExpenditure_declaredFaultPenalty(ctx context.Context, field graphql.CollectedField, obj *model.EstimatedExpenditure) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EstimatedExpenditure",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DeclaredFaultPenalty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EstimatedExpenditure_ongoingFaultPenalty(ctx context.Context, field graphql.CollectedField, obj *model.EstimatedExpenditure) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EstimatedExpenditure",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OngoingFaultPenalty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EstimatedExpenditure_terminationPenalty(ctx context.Context, field graphql.CollectedField, obj *model.EstimatedExpenditure) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EstimatedExpenditure",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TerminationPenalty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EstimatedExpenditure_consensusFaultPenalty(ctx context.Context, field graphql.CollectedField, obj *model.EstimatedExpenditure) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EstimatedExpenditure",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ConsensusFaultPenalty, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalOInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EstimatedIncome_dealPayments(ctx context.Context, field graphql.CollectedField, obj *model.EstimatedIncome) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EstimatedIncome",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DealPayments, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.DealPayments)
+	fc.Result = res
+	return ec.marshalNDealPayments2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐDealPayments(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EstimatedIncome_blockRewards(ctx context.Context, field graphql.CollectedField, obj *model.EstimatedIncome) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "EstimatedIncome",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BlockRewards, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.BlockRewards)
+	fc.Result = res
+	return ec.marshalNBlockRewards2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐBlockRewards(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Expenditure_networkFee(ctx context.Context, field graphql.CollectedField, obj *model.Expenditure) (ret graphql.Marshaler) {
@@ -5049,6 +5663,90 @@ func (ec *executionContext) _Miner_deadlines(ctx context.Context, field graphql.
 	res := resTmp.([]*model.Deadline)
 	fc.Result = res
 	return ec.marshalODeadline2ᚕᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐDeadlineᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Miner_estimatedIncome(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Miner",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Miner_estimatedIncome_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Miner().EstimatedIncome(rctx, obj, args["days"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.EstimatedIncome)
+	fc.Result = res
+	return ec.marshalNEstimatedIncome2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐEstimatedIncome(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Miner_estimatedExpenditure(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Miner",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Miner_estimatedExpenditure_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Miner().EstimatedExpenditure(rctx, obj, args["days"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.EstimatedExpenditure)
+	fc.Result = res
+	return ec.marshalNEstimatedExpenditure2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐEstimatedExpenditure(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _MinersConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *model.MinersConnection) (ret graphql.Marshaler) {
@@ -7848,6 +8546,38 @@ func (ec *executionContext) _Transaction_transactionType(ctx context.Context, fi
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Transaction_label(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Label, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Transaction_amount(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -8146,6 +8876,41 @@ func (ec *executionContext) _Transaction_direction(ctx context.Context, field gr
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Transaction_gas(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Gas, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_methodName(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -9725,6 +10490,38 @@ func (ec *executionContext) unmarshalInputNewTodo(ctx context.Context, obj inter
 
 // region    **************************** object.gotpl ****************************
 
+var blockRewardsImplementors = []string{"BlockRewards"}
+
+func (ec *executionContext) _BlockRewards(ctx context.Context, sel ast.SelectionSet, obj *model.BlockRewards) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, blockRewardsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BlockRewards")
+		case "blockRewards":
+			out.Values[i] = ec._BlockRewards_blockRewards(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "daysUntilEligible":
+			out.Values[i] = ec._BlockRewards_daysUntilEligible(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var contactImplementors = []string{"Contact"}
 
 func (ec *executionContext) _Contact(ctx context.Context, sel ast.SelectionSet, obj *model.Contact) graphql.Marshaler {
@@ -9812,6 +10609,104 @@ func (ec *executionContext) _Deadline(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "faultCutoff":
 			out.Values[i] = ec._Deadline_faultCutoff(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var dealPaymentsImplementors = []string{"DealPayments"}
+
+func (ec *executionContext) _DealPayments(ctx context.Context, sel ast.SelectionSet, obj *model.DealPayments) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, dealPaymentsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DealPayments")
+		case "existingDeals":
+			out.Values[i] = ec._DealPayments_existingDeals(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "potentialFutureDeals":
+			out.Values[i] = ec._DealPayments_potentialFutureDeals(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var estimatedExpenditureImplementors = []string{"EstimatedExpenditure"}
+
+func (ec *executionContext) _EstimatedExpenditure(ctx context.Context, sel ast.SelectionSet, obj *model.EstimatedExpenditure) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, estimatedExpenditureImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EstimatedExpenditure")
+		case "preCommitExpiryPenalty":
+			out.Values[i] = ec._EstimatedExpenditure_preCommitExpiryPenalty(ctx, field, obj)
+		case "undeclaredFaultPenalty":
+			out.Values[i] = ec._EstimatedExpenditure_undeclaredFaultPenalty(ctx, field, obj)
+		case "declaredFaultPenalty":
+			out.Values[i] = ec._EstimatedExpenditure_declaredFaultPenalty(ctx, field, obj)
+		case "ongoingFaultPenalty":
+			out.Values[i] = ec._EstimatedExpenditure_ongoingFaultPenalty(ctx, field, obj)
+		case "terminationPenalty":
+			out.Values[i] = ec._EstimatedExpenditure_terminationPenalty(ctx, field, obj)
+		case "consensusFaultPenalty":
+			out.Values[i] = ec._EstimatedExpenditure_consensusFaultPenalty(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var estimatedIncomeImplementors = []string{"EstimatedIncome"}
+
+func (ec *executionContext) _EstimatedIncome(ctx context.Context, sel ast.SelectionSet, obj *model.EstimatedIncome) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, estimatedIncomeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EstimatedIncome")
+		case "dealPayments":
+			out.Values[i] = ec._EstimatedIncome_dealPayments(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "blockRewards":
+			out.Values[i] = ec._EstimatedIncome_blockRewards(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -10308,6 +11203,34 @@ func (ec *executionContext) _Miner(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Miner_deadlines(ctx, field, obj)
+				return res
+			})
+		case "estimatedIncome":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Miner_estimatedIncome(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "estimatedExpenditure":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Miner_estimatedExpenditure(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		default:
@@ -11083,6 +12006,8 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			})
 		case "transactionType":
 			out.Values[i] = ec._Transaction_transactionType(ctx, field, obj)
+		case "label":
+			out.Values[i] = ec._Transaction_label(ctx, field, obj)
 		case "amount":
 			out.Values[i] = ec._Transaction_amount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -11113,6 +12038,11 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._Transaction_burnFee(ctx, field, obj)
 		case "direction":
 			out.Values[i] = ec._Transaction_direction(ctx, field, obj)
+		case "gas":
+			out.Values[i] = ec._Transaction_gas(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "methodName":
 			out.Values[i] = ec._Transaction_methodName(ctx, field, obj)
 		case "actorName":
@@ -11466,6 +12396,16 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNBlockRewards2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐBlockRewards(ctx context.Context, sel ast.SelectionSet, v *model.BlockRewards) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._BlockRewards(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -11489,6 +12429,44 @@ func (ec *executionContext) marshalNDeadline2ᚖgithubᚗcomᚋbuidlᚑlabsᚋmi
 		return graphql.Null
 	}
 	return ec._Deadline(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNDealPayments2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐDealPayments(ctx context.Context, sel ast.SelectionSet, v *model.DealPayments) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._DealPayments(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEstimatedExpenditure2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐEstimatedExpenditure(ctx context.Context, sel ast.SelectionSet, v model.EstimatedExpenditure) graphql.Marshaler {
+	return ec._EstimatedExpenditure(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEstimatedExpenditure2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐEstimatedExpenditure(ctx context.Context, sel ast.SelectionSet, v *model.EstimatedExpenditure) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._EstimatedExpenditure(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEstimatedIncome2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐEstimatedIncome(ctx context.Context, sel ast.SelectionSet, v model.EstimatedIncome) graphql.Marshaler {
+	return ec._EstimatedIncome(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEstimatedIncome2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐEstimatedIncome(ctx context.Context, sel ast.SelectionSet, v *model.EstimatedIncome) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._EstimatedIncome(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNFault2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐFault(ctx context.Context, sel ast.SelectionSet, v *model.Fault) graphql.Marshaler {

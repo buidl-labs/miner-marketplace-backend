@@ -3,12 +3,16 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"io/ioutil"
+	"math"
 	"math/big"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 )
 
 type OwnerChange struct {
@@ -94,6 +98,33 @@ func GetTransactionType(methodName string) string {
 	// return ""
 }
 
+func DeriveTransactionLabels(transaction messages.Transaction) (string, string, bool) {
+	label := transaction.MethodName
+	direction := "+"
+	gas := false
+	methodName := transaction.MethodName
+	actorName := transaction.ActorName
+	if strings.HasPrefix(actorName, "storageMinerActor") {
+		switch methodName {
+		case "SubmitWindowedPoSt":
+			direction = "-"
+			gas = true
+		case "PreCommitSector":
+			label = "PreCommit Deposit"
+			direction = "collateral(-)"
+			gas = true
+		case "ProveCommitSector":
+			label = "Initial Pledge"
+			direction = "collateral(-)"
+			gas = true
+		case "ApplyRewards":
+			label = "Block Reward"
+			direction = "+"
+		}
+	}
+	return label, direction, gas
+}
+
 func CalculateDealPrice(pricePerEpoch string, startEpoch int64, endEpoch int64) (string, error) {
 	pricePerEpochInt, err := strconv.ParseInt(pricePerEpoch, 10, 64)
 	if err != nil {
@@ -101,4 +132,48 @@ func CalculateDealPrice(pricePerEpoch string, startEpoch int64, endEpoch int64) 
 	}
 	totalPrice := (endEpoch - startEpoch) * pricePerEpochInt
 	return fmt.Sprintf("%v", totalPrice), nil
+}
+
+type AlphaBetaFilter struct {
+	alpha big.Int // Q.128
+	beta  big.Int // Q.128
+	p     *big.Int
+	v     *big.Int
+}
+
+func NewAlphaBetaFilter(p, v *big.Int) AlphaBetaFilter {
+	return AlphaBetaFilter{
+		p: p,
+		v: v,
+	}
+}
+
+func ProjectFutureReward(days int, sectorQAP, nwqapP, nwqapV, perEpochRewardP, perEpochRewardV *big.Int) *big.Int {
+	networkQAPFilter := NewAlphaBetaFilter(nwqapP, nwqapV)
+	perEpochRewardFilter := NewAlphaBetaFilter(perEpochRewardP, perEpochRewardV)
+
+	return new(big.Int).Mul(sectorQAP, ExtrapolateCumsumRatio(perEpochRewardFilter, networkQAPFilter, days*2880))
+}
+
+func ExtrapolateCumsumRatio(numerator, denominator AlphaBetaFilter, futureT int) *big.Int {
+	v1, _ := new(big.Float).SetInt(
+		new(big.Int).Add(denominator.p, denominator.v),
+	).Float64()
+	x2a := math.Log(v1)
+	v2, _ := new(big.Float).SetInt(
+		new(big.Int).Add(
+			new(big.Int).Add(denominator.p, denominator.v),
+			new(big.Int).Mul(denominator.v, big.NewInt(int64(futureT))),
+		),
+	).Float64()
+	x2b := math.Log(v2)
+	m1 := new(big.Int).Mul(new(big.Int).Mul(denominator.v, numerator.p), big.NewInt(int64(x2b-x2a)))
+	m2 := new(big.Int).Mul(
+		numerator.v,
+		new(big.Int).Add(
+			new(big.Int).Mul(denominator.p, big.NewInt(int64(x2a-x2b))),
+			new(big.Int).Mul(denominator.v, big.NewInt(int64(futureT))),
+		),
+	)
+	return new(big.Int).Div(new(big.Int).Add(m1, m2), denominator.v.Exp(denominator.v, big.NewInt(2), nil))
 }

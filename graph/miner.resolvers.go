@@ -5,8 +5,12 @@ package graph
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
+	"net/http"
+	"reflect"
 	"strconv"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/model/blocks"
@@ -16,6 +20,13 @@ import (
 	"github.com/buidl-labs/filecoin-chain-indexer/model/power"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	filecoinbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/v4/actors/builtin"
+	mineractor "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/v4/actors/util/smoothing"
 )
 
 func (r *contactResolver) Miner(ctx context.Context, obj *model.Contact) (*model.Miner, error) {
@@ -491,10 +502,14 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 					amt = txns[0].Transferred
 				}
 			}
+			label, direction, gas := DeriveTransactionLabels(txns[0])
 			result[i] = &model.Transaction{
 				ID:              txns[0].Cid,
 				Amount:          amt,
 				TransactionType: "txn",
+				Label:           label,
+				Direction:       direction,
+				Gas:             gas,
 				Sender:          txns[0].Sender,
 				Receiver:        txns[0].Receiver,
 				Height:          txns[0].Height,
@@ -527,10 +542,14 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				amt = txns[j].Transferred
 			}
 		}
+		label, direction, gas := DeriveTransactionLabels(txns[j])
 		result[i] = &model.Transaction{
 			ID:              txns[j].Cid,
 			Amount:          amt,
 			TransactionType: "txn",
+			Label:           label,
+			Direction:       direction,
+			Gas:             gas,
 			Sender:          txns[j].Sender,
 			Receiver:        txns[j].Receiver,
 			Height:          txns[j].Height,
@@ -592,6 +611,201 @@ func (r *minerResolver) Penalties(ctx context.Context, obj *model.Miner, since *
 
 func (r *minerResolver) Deadlines(ctx context.Context, obj *model.Miner) ([]*model.Deadline, error) {
 	panic(fmt.Errorf("not implemented"))
+}
+
+func (r *minerResolver) EstimatedIncome(ctx context.Context, obj *model.Miner, days int) (*model.EstimatedIncome, error) {
+	minerID, _ := address.NewFromString(obj.ID)
+	powerActorID, _ := address.NewFromString("f04")
+	rewardActorID, _ := address.NewFromString("f02")
+	ts, _ := r.LensAPI.ChainHead(context.Background())
+
+	daysUntilEligible := big.NewInt(0)
+	minQAP := big.NewInt(10995116277760) // 10 TiB
+	minerPower, _ := r.LensAPI.StateMinerPower(context.Background(), minerID, ts.Key())
+	cmpR := minerPower.MinerPower.QualityAdjPower.Int.Cmp(minQAP)
+	if cmpR == -1 {
+		// TODO: find daysUntilEligible
+
+		lastMonthTs, _ := r.LensAPI.ChainGetTipSetByHeight(context.Background(), ts.Height()-30*2880, types.EmptyTSK)
+		minerPowerLastMonth, _ := r.LensAPI.StateMinerPower(context.Background(), minerID, lastMonthTs.Key())
+		dailyPowerGrowthLastMonth := new(big.Int).Div(
+			new(big.Int).Sub(
+				minerPower.MinerPower.QualityAdjPower.Int,
+				minerPowerLastMonth.MinerPower.QualityAdjPower.Int,
+			),
+			big.NewInt(int64(30)),
+		)
+
+		daysUntilEligible = new(big.Int).Div(
+			new(big.Int).Sub(minQAP, minerPower.MinerPower.QualityAdjPower.Int),
+			dailyPowerGrowthLastMonth,
+		)
+	}
+	PowerActorState, err := r.LensAPI.StateReadState(context.Background(), powerActorID, ts.Key())
+	if err != nil {
+		panic(err)
+	}
+	RewardActorState, err := r.LensAPI.StateReadState(context.Background(), rewardActorID, ts.Key())
+	if err != nil {
+		panic(err)
+	}
+
+	// pas, _ := PowerActorState.State.(power3.State)
+	// ras, _ := RewardActorState.State.(reward3.State)
+
+	// type ThisEpochQAPowerSmoothed string
+	pas, _ := PowerActorState.State.(map[string]interface{})
+	ras, _ := RewardActorState.State.(map[string]interface{})
+	fmt.Println(reflect.TypeOf(pas["ThisEpochQAPowerSmoothed"]), " ", pas["ThisEpochQAPowerSmoothed"])
+	ThisEpochQAPowerSmoothed, _ := pas["ThisEpochQAPowerSmoothed"].(map[string]interface{})
+	fmt.Println(reflect.TypeOf(ThisEpochQAPowerSmoothed), ThisEpochQAPowerSmoothed,
+		"pe:", ThisEpochQAPowerSmoothed["PositionEstimate"],
+		"ve:", ThisEpochQAPowerSmoothed["VelocityEstimate"])
+
+	ThisEpochRewardSmoothed, _ := ras["ThisEpochRewardSmoothed"].(map[string]interface{})
+	fmt.Println(reflect.TypeOf(ThisEpochRewardSmoothed), ThisEpochRewardSmoothed,
+		"pe:", ThisEpochRewardSmoothed["PositionEstimate"],
+		"ve:", ThisEpochRewardSmoothed["VelocityEstimate"])
+
+	a := ThisEpochQAPowerSmoothed["PositionEstimate"].(string)
+	ThisEpochQAPowerSmoothedPositionEstimate, _ := new(big.Int).SetString(a, 10)
+	fmt.Println("a:", a, "toa:", reflect.TypeOf(a))
+
+	b := ThisEpochQAPowerSmoothed["VelocityEstimate"].(string)
+	ThisEpochQAPowerSmoothedVelocityEstimate, _ := new(big.Int).SetString(b, 10)
+
+	c := ThisEpochRewardSmoothed["PositionEstimate"].(string)
+	// c := "36266260308195979333" // initial
+	ThisEpochRewardSmoothedPositionEstimate, _ := new(big.Int).SetString(c, 10)
+	fmt.Println("c:", c, "toc:", reflect.TypeOf(c))
+
+	d := ThisEpochRewardSmoothed["VelocityEstimate"].(string)
+	// d := "-109897758509" // initial
+	ThisEpochRewardSmoothedVelocityEstimate, _ := new(big.Int).SetString(d, 10)
+
+	fmt.Println("pas", pas, " old ", reflect.TypeOf(PowerActorState.State), " ", PowerActorState.State)
+	fmt.Println("ras", ras, " old ", reflect.TypeOf(RewardActorState.State), " ", RewardActorState.State)
+	nwqapP := new(big.Int).Div(ThisEpochQAPowerSmoothedPositionEstimate, new(big.Int).Exp(big.NewInt(2), big.NewInt(128), nil))
+	nwqapV := new(big.Int).Div(ThisEpochQAPowerSmoothedVelocityEstimate, new(big.Int).Exp(big.NewInt(2), big.NewInt(128), nil))
+	perEpochRewardP := new(big.Int).Div(ThisEpochRewardSmoothedPositionEstimate, new(big.Int).Mul(big.NewInt(2).Exp(big.NewInt(2), big.NewInt(128), nil), big.NewInt(1e18)))
+	perEpochRewardV := new(big.Int).Div(ThisEpochRewardSmoothedVelocityEstimate, new(big.Int).Mul(big.NewInt(2).Exp(big.NewInt(2), big.NewInt(128), nil), big.NewInt(1e18)))
+
+	minerProjectedReward := ProjectFutureReward(days, big.NewInt(int64(100000*math.Pow(2, 30))), nwqapP, nwqapV, perEpochRewardP, perEpochRewardV)
+	fmt.Println("minerProjectedReward", minerProjectedReward)
+
+	qaPower := minerPower.MinerPower.QualityAdjPower //filecoinbig.NewInt(int64(100000 * math.Pow(2, 30)))
+	fmt.Println("minerqaPower", qaPower)
+	nrwd := mineractor.ExpectedRewardForPower(smoothing.FilterEstimate{
+		PositionEstimate: filecoinbig.NewFromGo(ThisEpochRewardSmoothedPositionEstimate),
+		VelocityEstimate: filecoinbig.NewFromGo(ThisEpochRewardSmoothedVelocityEstimate),
+	}, smoothing.FilterEstimate{
+		PositionEstimate: filecoinbig.NewFromGo(ThisEpochQAPowerSmoothedPositionEstimate),
+		VelocityEstimate: filecoinbig.NewFromGo(ThisEpochQAPowerSmoothedVelocityEstimate),
+	}, qaPower, builtin.EpochsInDay*abi.ChainEpoch(days))
+
+	// v := 1e-18
+	atto := big.NewInt(1e18)
+	minerProjectedReward = nrwd.Int.Div(nrwd.Int, atto)
+	fmt.Println("nrwd", nrwd)
+
+	// GET currentEpoch: https://filfox.info/api/v1/tipset/recent?count=1
+	resp, err := http.Get("https://filfox.info/api/v1/tipset/recent?count=1")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	type FilfoxBlock struct {
+		Cid string
+	}
+
+	type FilfoxTipset struct {
+		Height       int64
+		Timestamp    int64
+		MessageCount int64
+		Blocks       []FilfoxBlock
+	}
+
+	var latestTipset []FilfoxTipset
+
+	if err := json.NewDecoder(resp.Body).Decode(&latestTipset); err != nil {
+		panic(err)
+	}
+	fmt.Println("latestTipset: ", latestTipset)
+
+	currentEpoch := latestTipset[0].Height
+	var existingMdps []market.MarketDealProposal
+	err = r.DB.Model(&existingMdps).
+		Where("provider_id = ?", obj.ID).
+		Where("start_epoch <= ?", currentEpoch+int64(days*2880)).
+		Where("end_epoch >= ?", currentEpoch).
+		Select()
+	if err != nil {
+		panic(err)
+	}
+
+	existingDealsEarnings := int64(0)
+
+	for _, mdp := range existingMdps {
+		rangeStart := currentEpoch
+		rangeEnd := currentEpoch + int64(days*2880)
+		if mdp.StartEpoch > currentEpoch {
+			rangeStart = mdp.StartEpoch
+		}
+		if mdp.EndEpoch < currentEpoch+int64(days*2880) {
+			rangeEnd = mdp.EndEpoch
+		}
+		count := rangeEnd - rangeStart
+
+		storagePricePerEpoch, _ := strconv.ParseInt(mdp.StoragePricePerEpoch, 10, 64)
+		existingDealsEarnings += count * storagePricePerEpoch
+	}
+
+	pricePerEpochSum := int64(0)
+	var lastMonthMdps []market.MarketDealProposal
+	err = r.DB.Model(&lastMonthMdps).
+		Where("provider_id = ?", obj.ID).
+		Where("start_epoch >= ?", currentEpoch-int64(30*2880)).
+		Select()
+	if err != nil {
+		panic(err)
+	}
+
+	estimatedFutureDealsEarnings := int64(0)
+	lastMonthDealsCount := int64(len(lastMonthMdps))
+	if lastMonthDealsCount != 0 {
+		for _, mdp := range lastMonthMdps {
+			storagePricePerEpoch, _ := strconv.ParseInt(mdp.StoragePricePerEpoch, 10, 64)
+			pricePerEpochSum += storagePricePerEpoch
+		}
+		averagePricePerEpochLastMonth := pricePerEpochSum / lastMonthDealsCount
+		estimatedFutureDeals := (lastMonthDealsCount / 30) * int64(days)
+		estimatedFutureDealsEarnings = estimatedFutureDeals * averagePricePerEpochLastMonth * int64(days*2880)
+	}
+
+	ei := &model.EstimatedIncome{
+		DealPayments: &model.DealPayments{
+			ExistingDeals:        existingDealsEarnings,
+			PotentialFutureDeals: estimatedFutureDealsEarnings,
+		},
+		BlockRewards: &model.BlockRewards{
+			BlockRewards:      minerProjectedReward.Int64(),
+			DaysUntilEligible: daysUntilEligible.Int64(),
+		},
+	}
+	return ei, nil
+}
+
+func (r *minerResolver) EstimatedExpenditure(ctx context.Context, obj *model.Miner, days int) (*model.EstimatedExpenditure, error) {
+	ee := &model.EstimatedExpenditure{
+		PreCommitExpiryPenalty: 0,
+		UndeclaredFaultPenalty: 0,
+		DeclaredFaultPenalty:   0,
+		OngoingFaultPenalty:    0,
+		TerminationPenalty:     0,
+		ConsensusFaultPenalty:  0,
+	}
+	return ee, nil
 }
 
 func (r *ownerResolver) Miners(ctx context.Context, obj *model.Owner) ([]*model.Miner, error) {

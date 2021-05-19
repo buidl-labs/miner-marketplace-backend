@@ -4,17 +4,19 @@ go 1.15
 
 require (
 	github.com/99designs/gqlgen v0.13.0
-	github.com/Jeffail/gabs v1.4.0 // indirect
-	github.com/buidl-labs/filecoin-chain-indexer v0.0.0-20210425060334-35e4cb44cc66
+	github.com/buidl-labs/filecoin-chain-indexer v0.0.0-20210507130506-aa1da439d877
+	github.com/filecoin-project/go-address v0.0.5
+	github.com/filecoin-project/go-state-types v0.1.0 // indirect
+	github.com/filecoin-project/lotus v1.8.0
+	github.com/filecoin-project/specs-actors v0.9.13
+	github.com/filecoin-project/specs-actors/v2 v2.3.5-0.20210114162132-5b58b773f4fb
+	github.com/filecoin-project/specs-actors/v3 v3.1.0
+	github.com/filecoin-project/specs-actors/v4 v4.0.0
 	github.com/go-chi/chi v3.3.2+incompatible
 	github.com/go-pg/pg/v10 v10.7.5
-	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lib/pq v1.9.0
 	github.com/rs/cors v1.7.0
-	github.com/supranational/blst v0.1.1 // indirect
 	github.com/vektah/gqlparser/v2 v2.1.0
-	github.com/wangjia184/sortedset v0.0.0-20160527075905-f5d03557ba30 // indirect
-	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace (
