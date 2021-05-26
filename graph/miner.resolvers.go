@@ -366,7 +366,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 	var txns []messages.Transaction
 	var mdps []market.MarketDealProposal
 
-	limitDefault := 100
+	limitDefault := 20
 	offsetZero := 0
 	if limit == nil && offset == nil {
 		limit = &limitDefault
@@ -377,8 +377,111 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 		offset = &offsetZero
 	}
 
+	// query to take union of deals and transactions at a given start_epoch/height
+	// select start_epoch, cast(deal_id as text) from market_deal_proposals where start_epoch=629991 union select height, cid from transactions where height=629991;
+
+	// select start_epoch as height, cast(deal_id as text) as id from market_deal_proposals
+	// 	where start_epoch>=629989 and start_epoch<=629993 union
+	// 	select height, cid as id from transactions
+	// 	where height>=629989 and height<=629993 order by height desc limit 10 offset 0;
+
+	// select start_epoch as height, cast(deal_id as text) as id, null as type, null as amount, null as transferred,
+	// client_id as sender, provider_id as receiver, null as miner_tip, null as base_fee_burn, null as method_name,
+	// null as actor_name, null as exit_code from market_deal_proposals
+	// where start_epoch>=629989 and start_epoch<=629993 union
+	// select height, cid as id, 1 as type, amount, transferred, sender, receiver, miner_tip, base_fee_burn,
+	// method_name, actor_name, exit_code from transactions where height>=629989 and height<=629993
+	// order by height desc limit 2000 ;
+
+	var id, amount, transferred, sender, receiver, minerFee, burnFee, methodName, actorName, storagePricePerEpoch string
+	var height, endEpoch, exitCode, transactionType int64
+	// mytxn:=new(messages.Transaction)
+
+	// result1 := make([]*model.Transaction, len(txns)+len(mdps))
+	var result1 []*model.Transaction
 	if since != nil {
 		if till != nil {
+			rows, err1 := r.PQDB.Query(`
+				select start_epoch as height, end_epoch, cast(deal_id as text) as id,
+				0 as type, null as amount, null as transferred,
+				client_id as sender, provider_id as receiver, null as miner_tip,
+				null as base_fee_burn, null as method_name, null as actor_name,
+				null as exit_code, storage_price_per_epoch from market_deal_proposals
+				where start_epoch>=` + fmt.Sprint(*since) + ` and start_epoch<=` + fmt.Sprint(*till) + ` union
+				select height, null as end_epoch, cid as id, 1 as type, amount, transferred, sender,
+				receiver, miner_tip, base_fee_burn, method_name, actor_name, exit_code,
+				null as storage_price_per_epoch from transactions where height>=` + fmt.Sprint(*since) + ` and height<=` + fmt.Sprint(*till) + `
+				order by height desc limit ` + fmt.Sprint(*limit) + ` offset ` + fmt.Sprint(*offset) + `;
+			`)
+			if err1 != nil {
+				panic(err1)
+			}
+			defer rows.Close()
+			fmt.Println("mrows", rows)
+			for rows.Next() {
+				err1 = rows.Scan(
+					&height, &endEpoch, &id, &transactionType, &amount, &transferred,
+					&sender, &receiver, &minerFee, &burnFee, &methodName,
+					&actorName, &exitCode, &storagePricePerEpoch)
+				if err1 != nil {
+					panic(err1)
+				}
+				if transactionType == 1 {
+					// txn
+					amt := amount
+					if amount == "0" {
+						if transferred != "0" {
+							amt = transferred
+						}
+					}
+					label, direction, gas := DeriveTransactionLabels(methodName, actorName)
+					result1 = append(result1, &model.Transaction{
+						ID:              id,
+						Amount:          amt,
+						TransactionType: "txn",
+						Label:           label,
+						Direction:       direction,
+						Gas:             gas,
+						Sender:          sender,
+						Receiver:        receiver,
+						Height:          height,
+						MinerFee:        minerFee,
+						BurnFee:         burnFee,
+						MethodName:      methodName,
+						ActorName:       actorName,
+						ExitCode:        exitCode,
+					})
+				} else {
+					// deal
+					amt, _ := CalculateDealPrice(storagePricePerEpoch, height, endEpoch)
+					result1 = append(result1, &model.Transaction{
+						ID:              fmt.Sprintf("%v", id),
+						Amount:          amt,
+						TransactionType: "deal",
+						Sender:          sender,
+						Receiver:        receiver,
+						Height:          height,
+					})
+				}
+				// heightInt, _ := strconv.Atoi(height)
+				// minPieceSizeInt, _ := strconv.Atoi(minPieceSize)
+				// maxPieceSizeInt, _ := strconv.Atoi(maxPieceSize)
+				// mis = append(mis, miner.MinerInfo{
+				// 	Height:  int64(heightInt),
+				// 	MinerID: minerID,
+				// 	Address: address,
+				// })
+			}
+			// err1 := r.DB.Model((*messages.Transaction)(nil)).
+			// 	ColumnExpr("").
+			// 	Where("").
+			// 	Union(r.DB.Model(
+			// 		(*market.MarketDealProposal)(nil)).
+			// 		Where("")).
+			// 	Select()
+			// if err1 != nil {
+			// 	panic(err1)
+			// }
 			err := r.DB.Model(&txns).
 				Where("miner = ?", obj.ID).
 				Where("height >= ? AND height <= ?", *since, *till).
@@ -502,7 +605,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 					amt = txns[0].Transferred
 				}
 			}
-			label, direction, gas := DeriveTransactionLabels(txns[0])
+			label, direction, gas := DeriveTransactionLabels(txns[0].MethodName, txns[0].ActorName)
 			result[i] = &model.Transaction{
 				ID:              txns[0].Cid,
 				Amount:          amt,
@@ -542,7 +645,7 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, sinc
 				amt = txns[j].Transferred
 			}
 		}
-		label, direction, gas := DeriveTransactionLabels(txns[j])
+		label, direction, gas := DeriveTransactionLabels(txns[j].MethodName, txns[j].ActorName)
 		result[i] = &model.Transaction{
 			ID:              txns[j].Cid,
 			Amount:          amt,

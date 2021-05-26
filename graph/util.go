@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buidl-labs/filecoin-chain-indexer/model/messages"
+	// "github.com/buidl-labs/filecoin-chain-indexer/model/messages"
 )
 
 type OwnerChange struct {
@@ -98,12 +98,10 @@ func GetTransactionType(methodName string) string {
 	// return ""
 }
 
-func DeriveTransactionLabels(transaction messages.Transaction) (string, string, bool) {
-	label := transaction.MethodName
+func DeriveTransactionLabels(methodName, actorName string) (string, string, bool) {
+	label := methodName
 	direction := "+"
 	gas := false
-	methodName := transaction.MethodName
-	actorName := transaction.ActorName
 	if strings.HasPrefix(actorName, "storageMinerActor") {
 		switch methodName {
 		case "SubmitWindowedPoSt":
@@ -120,6 +118,8 @@ func DeriveTransactionLabels(transaction messages.Transaction) (string, string, 
 		case "ApplyRewards":
 			label = "Block Reward"
 			direction = "+"
+		case "ReportConsensusFault":
+			label = "Consensus Fault"
 		}
 	}
 	return label, direction, gas
