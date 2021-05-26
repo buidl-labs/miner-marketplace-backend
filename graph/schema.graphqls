@@ -1,0 +1,123 @@
+# GraphQL schema
+
+type Query {
+  miner(id: ID!): Miner
+  miners: [Miner!]!
+}
+
+####################################
+# types
+####################################
+
+type Miner {
+  id: ID!
+  claimed: Boolean!
+  personalInfo: PersonalInfo @goField(forceResolver: true) # filled by miner
+  worker: Worker @goField(forceResolver: true)
+  owner: Owner @goField(forceResolver: true)
+  location: Location @goField(forceResolver: true) # by default, fetch from filrep (can be edited by miner)
+  qualityAdjustedPower: String! @goField(forceResolver: true)
+  service: Service @goField(forceResolver: true) # by default, fetch from filrep (can be edited by miner)
+  pricing: Pricing @goField(forceResolver: true) # by default, fetch from filrep (can be edited by miner)
+  reputationScore: Int! @goField(forceResolver: true)
+  transparencyScore: Int! @goField(forceResolver: true)
+}
+
+type PersonalInfo {
+  name: String! @goField(forceResolver: true)
+  bio: String! @goField(forceResolver: true)
+  email: String! @goField(forceResolver: true)
+  website: String! @goField(forceResolver: true)
+  twitter: String! @goField(forceResolver: true)
+  slack: String! @goField(forceResolver: true)
+}
+
+type Worker {
+  id: ID!
+  address: String
+}
+
+type Owner {
+  id: ID!
+  address: String
+}
+
+type Location {
+  region: String! @goField(forceResolver: true)
+  country: String! @goField(forceResolver: true)
+}
+
+type Service {
+  serviceTypes: ServiceTypes @goField(forceResolver: true)
+  dataTransferMechanism: DataTransferMechanism @goField(forceResolver: true)
+}
+
+type ServiceTypes {
+  storage: Boolean! # default: true
+  retrieval: Boolean! # default: true
+  repair: Boolean! # default: false
+}
+
+type DataTransferMechanism {
+  online: Boolean! # default: true
+  offline: Boolean! # default: false
+}
+
+type Pricing {
+  storageAskPrice: Float! @goField(forceResolver: true)
+  verifiedAskPrice: Float! @goField(forceResolver: true)
+  retrievalAskPrice: Float! @goField(forceResolver: true)
+}
+
+####################################
+# inputs
+####################################
+
+input ProfileSettingsInput {
+  minerID: ID!
+
+  name: String!
+  bio: String!
+  email: String!
+  website: String!
+  twitter: String!
+  slack: String!
+
+  region: String!
+  country: String!
+
+  storage: Boolean!
+  retrieval: Boolean!
+  repair: Boolean!
+
+  online: Boolean!
+  offline: Boolean!
+}
+
+input ProfileClaimInput {
+  minerID: ID!
+  ledgerAddress: String!
+}
+
+####################################
+# mutations
+####################################
+
+type Mutation {
+  claimProfile(input: ProfileClaimInput!): Boolean! # true: success, false: failure
+  editProfile(input: ProfileSettingsInput!): Boolean! # true: updated, false: failed
+}
+
+####################################
+# directives
+####################################
+
+directive @goModel(
+  model: String
+  models: [String!]
+) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
+
+directive @goField(
+  forceResolver: Boolean
+  name: String
+) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
