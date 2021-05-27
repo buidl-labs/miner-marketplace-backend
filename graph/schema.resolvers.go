@@ -10,6 +10,8 @@ import (
 	dbmodel "github.com/buidl-labs/miner-marketplace-backend/db/model"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (r *locationResolver) Region(ctx context.Context, obj *model.Location) (string, error) {
@@ -113,11 +115,110 @@ func (r *minerResolver) TransparencyScore(ctx context.Context, obj *model.Miner)
 }
 
 func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error) {
-	panic(fmt.Errorf("not implemented"))
+	minerID, err := address.NewFromString(input.MinerID)
+	if err != nil {
+		return false, err
+	}
+	minerInfo, _ := r.LensAPI.StateMinerInfo(context.Background(), minerID, types.EmptyTSK)
+	if err != nil {
+		return false, err
+	}
+	if input.LedgerAddress == minerInfo.Owner.String() {
+		// success
+		dbMiner := dbmodel.Miner{
+			Claimed: true,
+		}
+		_, err := r.DB.Model(&dbMiner).
+			Set("claimed = ?claimed").
+			Where("id = ?", input.MinerID).
+			Update()
+		if err != nil {
+			return false, err // failed to update in db
+		}
+		return true, nil
+	} else {
+		// failure
+		return false, nil
+	}
 }
 
 func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileSettingsInput) (bool, error) {
-	panic(fmt.Errorf("not implemented"))
+	dbMiner := dbmodel.Miner{}
+	if err := r.DB.Model(&dbMiner).Where("id = ?", input.MinerID).Select(); err != nil {
+		return false, err
+	}
+	if dbMiner.Claimed {
+		minerID, err := address.NewFromString(input.MinerID)
+		if err != nil {
+			return false, err
+		}
+		minerInfo, _ := r.LensAPI.StateMinerInfo(context.Background(), minerID, types.EmptyTSK)
+		if err != nil {
+			return false, err
+		}
+		if input.LedgerAddress == minerInfo.Owner.String() {
+			updatedMiner := dbmodel.Miner{
+				Region:            input.Region,
+				Country:           input.Country,
+				StorageAskPrice:   input.StorageAskPrice,
+				VerifiedAskPrice:  input.VerifiedAskPrice,
+				RetrievalAskPrice: input.RetrievalAskPrice,
+			}
+			updatedMinerPersonalInfo := dbmodel.MinerPersonalInfo{
+				Name:    input.Name,
+				Bio:     input.Bio,
+				Email:   input.Email,
+				Website: input.Website,
+				Twitter: input.Twitter,
+				Slack:   input.Slack,
+			}
+			updatedMinerService := dbmodel.MinerService{
+				Storage:             input.Storage,
+				Retrieval:           input.Retrieval,
+				Repair:              input.Repair,
+				DataTransferOnline:  input.Online,
+				DataTransferOffline: input.Offline,
+			}
+
+			_, err := r.DB.Model(&updatedMiner).
+				Set("region = ?region").
+				Set("country = ?country").
+				Set("storage_ask_price = ?storage_ask_price").
+				Set("verified_ask_price = ?verified_ask_price").
+				Set("retrieval_ask_price = ?retrieval_ask_price").
+				Where("id = ?", input.MinerID).
+				Update()
+			if err != nil {
+				return false, err
+			}
+
+			_, err = r.DB.Model(&updatedMinerPersonalInfo).
+				Set("name = ?name").
+				Set("bio = ?bio").
+				Set("email = ?email").
+				Set("website = ?website").
+				Set("twitter = ?twitter").
+				Set("slack = ?slack").
+				Where("id = ?", input.MinerID).
+				Update()
+			if err != nil {
+				return false, err
+			}
+
+			_, err = r.DB.Model(&updatedMinerService).
+				Set("storage = ?storage").
+				Set("retrieval = ?retrieval").
+				Set("repair = ?repair").
+				Set("data_transfer_online = ?data_transfer_online").
+				Set("data_transfer_offline = ?data_transfer_offline").
+				Where("id = ?", input.MinerID).
+				Update()
+			if err != nil {
+				return false, err
+			}
+		}
+	}
+	return false, nil
 }
 
 func (r *ownerResolver) Miner(ctx context.Context, obj *model.Owner) (*model.Miner, error) {

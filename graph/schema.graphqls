@@ -77,6 +77,7 @@ type Pricing {
 
 input ProfileSettingsInput {
   minerID: ID!
+  ledgerAddress: String!
 
   name: String!
   bio: String!
@@ -94,6 +95,10 @@ input ProfileSettingsInput {
 
   online: Boolean!
   offline: Boolean!
+
+  storageAskPrice: Float!
+  verifiedAskPrice: Float!
+  retrievalAskPrice: Float!
 }
 
 input ProfileClaimInput {
