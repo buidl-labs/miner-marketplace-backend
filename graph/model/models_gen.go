@@ -27,9 +27,9 @@ type Miner struct {
 }
 
 type Owner struct {
-	ID      string  `json:"id"`
-	Address *string `json:"address"`
-	Miner   *Miner  `json:"miner"`
+	ID      string `json:"id"`
+	Address string `json:"address"`
+	Miner   *Miner `json:"miner"`
 }
 
 type PersonalInfo struct {
@@ -81,7 +81,7 @@ type ServiceTypes struct {
 }
 
 type Worker struct {
-	ID      string  `json:"id"`
-	Address *string `json:"address"`
-	Miner   *Miner  `json:"miner"`
+	ID      string `json:"id"`
+	Address string `json:"address"`
+	Miner   *Miner `json:"miner"`
 }

@@ -7,52 +7,109 @@ import (
 	"context"
 	"fmt"
 
+	dbmodel "github.com/buidl-labs/miner-marketplace-backend/db/model"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
 )
 
 func (r *locationResolver) Region(ctx context.Context, obj *model.Location) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Region, nil
 }
 
 func (r *locationResolver) Country(ctx context.Context, obj *model.Location) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Country, nil
 }
 
 func (r *minerResolver) PersonalInfo(ctx context.Context, obj *model.Miner) (*model.PersonalInfo, error) {
-	panic(fmt.Errorf("not implemented"))
+	minerPersonalInfo := dbmodel.MinerPersonalInfo{}
+	err := r.DB.Model(&minerPersonalInfo).Where("id = ?", obj.ID).Select()
+	if err != nil {
+		return &model.PersonalInfo{}, nil
+	}
+	return &model.PersonalInfo{
+		Name:    minerPersonalInfo.Name,
+		Bio:     minerPersonalInfo.Bio,
+		Email:   minerPersonalInfo.Email,
+		Website: minerPersonalInfo.Website,
+		Twitter: minerPersonalInfo.Twitter,
+		Slack:   minerPersonalInfo.Slack,
+	}, nil
 }
 
 func (r *minerResolver) Worker(ctx context.Context, obj *model.Miner) (*model.Worker, error) {
-	panic(fmt.Errorf("not implemented"))
+	dbMiner := dbmodel.Miner{}
+	if err := r.DB.Model(&dbMiner).Where("id = ?", obj.ID).Select(); err != nil {
+		return &model.Worker{}, err
+	}
+	return &model.Worker{
+		ID:      dbMiner.WorkerID,
+		Address: dbMiner.WorkerAddress,
+	}, nil
 }
 
 func (r *minerResolver) Owner(ctx context.Context, obj *model.Miner) (*model.Owner, error) {
-	panic(fmt.Errorf("not implemented"))
+	dbMiner := dbmodel.Miner{}
+	if err := r.DB.Model(&dbMiner).Where("id = ?", obj.ID).Select(); err != nil {
+		return &model.Owner{}, err
+	}
+	return &model.Owner{
+		ID:      dbMiner.OwnerID,
+		Address: dbMiner.OwnerAddress,
+	}, nil
 }
 
 func (r *minerResolver) Location(ctx context.Context, obj *model.Miner) (*model.Location, error) {
-	panic(fmt.Errorf("not implemented"))
+	dbMiner := dbmodel.Miner{}
+	if err := r.DB.Model(&dbMiner).Where("id = ?", obj.ID).Select(); err != nil {
+		return &model.Location{}, err
+	}
+	return &model.Location{
+		Region:  dbMiner.Region,
+		Country: dbMiner.Country,
+	}, nil
 }
 
 func (r *minerResolver) QualityAdjustedPower(ctx context.Context, obj *model.Miner) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.QualityAdjustedPower, nil
 }
 
 func (r *minerResolver) Service(ctx context.Context, obj *model.Miner) (*model.Service, error) {
-	panic(fmt.Errorf("not implemented"))
+	dbMinerService := dbmodel.MinerService{}
+	if err := r.DB.Model(&dbMinerService).Where("id = ?", obj.ID).Select(); err != nil {
+		return &model.Service{}, err
+	}
+	return &model.Service{
+		ServiceTypes: &model.ServiceTypes{
+			Storage:   dbMinerService.Storage,
+			Retrieval: dbMinerService.Retrieval,
+			Repair:    dbMinerService.Repair,
+		},
+		DataTransferMechanism: &model.DataTransferMechanism{
+			Online:  dbMinerService.DataTransferOnline,
+			Offline: dbMinerService.DataTransferOffline,
+		},
+	}, nil
 }
 
 func (r *minerResolver) Pricing(ctx context.Context, obj *model.Miner) (*model.Pricing, error) {
-	panic(fmt.Errorf("not implemented"))
+	dbMiner := dbmodel.Miner{}
+	if err := r.DB.Model(&dbMiner).Where("id = ?", obj.ID).Select(); err != nil {
+		fmt.Println("Pricing: ", err)
+		return &model.Pricing{}, err
+	}
+	return &model.Pricing{
+		StorageAskPrice:   dbMiner.StorageAskPrice,
+		VerifiedAskPrice:  dbMiner.VerifiedAskPrice,
+		RetrievalAskPrice: dbMiner.RetrievalAskPrice,
+	}, nil
 }
 
 func (r *minerResolver) ReputationScore(ctx context.Context, obj *model.Miner) (int, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.ReputationScore, nil
 }
 
 func (r *minerResolver) TransparencyScore(ctx context.Context, obj *model.Miner) (int, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.TransparencyScore, nil
 }
 
 func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error) {
@@ -64,63 +121,88 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 }
 
 func (r *ownerResolver) Miner(ctx context.Context, obj *model.Owner) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 func (r *personalInfoResolver) Name(ctx context.Context, obj *model.PersonalInfo) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Name, nil
 }
 
 func (r *personalInfoResolver) Bio(ctx context.Context, obj *model.PersonalInfo) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Bio, nil
 }
 
 func (r *personalInfoResolver) Email(ctx context.Context, obj *model.PersonalInfo) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Email, nil
 }
 
 func (r *personalInfoResolver) Website(ctx context.Context, obj *model.PersonalInfo) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Website, nil
 }
 
 func (r *personalInfoResolver) Twitter(ctx context.Context, obj *model.PersonalInfo) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Twitter, nil
 }
 
 func (r *personalInfoResolver) Slack(ctx context.Context, obj *model.PersonalInfo) (string, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Slack, nil
 }
 
 func (r *pricingResolver) StorageAskPrice(ctx context.Context, obj *model.Pricing) (float64, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.StorageAskPrice, nil
 }
 
 func (r *pricingResolver) VerifiedAskPrice(ctx context.Context, obj *model.Pricing) (float64, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.VerifiedAskPrice, nil
 }
 
 func (r *pricingResolver) RetrievalAskPrice(ctx context.Context, obj *model.Pricing) (float64, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.RetrievalAskPrice, nil
 }
 
 func (r *queryResolver) Miner(ctx context.Context, id string) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	dbMiner := dbmodel.Miner{}
+	if err := r.DB.Model(&dbMiner).Where("id = ?", id).Select(); err != nil {
+		fmt.Println("Miner", err)
+		return &model.Miner{}, err
+	}
+	return &model.Miner{
+		ID:                   dbMiner.ID,
+		Claimed:              dbMiner.Claimed,
+		QualityAdjustedPower: dbMiner.QualityAdjustedPower,
+		ReputationScore:      dbMiner.ReputationScore,
+		TransparencyScore:    dbMiner.TransparencyScore,
+	}, nil
 }
 
 func (r *queryResolver) Miners(ctx context.Context) ([]*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	var dbMiners []*dbmodel.Miner
+	if err := r.DB.Model(&dbMiners).Select(); err != nil {
+		return []*model.Miner{}, err
+	}
+	var miners []*model.Miner
+	for _, dbMiner := range dbMiners {
+		miners = append(miners, &model.Miner{
+			ID:                   dbMiner.ID,
+			Claimed:              dbMiner.Claimed,
+			QualityAdjustedPower: dbMiner.QualityAdjustedPower,
+			ReputationScore:      dbMiner.ReputationScore,
+			TransparencyScore:    dbMiner.TransparencyScore,
+		})
+	}
+	return miners, nil
 }
 
 func (r *serviceResolver) ServiceTypes(ctx context.Context, obj *model.Service) (*model.ServiceTypes, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.ServiceTypes, nil
 }
 
 func (r *serviceResolver) DataTransferMechanism(ctx context.Context, obj *model.Service) (*model.DataTransferMechanism, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.DataTransferMechanism, nil
 }
 
 func (r *workerResolver) Miner(ctx context.Context, obj *model.Worker) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 // Location returns generated.LocationResolver implementation.
