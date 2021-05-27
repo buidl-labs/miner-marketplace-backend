@@ -38,10 +38,12 @@ type ResolverRoot interface {
 	Location() LocationResolver
 	Miner() MinerResolver
 	Mutation() MutationResolver
+	Owner() OwnerResolver
 	PersonalInfo() PersonalInfoResolver
 	Pricing() PricingResolver
 	Query() QueryResolver
 	Service() ServiceResolver
+	Worker() WorkerResolver
 }
 
 type DirectiveRoot struct {
@@ -80,6 +82,7 @@ type ComplexityRoot struct {
 	Owner struct {
 		Address func(childComplexity int) int
 		ID      func(childComplexity int) int
+		Miner   func(childComplexity int) int
 	}
 
 	PersonalInfo struct {
@@ -116,6 +119,7 @@ type ComplexityRoot struct {
 	Worker struct {
 		Address func(childComplexity int) int
 		ID      func(childComplexity int) int
+		Miner   func(childComplexity int) int
 	}
 }
 
@@ -138,6 +142,9 @@ type MutationResolver interface {
 	ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error)
 	EditProfile(ctx context.Context, input model.ProfileSettingsInput) (bool, error)
 }
+type OwnerResolver interface {
+	Miner(ctx context.Context, obj *model.Owner) (*model.Miner, error)
+}
 type PersonalInfoResolver interface {
 	Name(ctx context.Context, obj *model.PersonalInfo) (string, error)
 	Bio(ctx context.Context, obj *model.PersonalInfo) (string, error)
@@ -158,6 +165,9 @@ type QueryResolver interface {
 type ServiceResolver interface {
 	ServiceTypes(ctx context.Context, obj *model.Service) (*model.ServiceTypes, error)
 	DataTransferMechanism(ctx context.Context, obj *model.Service) (*model.DataTransferMechanism, error)
+}
+type WorkerResolver interface {
+	Miner(ctx context.Context, obj *model.Worker) (*model.Miner, error)
 }
 
 type executableSchema struct {
@@ -318,6 +328,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Owner.ID(childComplexity), true
 
+	case "Owner.miner":
+		if e.complexity.Owner.Miner == nil {
+			break
+		}
+
+		return e.complexity.Owner.Miner(childComplexity), true
+
 	case "PersonalInfo.bio":
 		if e.complexity.PersonalInfo.Bio == nil {
 			break
@@ -449,6 +466,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Worker.ID(childComplexity), true
 
+	case "Worker.miner":
+		if e.complexity.Worker.Miner == nil {
+			break
+		}
+
+		return e.complexity.Worker.Miner(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -550,11 +574,13 @@ type PersonalInfo {
 type Worker {
   id: ID!
   address: String
+  miner: Miner @goField(forceResolver: true)
 }
 
 type Owner {
   id: ID!
   address: String
+  miner: Miner @goField(forceResolver: true)
 }
 
 type Location {
@@ -1400,6 +1426,38 @@ func (ec *executionContext) _Owner_address(ctx context.Context, field graphql.Co
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Owner_miner(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Owner",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Owner().Miner(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Miner)
+	fc.Result = res
+	return ec.marshalOMiner2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐMiner(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _PersonalInfo_name(ctx context.Context, field graphql.CollectedField, obj *model.PersonalInfo) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -2094,6 +2152,38 @@ func (ec *executionContext) _Worker_address(ctx context.Context, field graphql.C
 	res := resTmp.(*string)
 	fc.Result = res
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Worker_miner(ctx context.Context, field graphql.CollectedField, obj *model.Worker) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Worker",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Worker().Miner(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Miner)
+	fc.Result = res
+	return ec.marshalOMiner2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐMiner(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -3615,10 +3705,21 @@ func (ec *executionContext) _Owner(ctx context.Context, sel ast.SelectionSet, ob
 		case "id":
 			out.Values[i] = ec._Owner_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "address":
 			out.Values[i] = ec._Owner_address(ctx, field, obj)
+		case "miner":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Owner_miner(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3950,10 +4051,21 @@ func (ec *executionContext) _Worker(ctx context.Context, sel ast.SelectionSet, o
 		case "id":
 			out.Values[i] = ec._Worker_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "address":
 			out.Values[i] = ec._Worker_address(ctx, field, obj)
+		case "miner":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Worker_miner(ctx, field, obj)
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

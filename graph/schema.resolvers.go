@@ -63,6 +63,10 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 	panic(fmt.Errorf("not implemented"))
 }
 
+func (r *ownerResolver) Miner(ctx context.Context, obj *model.Owner) (*model.Miner, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
 func (r *personalInfoResolver) Name(ctx context.Context, obj *model.PersonalInfo) (string, error) {
 	panic(fmt.Errorf("not implemented"))
 }
@@ -115,6 +119,10 @@ func (r *serviceResolver) DataTransferMechanism(ctx context.Context, obj *model.
 	panic(fmt.Errorf("not implemented"))
 }
 
+func (r *workerResolver) Miner(ctx context.Context, obj *model.Worker) (*model.Miner, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
 // Location returns generated.LocationResolver implementation.
 func (r *Resolver) Location() generated.LocationResolver { return &locationResolver{r} }
 
@@ -123,6 +131,9 @@ func (r *Resolver) Miner() generated.MinerResolver { return &minerResolver{r} }
 
 // Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
+
+// Owner returns generated.OwnerResolver implementation.
+func (r *Resolver) Owner() generated.OwnerResolver { return &ownerResolver{r} }
 
 // PersonalInfo returns generated.PersonalInfoResolver implementation.
 func (r *Resolver) PersonalInfo() generated.PersonalInfoResolver { return &personalInfoResolver{r} }
@@ -136,10 +147,15 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 // Service returns generated.ServiceResolver implementation.
 func (r *Resolver) Service() generated.ServiceResolver { return &serviceResolver{r} }
 
+// Worker returns generated.WorkerResolver implementation.
+func (r *Resolver) Worker() generated.WorkerResolver { return &workerResolver{r} }
+
 type locationResolver struct{ *Resolver }
 type minerResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
+type ownerResolver struct{ *Resolver }
 type personalInfoResolver struct{ *Resolver }
 type pricingResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type serviceResolver struct{ *Resolver }
+type workerResolver struct{ *Resolver }
