@@ -616,6 +616,7 @@ type Pricing {
 
 input ProfileSettingsInput {
   minerID: ID!
+  ledgerAddress: String!
 
   name: String!
   bio: String!
@@ -633,6 +634,10 @@ input ProfileSettingsInput {
 
   online: Boolean!
   offline: Boolean!
+
+  storageAskPrice: Float!
+  verifiedAskPrice: Float!
+  retrievalAskPrice: Float!
 }
 
 input ProfileClaimInput {
@@ -3321,6 +3326,14 @@ func (ec *executionContext) unmarshalInputProfileSettingsInput(ctx context.Conte
 			if err != nil {
 				return it, err
 			}
+		case "ledgerAddress":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ledgerAddress"))
+			it.LedgerAddress, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "name":
 			var err error
 
@@ -3422,6 +3435,30 @@ func (ec *executionContext) unmarshalInputProfileSettingsInput(ctx context.Conte
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offline"))
 			it.Offline, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "storageAskPrice":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storageAskPrice"))
+			it.StorageAskPrice, err = ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "verifiedAskPrice":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("verifiedAskPrice"))
+			it.VerifiedAskPrice, err = ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "retrievalAskPrice":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retrievalAskPrice"))
+			it.RetrievalAskPrice, err = ec.unmarshalNFloat2float64(ctx, v)
 			if err != nil {
 				return it, err
 			}
