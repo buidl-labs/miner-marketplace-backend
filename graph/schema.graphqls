@@ -35,11 +35,13 @@ type PersonalInfo {
 type Worker {
   id: ID!
   address: String
+  miner: Miner @goField(forceResolver: true)
 }
 
 type Owner {
   id: ID!
   address: String
+  miner: Miner @goField(forceResolver: true)
 }
 
 type Location {

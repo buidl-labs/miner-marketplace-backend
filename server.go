@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/buidl-labs/filecoin-chain-indexer/config"
+	"github.com/buidl-labs/filecoin-chain-indexer/lens/lotus"
 	"github.com/buidl-labs/miner-marketplace-backend/graph"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/go-chi/chi"
@@ -27,6 +30,24 @@ func main() {
 		log.Fatal("connecting to db: ", err)
 	}
 
+	lensOpener, lensCloser, err := lotus.NewAPIOpener(config.Config{
+		FullNodeAPIInfo: os.Getenv("FULLNODE_API_INFO"),
+		CacheSize:       1,
+	}, context.Background())
+	if err != nil {
+		log.Fatal("creating lotus API opener: ", err)
+	}
+	defer func() {
+		lensCloser()
+	}()
+	node, closer, err := lensOpener.Open(context.Background())
+	if err != nil {
+		log.Fatal("opening lotus lens API: ", err)
+	}
+	defer closer()
+
+	go Indexer(newDB, node)
+
 	router := chi.NewRouter()
 
 	router.Use(cors.New(cors.Options{
@@ -36,7 +57,8 @@ func main() {
 	}).Handler)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{
-		DB: newDB,
+		DB:      newDB,
+		LensAPI: node,
 	}}))
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
