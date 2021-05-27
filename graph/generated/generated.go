@@ -573,13 +573,13 @@ type PersonalInfo {
 
 type Worker {
   id: ID!
-  address: String
+  address: String!
   miner: Miner @goField(forceResolver: true)
 }
 
 type Owner {
   id: ID!
-  address: String
+  address: String!
   miner: Miner @goField(forceResolver: true)
 }
 
@@ -1419,11 +1419,14 @@ func (ec *executionContext) _Owner_address(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Owner_miner(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
@@ -2147,11 +2150,14 @@ func (ec *executionContext) _Worker_address(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Worker_miner(ctx context.Context, field graphql.CollectedField, obj *model.Worker) (ret graphql.Marshaler) {
@@ -3709,6 +3715,9 @@ func (ec *executionContext) _Owner(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "address":
 			out.Values[i] = ec._Owner_address(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "miner":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -4055,6 +4064,9 @@ func (ec *executionContext) _Worker(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "address":
 			out.Values[i] = ec._Worker_address(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "miner":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
