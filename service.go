@@ -69,8 +69,7 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 						ReputationScore:      reputationScore,
 					}
 					_, err = DB.Model(miner).
-						Set("quality_adjusted_power = ?quality_adjusted_power").
-						Set("reputation_score = ?reputation_score").
+						Column("quality_adjusted_power", "reputation_score").
 						Where("id = ?", m.Address).
 						Update()
 					if err != nil {
@@ -89,13 +88,7 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 						TransparencyScore:    0,
 					}
 					_, err = DB.Model(miner).
-						Set("region = ?region").
-						Set("country = ?country").
-						Set("quality_adjusted_power = ?quality_adjusted_power").
-						Set("storage_ask_price = ?storage_ask_price").
-						Set("verified_ask_price = ?verified_ask_price").
-						Set("reputation_score = ?reputation_score").
-						Set("transparency_score = ?", 0).
+						Column("region", "country", "quality_adjusted_power", "storage_ask_price", "verified_ask_price", "reputation_score", "transparency_score").
 						Where("id = ?", m.Address).
 						Update()
 					if err != nil {
@@ -176,8 +169,7 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 				OwnerAddress:  filFoxMiner.Miner.Owner.Address,
 			}
 			_, err := DB.Model(miner).
-				Set("worker_address = ?worker_address").
-				Set("owner_address = ?owner_address").
+				Column("worker_address", "owner_address").
 				Where("id = ?", m.Address).
 				Update()
 			if err != nil {
