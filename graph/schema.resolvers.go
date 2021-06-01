@@ -123,13 +123,17 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 	if err != nil {
 		return false, err
 	}
-	if input.LedgerAddress == minerInfo.Owner.String() {
+	ownerAddress, err := r.LensAPI.StateAccountKey(context.Background(), minerInfo.Owner, types.EmptyTSK)
+	if err != nil {
+		return false, err
+	}
+	if input.LedgerAddress == ownerAddress.String() {
 		// success
 		dbMiner := dbmodel.Miner{
 			Claimed: true,
 		}
 		_, err := r.DB.Model(&dbMiner).
-			Set("claimed = ?claimed").
+			Column("claimed").
 			Where("id = ?", input.MinerID).
 			Update()
 		if err != nil {
@@ -156,7 +160,11 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 		if err != nil {
 			return false, err
 		}
-		if input.LedgerAddress == minerInfo.Owner.String() {
+		ownerAddress, err := r.LensAPI.StateAccountKey(context.Background(), minerInfo.Owner, types.EmptyTSK)
+		if err != nil {
+			return false, err
+		}
+		if input.LedgerAddress == ownerAddress.String() {
 			updatedMiner := dbmodel.Miner{
 				Region:            input.Region,
 				Country:           input.Country,
@@ -181,11 +189,7 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 			}
 
 			_, err := r.DB.Model(&updatedMiner).
-				Set("region = ?region").
-				Set("country = ?country").
-				Set("storage_ask_price = ?storage_ask_price").
-				Set("verified_ask_price = ?verified_ask_price").
-				Set("retrieval_ask_price = ?retrieval_ask_price").
+				Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price").
 				Where("id = ?", input.MinerID).
 				Update()
 			if err != nil {
@@ -193,12 +197,7 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 			}
 
 			_, err = r.DB.Model(&updatedMinerPersonalInfo).
-				Set("name = ?name").
-				Set("bio = ?bio").
-				Set("email = ?email").
-				Set("website = ?website").
-				Set("twitter = ?twitter").
-				Set("slack = ?slack").
+				Column("name", "bio", "email", "website", "twitter", "slack").
 				Where("id = ?", input.MinerID).
 				Update()
 			if err != nil {
@@ -206,11 +205,7 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 			}
 
 			_, err = r.DB.Model(&updatedMinerService).
-				Set("storage = ?storage").
-				Set("retrieval = ?retrieval").
-				Set("repair = ?repair").
-				Set("data_transfer_online = ?data_transfer_online").
-				Set("data_transfer_offline = ?data_transfer_offline").
+				Column("storage", "retrieval", "repair", "data_transfer_online", "data_transfer_offline").
 				Where("id = ?", input.MinerID).
 				Update()
 			if err != nil {
