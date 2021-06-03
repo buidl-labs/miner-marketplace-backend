@@ -102,7 +102,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Miner  func(childComplexity int, id string) int
-		Miners func(childComplexity int) int
+		Miners func(childComplexity int, first *int, offset *int) int
 	}
 
 	Service struct {
@@ -160,7 +160,7 @@ type PricingResolver interface {
 }
 type QueryResolver interface {
 	Miner(ctx context.Context, id string) (*model.Miner, error)
-	Miners(ctx context.Context) ([]*model.Miner, error)
+	Miners(ctx context.Context, first *int, offset *int) ([]*model.Miner, error)
 }
 type ServiceResolver interface {
 	ServiceTypes(ctx context.Context, obj *model.Service) (*model.ServiceTypes, error)
@@ -415,7 +415,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.Miners(childComplexity), true
+		args, err := ec.field_Query_miners_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Miners(childComplexity, args["first"].(*int), args["offset"].(*int)), true
 
 	case "Service.dataTransferMechanism":
 		if e.complexity.Service.DataTransferMechanism == nil {
@@ -541,7 +546,7 @@ var sources = []*ast.Source{
 
 type Query {
   miner(id: ID!): Miner
-  miners: [Miner!]!
+  miners(first: Int, offset: Int): [Miner!]!
 }
 
 ####################################
@@ -732,6 +737,30 @@ func (ec *executionContext) field_Query_miner_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_miners_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["first"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["first"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["offset"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg1
 	return args, nil
 }
 
@@ -1836,9 +1865,16 @@ func (ec *executionContext) _Query_miners(ctx context.Context, field graphql.Col
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_miners_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Miners(rctx)
+		return ec.resolvers.Query().Miners(rctx, args["first"].(*int), args["offset"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4761,6 +4797,21 @@ func (ec *executionContext) marshalODataTransferMechanism2ᚖgithubᚗcomᚋbuid
 		return graphql.Null
 	}
 	return ec._DataTransferMechanism(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalInt(*v)
 }
 
 func (ec *executionContext) marshalOLocation2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐLocation(ctx context.Context, sel ast.SelectionSet, v *model.Location) graphql.Marshaler {

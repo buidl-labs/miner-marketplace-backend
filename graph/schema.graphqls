@@ -2,7 +2,7 @@
 
 type Query {
   miner(id: ID!): Miner
-  miners: [Miner!]!
+  miners(first: Int, offset: Int): [Miner!]!
 }
 
 ####################################

@@ -271,9 +271,22 @@ func (r *queryResolver) Miner(ctx context.Context, id string) (*model.Miner, err
 	}, nil
 }
 
-func (r *queryResolver) Miners(ctx context.Context) ([]*model.Miner, error) {
+func (r *queryResolver) Miners(ctx context.Context, first *int, offset *int) ([]*model.Miner, error) {
+	var _first = 100
+	var _offset = 0
+
+	if first != nil {
+		_first = *first
+	}
+	if offset != nil {
+		_offset = *offset
+	}
+
 	var dbMiners []*dbmodel.Miner
-	if err := r.DB.Model(&dbMiners).Select(); err != nil {
+	if err := r.DB.Model(&dbMiners).
+		Limit(_first).
+		Offset(_offset).
+		Select(); err != nil {
 		return []*model.Miner{}, err
 	}
 	var miners []*model.Miner
