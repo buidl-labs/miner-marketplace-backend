@@ -66,9 +66,9 @@ type DataTransferMechanism {
 }
 
 type Pricing {
-  storageAskPrice: Float! @goField(forceResolver: true)
-  verifiedAskPrice: Float! @goField(forceResolver: true)
-  retrievalAskPrice: Float! @goField(forceResolver: true)
+  storageAskPrice: String! @goField(forceResolver: true)
+  verifiedAskPrice: String! @goField(forceResolver: true)
+  retrievalAskPrice: String! @goField(forceResolver: true)
 }
 
 ####################################
@@ -96,9 +96,9 @@ input ProfileSettingsInput {
   online: Boolean!
   offline: Boolean!
 
-  storageAskPrice: Float!
-  verifiedAskPrice: Float!
-  retrievalAskPrice: Float!
+  storageAskPrice: String!
+  verifiedAskPrice: String!
+  retrievalAskPrice: String!
 }
 
 input ProfileClaimInput {
