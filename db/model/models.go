@@ -10,9 +10,9 @@ type Miner struct {
 	OwnerID              string
 	OwnerAddress         string
 	QualityAdjustedPower string `pg:",notnull"`
-	StorageAskPrice      float64
-	VerifiedAskPrice     float64
-	RetrievalAskPrice    float64
+	StorageAskPrice      string
+	VerifiedAskPrice     string
+	RetrievalAskPrice    string
 	ReputationScore      int `pg:",notnull"`
 	TransparencyScore    int `pg:",notnull"`
 }

@@ -244,15 +244,15 @@ func (r *personalInfoResolver) Slack(ctx context.Context, obj *model.PersonalInf
 	return obj.Slack, nil
 }
 
-func (r *pricingResolver) StorageAskPrice(ctx context.Context, obj *model.Pricing) (float64, error) {
+func (r *pricingResolver) StorageAskPrice(ctx context.Context, obj *model.Pricing) (string, error) {
 	return obj.StorageAskPrice, nil
 }
 
-func (r *pricingResolver) VerifiedAskPrice(ctx context.Context, obj *model.Pricing) (float64, error) {
+func (r *pricingResolver) VerifiedAskPrice(ctx context.Context, obj *model.Pricing) (string, error) {
 	return obj.VerifiedAskPrice, nil
 }
 
-func (r *pricingResolver) RetrievalAskPrice(ctx context.Context, obj *model.Pricing) (float64, error) {
+func (r *pricingResolver) RetrievalAskPrice(ctx context.Context, obj *model.Pricing) (string, error) {
 	return obj.RetrievalAskPrice, nil
 }
 

@@ -12,9 +12,9 @@ CREATE TABLE IF NOT EXISTS miners
     owner_id TEXT,
     owner_address TEXT,
     quality_adjusted_power TEXT,
-    storage_ask_price DOUBLE PRECISION,
-    verified_ask_price DOUBLE PRECISION,
-    retrieval_ask_price DOUBLE PRECISION,
+    storage_ask_price TEXT,
+    verified_ask_price TEXT,
+    retrieval_ask_price TEXT,
     reputation_score INTEGER,
     transparency_score INTEGER,
     PRIMARY KEY (id)

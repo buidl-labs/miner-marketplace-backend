@@ -42,9 +42,9 @@ type PersonalInfo struct {
 }
 
 type Pricing struct {
-	StorageAskPrice   float64 `json:"storageAskPrice"`
-	VerifiedAskPrice  float64 `json:"verifiedAskPrice"`
-	RetrievalAskPrice float64 `json:"retrievalAskPrice"`
+	StorageAskPrice   string `json:"storageAskPrice"`
+	VerifiedAskPrice  string `json:"verifiedAskPrice"`
+	RetrievalAskPrice string `json:"retrievalAskPrice"`
 }
 
 type ProfileClaimInput struct {
@@ -53,24 +53,24 @@ type ProfileClaimInput struct {
 }
 
 type ProfileSettingsInput struct {
-	MinerID           string  `json:"minerID"`
-	LedgerAddress     string  `json:"ledgerAddress"`
-	Name              string  `json:"name"`
-	Bio               string  `json:"bio"`
-	Email             string  `json:"email"`
-	Website           string  `json:"website"`
-	Twitter           string  `json:"twitter"`
-	Slack             string  `json:"slack"`
-	Region            string  `json:"region"`
-	Country           string  `json:"country"`
-	Storage           bool    `json:"storage"`
-	Retrieval         bool    `json:"retrieval"`
-	Repair            bool    `json:"repair"`
-	Online            bool    `json:"online"`
-	Offline           bool    `json:"offline"`
-	StorageAskPrice   float64 `json:"storageAskPrice"`
-	VerifiedAskPrice  float64 `json:"verifiedAskPrice"`
-	RetrievalAskPrice float64 `json:"retrievalAskPrice"`
+	MinerID           string `json:"minerID"`
+	LedgerAddress     string `json:"ledgerAddress"`
+	Name              string `json:"name"`
+	Bio               string `json:"bio"`
+	Email             string `json:"email"`
+	Website           string `json:"website"`
+	Twitter           string `json:"twitter"`
+	Slack             string `json:"slack"`
+	Region            string `json:"region"`
+	Country           string `json:"country"`
+	Storage           bool   `json:"storage"`
+	Retrieval         bool   `json:"retrieval"`
+	Repair            bool   `json:"repair"`
+	Online            bool   `json:"online"`
+	Offline           bool   `json:"offline"`
+	StorageAskPrice   string `json:"storageAskPrice"`
+	VerifiedAskPrice  string `json:"verifiedAskPrice"`
+	RetrievalAskPrice string `json:"retrievalAskPrice"`
 }
 
 type Service struct {

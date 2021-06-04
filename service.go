@@ -44,11 +44,9 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 			reputationScoreString, _ := m.Score.(string)
 			reputationScoreInt64, _ := strconv.ParseInt(reputationScoreString, 10, 64)
 			reputationScore := int(reputationScoreInt64)
-			// TODO! fix conversion from string to int/float
-			storageAskPriceInt, _ := strconv.ParseInt(m.Price, 10, 64)
-			storageAskPrice := float64(storageAskPriceInt * (10 ^ -18))
-			verifiedAskPriceInt, _ := strconv.ParseInt(m.VerifiedPrice, 10, 64)
-			verifiedAskPrice := float64(verifiedAskPriceInt * (10 ^ -18))
+
+			storageAskPrice := m.Price
+			verifiedAskPrice := m.VerifiedPrice
 
 			count, _ := DB.Model((*model.Miner)(nil)).
 				Where("id = ?", m.Address).

@@ -154,9 +154,9 @@ type PersonalInfoResolver interface {
 	Slack(ctx context.Context, obj *model.PersonalInfo) (string, error)
 }
 type PricingResolver interface {
-	StorageAskPrice(ctx context.Context, obj *model.Pricing) (float64, error)
-	VerifiedAskPrice(ctx context.Context, obj *model.Pricing) (float64, error)
-	RetrievalAskPrice(ctx context.Context, obj *model.Pricing) (float64, error)
+	StorageAskPrice(ctx context.Context, obj *model.Pricing) (string, error)
+	VerifiedAskPrice(ctx context.Context, obj *model.Pricing) (string, error)
+	RetrievalAskPrice(ctx context.Context, obj *model.Pricing) (string, error)
 }
 type QueryResolver interface {
 	Miner(ctx context.Context, id string) (*model.Miner, error)
@@ -610,9 +610,9 @@ type DataTransferMechanism {
 }
 
 type Pricing {
-  storageAskPrice: Float! @goField(forceResolver: true)
-  verifiedAskPrice: Float! @goField(forceResolver: true)
-  retrievalAskPrice: Float! @goField(forceResolver: true)
+  storageAskPrice: String! @goField(forceResolver: true)
+  verifiedAskPrice: String! @goField(forceResolver: true)
+  retrievalAskPrice: String! @goField(forceResolver: true)
 }
 
 ####################################
@@ -640,9 +640,9 @@ input ProfileSettingsInput {
   online: Boolean!
   offline: Boolean!
 
-  storageAskPrice: Float!
-  verifiedAskPrice: Float!
-  retrievalAskPrice: Float!
+  storageAskPrice: String!
+  verifiedAskPrice: String!
+  retrievalAskPrice: String!
 }
 
 input ProfileClaimInput {
@@ -1735,9 +1735,9 @@ func (ec *executionContext) _Pricing_storageAskPrice(ctx context.Context, field 
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Pricing_verifiedAskPrice(ctx context.Context, field graphql.CollectedField, obj *model.Pricing) (ret graphql.Marshaler) {
@@ -1770,9 +1770,9 @@ func (ec *executionContext) _Pricing_verifiedAskPrice(ctx context.Context, field
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Pricing_retrievalAskPrice(ctx context.Context, field graphql.CollectedField, obj *model.Pricing) (ret graphql.Marshaler) {
@@ -1805,9 +1805,9 @@ func (ec *executionContext) _Pricing_retrievalAskPrice(ctx context.Context, fiel
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_miner(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3478,7 +3478,7 @@ func (ec *executionContext) unmarshalInputProfileSettingsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storageAskPrice"))
-			it.StorageAskPrice, err = ec.unmarshalNFloat2float64(ctx, v)
+			it.StorageAskPrice, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3486,7 +3486,7 @@ func (ec *executionContext) unmarshalInputProfileSettingsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("verifiedAskPrice"))
-			it.VerifiedAskPrice, err = ec.unmarshalNFloat2float64(ctx, v)
+			it.VerifiedAskPrice, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3494,7 +3494,7 @@ func (ec *executionContext) unmarshalInputProfileSettingsInput(ctx context.Conte
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retrievalAskPrice"))
-			it.RetrievalAskPrice, err = ec.unmarshalNFloat2float64(ctx, v)
+			it.RetrievalAskPrice, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4414,21 +4414,6 @@ func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interf
 
 func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
 	res := graphql.MarshalBoolean(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-	}
-	return res
-}
-
-func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
-	res, err := graphql.UnmarshalFloat(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
-	res := graphql.MarshalFloat(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
