@@ -6,6 +6,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	dbmodel "github.com/buidl-labs/miner-marketplace-backend/db/model"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
@@ -115,18 +116,26 @@ func (r *minerResolver) TransparencyScore(ctx context.Context, obj *model.Miner)
 }
 
 func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error) {
+	fmt.Println("i", input.MinerID, "t", reflect.TypeOf(input.MinerID))
+	fmt.Println("j", input.LedgerAddress, "t", reflect.TypeOf(input.LedgerAddress))
 	minerID, err := address.NewFromString(input.MinerID)
 	if err != nil {
+		fmt.Println("1.", err)
 		return false, err
 	}
 	minerInfo, _ := r.LensAPI.StateMinerInfo(context.Background(), minerID, types.EmptyTSK)
 	if err != nil {
+		fmt.Println("2.", err)
 		return false, err
 	}
 	ownerAddress, err := r.LensAPI.StateAccountKey(context.Background(), minerInfo.Owner, types.EmptyTSK)
 	if err != nil {
+		fmt.Println("3.", err)
 		return false, err
 	}
+
+	fmt.Println("cmp", "la", input.LedgerAddress, "oa", ownerAddress.String())
+
 	if input.LedgerAddress == ownerAddress.String() {
 		// success
 		dbMiner := dbmodel.Miner{
@@ -137,6 +146,7 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 			Where("id = ?", input.MinerID).
 			Update()
 		if err != nil {
+			fmt.Println("4.", err)
 			return false, err // failed to update in db
 		}
 		return true, nil
@@ -211,6 +221,7 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 			if err != nil {
 				return false, err
 			}
+			return true, nil
 		}
 	}
 	return false, nil
