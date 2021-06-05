@@ -118,6 +118,31 @@ func (r *minerResolver) TransparencyScore(ctx context.Context, obj *model.Miner)
 func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error) {
 	fmt.Println("i", input.MinerID, "t", reflect.TypeOf(input.MinerID))
 	fmt.Println("j", input.LedgerAddress, "t", reflect.TypeOf(input.LedgerAddress))
+
+	// ######
+	// NOTE: just for testing with our ledger wallets
+	if input.MinerID == "f04321" {
+		if input.LedgerAddress == "f1v2qntmt4k6wxugdbxqjw6l3knywh2csi2lcmz2a" ||
+			input.LedgerAddress == "f1rb4xvch25rqshc7oklj3wcxgotezciqbjufgeli" ||
+			input.LedgerAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" {
+			dbMiner := dbmodel.Miner{
+				Claimed: true,
+			}
+			_, err := r.DB.Model(&dbMiner).
+				Column("claimed").
+				Where("id = ?", input.MinerID).
+				Update()
+			if err != nil {
+				fmt.Println("testing.", err)
+				return false, err // failed to update in db
+			}
+			return true, nil
+		} else {
+			return false, nil
+		}
+	}
+	// ######
+
 	minerID, err := address.NewFromString(input.MinerID)
 	if err != nil {
 		fmt.Println("1.", err)
@@ -162,6 +187,62 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 		return false, err
 	}
 	if dbMiner.Claimed {
+		// ######
+		// NOTE: just for testing with our ledger wallets
+		if input.MinerID == "f04321" {
+			if input.LedgerAddress == "f1v2qntmt4k6wxugdbxqjw6l3knywh2csi2lcmz2a" ||
+				input.LedgerAddress == "f1rb4xvch25rqshc7oklj3wcxgotezciqbjufgeli" ||
+				input.LedgerAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" {
+				updatedMiner := dbmodel.Miner{
+					Region:            input.Region,
+					Country:           input.Country,
+					StorageAskPrice:   input.StorageAskPrice,
+					VerifiedAskPrice:  input.VerifiedAskPrice,
+					RetrievalAskPrice: input.RetrievalAskPrice,
+				}
+				updatedMinerPersonalInfo := dbmodel.MinerPersonalInfo{
+					Name:    input.Name,
+					Bio:     input.Bio,
+					Email:   input.Email,
+					Website: input.Website,
+					Twitter: input.Twitter,
+					Slack:   input.Slack,
+				}
+				updatedMinerService := dbmodel.MinerService{
+					Storage:             input.Storage,
+					Retrieval:           input.Retrieval,
+					Repair:              input.Repair,
+					DataTransferOnline:  input.Online,
+					DataTransferOffline: input.Offline,
+				}
+
+				_, err := r.DB.Model(&updatedMiner).
+					Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price").
+					Where("id = ?", input.MinerID).
+					Update()
+				if err != nil {
+					return false, err
+				}
+
+				_, err = r.DB.Model(&updatedMinerPersonalInfo).
+					Column("name", "bio", "email", "website", "twitter", "slack").
+					Where("id = ?", input.MinerID).
+					Update()
+				if err != nil {
+					return false, err
+				}
+
+				_, err = r.DB.Model(&updatedMinerService).
+					Column("storage", "retrieval", "repair", "data_transfer_online", "data_transfer_offline").
+					Where("id = ?", input.MinerID).
+					Update()
+				if err != nil {
+					return false, err
+				}
+				return true, nil
+			}
+		}
+		// ######
 		minerID, err := address.NewFromString(input.MinerID)
 		if err != nil {
 			return false, err
