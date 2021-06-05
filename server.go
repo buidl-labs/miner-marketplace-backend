@@ -50,11 +50,14 @@ func main() {
 
 	router := chi.NewRouter()
 
-	router.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowCredentials: true,
-		Debug:            true,
-	}).Handler)
+	// router.Use(cors.New(cors.Options{
+	// 	AllowedOrigins:   []string{"*"},
+	// 	AllowCredentials: true,
+	// 	AllowedMethods:   []string{"*"},
+	// 	AllowedHeaders:   []string{"*"},
+	// 	Debug:            true,
+	// }).Handler)
+	router.Use(cors.AllowAll().Handler)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{
 		DB:      newDB,
