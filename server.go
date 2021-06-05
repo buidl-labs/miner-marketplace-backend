@@ -50,25 +50,25 @@ func main() {
 
 	router := chi.NewRouter()
 
-	// router.Use(cors.New(cors.Options{
-	// 	AllowedOrigins:   []string{"*"},
-	// 	AllowCredentials: true,
-	// 	AllowedMethods:   []string{"*"},
-	// 	AllowedHeaders:   []string{"*"},
-	// 	Debug:            true,
-	// }).Handler)
-	router.Use(cors.AllowAll().Handler)
+	router.Use(cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		AllowedMethods:   []string{"*"},
+		AllowedHeaders:   []string{"*"},
+		Debug:            true,
+	}).Handler)
+	// router.Use(cors.AllowAll().Handler)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{
 		DB:      newDB,
 		LensAPI: node,
 	}}))
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	router.Handle("/query", srv)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }
 
 func NewDB() (*pg.DB, error) {
