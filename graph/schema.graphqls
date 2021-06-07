@@ -3,11 +3,18 @@
 type Query {
   miner(id: ID!): Miner
   miners(first: Int, offset: Int): [Miner!]!
+  networkStats: NetworkStats!
 }
 
 ####################################
 # types
 ####################################
+
+type NetworkStats {
+  activeMinersCount: Int!
+  networkStorageCapacity: String!
+  dataStored: String!
+}
 
 type Miner {
   id: ID!
