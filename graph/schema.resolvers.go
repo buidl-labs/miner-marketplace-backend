@@ -6,13 +6,16 @@ package graph
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"reflect"
 
 	dbmodel "github.com/buidl-labs/miner-marketplace-backend/db/model"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
+	"github.com/buidl-labs/miner-marketplace-backend/util"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
+	// "github.com/alecthomas/units"
 )
 
 func (r *locationResolver) Region(ctx context.Context, obj *model.Location) (string, error) {
@@ -392,6 +395,54 @@ func (r *queryResolver) Miners(ctx context.Context, first *int, offset *int) ([]
 		})
 	}
 	return miners, nil
+}
+
+func (r *queryResolver) NetworkStats(ctx context.Context) (*model.NetworkStats, error) {
+	var dbMiners []*dbmodel.Miner
+	var activeMinersCount int
+	activeMinersCount, err := r.DB.Model(&dbMiners).Count()
+	if err != nil {
+		fmt.Println("couldn't get activeminerscount")
+		activeMinersCount = 2247
+	}
+	var FILFOX_STATS_POWER string = "https://filfox.info/api/v1/stats/power"
+
+	filFoxStatsPower := new(FilFoxStatsPower)
+	util.GetJson(FILFOX_STATS_POWER, filFoxStatsPower)
+
+	// fmt.Println("pagination:")
+	// for _, fsp := range *filFoxStatsPower {
+	// 	fmt.Println(fsp.QualityAdjPower)
+	// }
+	fsp := *filFoxStatsPower
+	fmt.Println("zeroth", fsp[0].QualityAdjPower, fsp[0])
+	var powerEiB string = "6.131 EiB"
+	n := new(big.Int)
+	n, ok := n.SetString(fsp[0].QualityAdjPower, 10)
+	if !ok {
+		fmt.Println("SetString: error")
+	}
+	fmt.Println("n", n, "factor", big.NewInt(int64(1.153e+18)))
+	// big.
+	dv := new(big.Int).Div(n, big.NewInt(int64(1.153e+18)))
+	fmt.Println("dv", dv)
+	// powerEiB = dv.String()
+	fmt.Println("dvs", powerEiB)
+	// 1.153e+18
+	return &model.NetworkStats{
+		ActiveMinersCount:      activeMinersCount,
+		NetworkStorageCapacity: powerEiB,
+		DataStored:             powerEiB,
+	}, nil
+}
+
+type FilFoxStatsPower []struct {
+	Height               int    `json:"height"`
+	Timestamp            int    `json:"timestamp"`
+	RawBytePower         string `json:"rawBytePower"`
+	QualityAdjPower      string `json:"qualityAdjPower"`
+	RawBytePowerDelta    string `json:"rawBytePowerDelta"`
+	QualityAdjPowerDelta string `json:"qualityAdjPowerDelta"`
 }
 
 func (r *serviceResolver) ServiceTypes(ctx context.Context, obj *model.Service) (*model.ServiceTypes, error) {

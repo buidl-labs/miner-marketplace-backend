@@ -79,6 +79,12 @@ type ComplexityRoot struct {
 		EditProfile  func(childComplexity int, input model.ProfileSettingsInput) int
 	}
 
+	NetworkStats struct {
+		ActiveMinersCount      func(childComplexity int) int
+		DataStored             func(childComplexity int) int
+		NetworkStorageCapacity func(childComplexity int) int
+	}
+
 	Owner struct {
 		Address func(childComplexity int) int
 		ID      func(childComplexity int) int
@@ -101,8 +107,9 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Miner  func(childComplexity int, id string) int
-		Miners func(childComplexity int, first *int, offset *int) int
+		Miner        func(childComplexity int, id string) int
+		Miners       func(childComplexity int, first *int, offset *int) int
+		NetworkStats func(childComplexity int) int
 	}
 
 	Service struct {
@@ -161,6 +168,7 @@ type PricingResolver interface {
 type QueryResolver interface {
 	Miner(ctx context.Context, id string) (*model.Miner, error)
 	Miners(ctx context.Context, first *int, offset *int) ([]*model.Miner, error)
+	NetworkStats(ctx context.Context) (*model.NetworkStats, error)
 }
 type ServiceResolver interface {
 	ServiceTypes(ctx context.Context, obj *model.Service) (*model.ServiceTypes, error)
@@ -314,6 +322,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.EditProfile(childComplexity, args["input"].(model.ProfileSettingsInput)), true
 
+	case "NetworkStats.activeMinersCount":
+		if e.complexity.NetworkStats.ActiveMinersCount == nil {
+			break
+		}
+
+		return e.complexity.NetworkStats.ActiveMinersCount(childComplexity), true
+
+	case "NetworkStats.dataStored":
+		if e.complexity.NetworkStats.DataStored == nil {
+			break
+		}
+
+		return e.complexity.NetworkStats.DataStored(childComplexity), true
+
+	case "NetworkStats.networkStorageCapacity":
+		if e.complexity.NetworkStats.NetworkStorageCapacity == nil {
+			break
+		}
+
+		return e.complexity.NetworkStats.NetworkStorageCapacity(childComplexity), true
+
 	case "Owner.address":
 		if e.complexity.Owner.Address == nil {
 			break
@@ -421,6 +450,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Miners(childComplexity, args["first"].(*int), args["offset"].(*int)), true
+
+	case "Query.networkStats":
+		if e.complexity.Query.NetworkStats == nil {
+			break
+		}
+
+		return e.complexity.Query.NetworkStats(childComplexity), true
 
 	case "Service.dataTransferMechanism":
 		if e.complexity.Service.DataTransferMechanism == nil {
@@ -547,11 +583,18 @@ var sources = []*ast.Source{
 type Query {
   miner(id: ID!): Miner
   miners(first: Int, offset: Int): [Miner!]!
+  networkStats: NetworkStats!
 }
 
 ####################################
 # types
 ####################################
+
+type NetworkStats {
+  activeMinersCount: Int!
+  networkStorageCapacity: String!
+  dataStored: String!
+}
 
 type Miner {
   id: ID!
@@ -1393,6 +1436,111 @@ func (ec *executionContext) _Mutation_editProfile(ctx context.Context, field gra
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _NetworkStats_activeMinersCount(ctx context.Context, field graphql.CollectedField, obj *model.NetworkStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "NetworkStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ActiveMinersCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _NetworkStats_networkStorageCapacity(ctx context.Context, field graphql.CollectedField, obj *model.NetworkStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "NetworkStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NetworkStorageCapacity, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _NetworkStats_dataStored(ctx context.Context, field graphql.CollectedField, obj *model.NetworkStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "NetworkStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DataStored, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Owner_id(ctx context.Context, field graphql.CollectedField, obj *model.Owner) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1889,6 +2037,41 @@ func (ec *executionContext) _Query_miners(ctx context.Context, field graphql.Col
 	res := resTmp.([]*model.Miner)
 	fc.Result = res
 	return ec.marshalNMiner2ᚕᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐMinerᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_networkStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().NetworkStats(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.NetworkStats)
+	fc.Result = res
+	return ec.marshalNNetworkStats2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐNetworkStats(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3770,6 +3953,43 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	return out
 }
 
+var networkStatsImplementors = []string{"NetworkStats"}
+
+func (ec *executionContext) _NetworkStats(ctx context.Context, sel ast.SelectionSet, obj *model.NetworkStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, networkStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NetworkStats")
+		case "activeMinersCount":
+			out.Values[i] = ec._NetworkStats_activeMinersCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "networkStorageCapacity":
+			out.Values[i] = ec._NetworkStats_networkStorageCapacity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "dataStored":
+			out.Values[i] = ec._NetworkStats_dataStored(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var ownerImplementors = []string{"Owner"}
 
 func (ec *executionContext) _Owner(ctx context.Context, sel ast.SelectionSet, obj *model.Owner) graphql.Marshaler {
@@ -4018,6 +4238,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_miners(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "networkStats":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_networkStats(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -4497,6 +4731,20 @@ func (ec *executionContext) marshalNMiner2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminer
 		return graphql.Null
 	}
 	return ec._Miner(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNNetworkStats2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐNetworkStats(ctx context.Context, sel ast.SelectionSet, v model.NetworkStats) graphql.Marshaler {
+	return ec._NetworkStats(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNNetworkStats2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐNetworkStats(ctx context.Context, sel ast.SelectionSet, v *model.NetworkStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._NetworkStats(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNProfileClaimInput2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐProfileClaimInput(ctx context.Context, v interface{}) (model.ProfileClaimInput, error) {

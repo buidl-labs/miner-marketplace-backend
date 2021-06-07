@@ -1,16 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/miner-marketplace-backend/db/model"
+	"github.com/buidl-labs/miner-marketplace-backend/util"
 	"github.com/go-pg/pg/v10"
 )
 
@@ -35,7 +33,7 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 	var FILREP_MINERS string = "https://api.filrep.io/api/v1/miners"
 
 	filRepMiners := FilRepMiners{}
-	getJson(FILREP_MINERS, &filRepMiners)
+	util.GetJson(FILREP_MINERS, &filRepMiners)
 
 	fmt.Println("pagination:", filRepMiners.Pagination)
 
@@ -153,7 +151,7 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 	var FILFOX_MINER string = "https://filfox.info/api/v1/address/"
 
 	filRepMiners := new(FilRepMiners)
-	getJson(FILREP_MINERS, filRepMiners)
+	util.GetJson(FILREP_MINERS, filRepMiners)
 
 	fmt.Println("pagination:", filRepMiners.Pagination)
 
@@ -161,7 +159,7 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 		for _, m := range filRepMiners.Miners {
 			// https://filfox.info/api/v1/address/f02770
 			filFoxMiner := new(FilFoxMiner)
-			getJson(FILFOX_MINER+m.Address, filFoxMiner)
+			util.GetJson(FILFOX_MINER+m.Address, filFoxMiner)
 
 			miner := &model.Miner{
 				WorkerAddress: filFoxMiner.Miner.Worker.Address,
@@ -290,23 +288,4 @@ type FilRepMiners struct {
 	Pagination struct {
 		Total int64 `json:"total"`
 	} `json:"pagination"`
-}
-
-func getJson(url string, target interface{}) (interface{}, error) {
-	r, err := http.Get(url)
-	if err != nil {
-		return target, err
-	}
-	defer r.Body.Close()
-
-	body, readErr := ioutil.ReadAll(r.Body)
-	if readErr != nil {
-		return target, readErr
-	}
-
-	jsonErr := json.Unmarshal(body, target)
-	if jsonErr != nil {
-		return target, jsonErr
-	}
-	return target, nil
 }

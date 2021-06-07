@@ -26,6 +26,12 @@ type Miner struct {
 	TransparencyScore    int           `json:"transparencyScore"`
 }
 
+type NetworkStats struct {
+	ActiveMinersCount      int    `json:"activeMinersCount"`
+	NetworkStorageCapacity string `json:"networkStorageCapacity"`
+	DataStored             string `json:"dataStored"`
+}
+
 type Owner struct {
 	ID      string `json:"id"`
 	Address string `json:"address"`
