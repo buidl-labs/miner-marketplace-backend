@@ -12,6 +12,7 @@ import (
 	dbmodel "github.com/buidl-labs/miner-marketplace-backend/db/model"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/model"
+	"github.com/buidl-labs/miner-marketplace-backend/service"
 	"github.com/buidl-labs/miner-marketplace-backend/util"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -122,6 +123,12 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 	fmt.Println("i", input.MinerID, "t", reflect.TypeOf(input.MinerID))
 	fmt.Println("j", input.LedgerAddress, "t", reflect.TypeOf(input.LedgerAddress))
 
+	var isClaimed bool
+	err := r.DB.Model((*dbmodel.Miner)(nil)).
+		Column("claimed").
+		Where("id = ?", input.MinerID).
+		Select(&isClaimed)
+
 	// ######
 	// NOTE: just for testing with our ledger wallets
 	if input.MinerID == "f04321" {
@@ -129,10 +136,11 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 			input.LedgerAddress == "f1rb4xvch25rqshc7oklj3wcxgotezciqbjufgeli" ||
 			input.LedgerAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" {
 			dbMiner := dbmodel.Miner{
-				Claimed: true,
+				Claimed:           true,
+				TransparencyScore: 10,
 			}
 			_, err := r.DB.Model(&dbMiner).
-				Column("claimed").
+				Column("claimed", "transparency_score").
 				Where("id = ?", input.MinerID).
 				Update()
 			if err != nil {
@@ -167,10 +175,11 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 	if input.LedgerAddress == ownerAddress.String() {
 		// success
 		dbMiner := dbmodel.Miner{
-			Claimed: true,
+			Claimed:           true,
+			TransparencyScore: 10,
 		}
 		_, err := r.DB.Model(&dbMiner).
-			Column("claimed").
+			Column("claimed", "transparency_score").
 			Where("id = ?", input.MinerID).
 			Update()
 		if err != nil {
@@ -202,6 +211,7 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 					StorageAskPrice:   input.StorageAskPrice,
 					VerifiedAskPrice:  input.VerifiedAskPrice,
 					RetrievalAskPrice: input.RetrievalAskPrice,
+					TransparencyScore: service.ComputeTransparencyScore(input),
 				}
 				updatedMinerPersonalInfo := dbmodel.MinerPersonalInfo{
 					Name:    input.Name,
@@ -220,7 +230,7 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 				}
 
 				_, err := r.DB.Model(&updatedMiner).
-					Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price").
+					Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price", "transparency_score").
 					Where("id = ?", input.MinerID).
 					Update()
 				if err != nil {
@@ -265,6 +275,7 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 				StorageAskPrice:   input.StorageAskPrice,
 				VerifiedAskPrice:  input.VerifiedAskPrice,
 				RetrievalAskPrice: input.RetrievalAskPrice,
+				TransparencyScore: service.ComputeTransparencyScore(input),
 			}
 			updatedMinerPersonalInfo := dbmodel.MinerPersonalInfo{
 				Name:    input.Name,
@@ -283,7 +294,7 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 			}
 
 			_, err := r.DB.Model(&updatedMiner).
-				Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price").
+				Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price", "transparency_score").
 				Where("id = ?", input.MinerID).
 				Update()
 			if err != nil {

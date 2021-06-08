@@ -12,6 +12,7 @@ import (
 	"github.com/buidl-labs/filecoin-chain-indexer/lens/lotus"
 	"github.com/buidl-labs/miner-marketplace-backend/graph"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
+	"github.com/buidl-labs/miner-marketplace-backend/service"
 	"github.com/go-chi/chi"
 	"github.com/go-pg/pg/v10"
 	"github.com/rs/cors"
@@ -46,7 +47,7 @@ func main() {
 	}
 	defer closer()
 
-	go Indexer(newDB, node)
+	go service.Indexer(newDB, node)
 
 	router := chi.NewRouter()
 
