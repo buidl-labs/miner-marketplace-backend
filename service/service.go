@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/miner-marketplace-backend/db/model"
+	gqlmodel "github.com/buidl-labs/miner-marketplace-backend/graph/model"
 	"github.com/buidl-labs/miner-marketplace-backend/util"
 	"github.com/go-pg/pg/v10"
 )
@@ -288,4 +289,37 @@ type FilRepMiners struct {
 	Pagination struct {
 		Total int64 `json:"total"`
 	} `json:"pagination"`
+}
+
+func ComputeTransparencyScore(input gqlmodel.ProfileSettingsInput) int {
+	transparencyScore := 10.0 // already claimed
+	if input.Name != "" {
+		transparencyScore += 5
+	}
+	if input.Bio != "" {
+		transparencyScore += 5
+	}
+	if input.Slack != "" {
+		transparencyScore += 15
+	}
+	if input.Twitter != "" {
+		transparencyScore += 15
+	}
+	if input.Email != "" {
+		transparencyScore += 7.5
+	}
+	if input.Website != "" {
+		transparencyScore += 7.5
+	}
+	transparencyScore += 10 // for service details, give all points for datatransfermechanism and servicetype
+	if input.Region != "" {
+		transparencyScore += 2.5
+	}
+	if input.Country != "" {
+		transparencyScore += 2.5
+	}
+	if input.StorageAskPrice != "" {
+		transparencyScore += 20
+	}
+	return int(transparencyScore)
 }
