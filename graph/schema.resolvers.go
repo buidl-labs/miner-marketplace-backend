@@ -16,7 +16,6 @@ import (
 	"github.com/buidl-labs/miner-marketplace-backend/util"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
-	// "github.com/alecthomas/units"
 )
 
 func (r *locationResolver) Region(ctx context.Context, obj *model.Location) (string, error) {
@@ -418,7 +417,7 @@ func (r *queryResolver) NetworkStats(ctx context.Context) (*model.NetworkStats, 
 	}
 	var FILFOX_STATS_POWER string = "https://filfox.info/api/v1/stats/power"
 
-	filFoxStatsPower := new(FilFoxStatsPower)
+	filFoxStatsPower := new(service.FilFoxStatsPower)
 	util.GetJson(FILFOX_STATS_POWER, filFoxStatsPower)
 
 	// fmt.Println("pagination:")
@@ -447,21 +446,16 @@ func (r *queryResolver) NetworkStats(ctx context.Context) (*model.NetworkStats, 
 	}, nil
 }
 
-type FilFoxStatsPower []struct {
-	Height               int    `json:"height"`
-	Timestamp            int    `json:"timestamp"`
-	RawBytePower         string `json:"rawBytePower"`
-	QualityAdjPower      string `json:"qualityAdjPower"`
-	RawBytePowerDelta    string `json:"rawBytePowerDelta"`
-	QualityAdjPowerDelta string `json:"qualityAdjPowerDelta"`
-}
-
 func (r *serviceResolver) ServiceTypes(ctx context.Context, obj *model.Service) (*model.ServiceTypes, error) {
 	return obj.ServiceTypes, nil
 }
 
 func (r *serviceResolver) DataTransferMechanism(ctx context.Context, obj *model.Service) (*model.DataTransferMechanism, error) {
 	return obj.DataTransferMechanism, nil
+}
+
+func (r *transactionResolver) Miner(ctx context.Context, obj *model.Transaction) (*model.Miner, error) {
+	panic(fmt.Errorf("not implemented"))
 }
 
 func (r *workerResolver) Miner(ctx context.Context, obj *model.Worker) (*model.Miner, error) {
@@ -492,6 +486,9 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 // Service returns generated.ServiceResolver implementation.
 func (r *Resolver) Service() generated.ServiceResolver { return &serviceResolver{r} }
 
+// Transaction returns generated.TransactionResolver implementation.
+func (r *Resolver) Transaction() generated.TransactionResolver { return &transactionResolver{r} }
+
 // Worker returns generated.WorkerResolver implementation.
 func (r *Resolver) Worker() generated.WorkerResolver { return &workerResolver{r} }
 
@@ -503,4 +500,5 @@ type personalInfoResolver struct{ *Resolver }
 type pricingResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type serviceResolver struct{ *Resolver }
+type transactionResolver struct{ *Resolver }
 type workerResolver struct{ *Resolver }
