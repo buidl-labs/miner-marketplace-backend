@@ -47,8 +47,8 @@ func main() {
 	}
 	defer closer()
 
-	service.Bulk(newDB, node)
-	// go service.Indexer(newDB, node)
+	// service.Bulk(newDB, node)
+	go service.Indexer(newDB, node)
 
 	router := chi.NewRouter()
 

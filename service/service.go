@@ -37,6 +37,7 @@ func Indexer(DB *pg.DB, node lens.API) {
 }
 
 func hourlyTasks(DB *pg.DB, node lens.API) {
+	Bulk(DB, node)
 	var FILREP_MINERS string = "https://api.filrep.io/api/v1/miners"
 
 	filRepMiners := FilRepMiners{}
