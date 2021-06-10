@@ -28,6 +28,7 @@ type Miner {
   pricing: Pricing @goField(forceResolver: true) # by default, fetch from filrep (can be edited by miner)
   reputationScore: Int! @goField(forceResolver: true)
   transparencyScore: Int! @goField(forceResolver: true)
+  transactions: [Transaction!]! @goField(forceResolver: true)
 }
 
 type PersonalInfo {
@@ -76,6 +77,21 @@ type Pricing {
   storageAskPrice: String! @goField(forceResolver: true)
   verifiedAskPrice: String! @goField(forceResolver: true)
   retrievalAskPrice: String! @goField(forceResolver: true)
+}
+
+type Transaction {
+  id: ID!
+  miner: Miner @goField(forceResolver: true)
+  height: Int!
+  transactionType: String!
+  methodName: String!
+  value: Float!
+  minerFee: Float!
+  burnFee: Float!
+  from: String!
+  to: String!
+  exitCode: Int!
+  deals: [Int]
 }
 
 ####################################

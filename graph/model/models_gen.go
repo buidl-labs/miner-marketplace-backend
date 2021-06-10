@@ -13,17 +13,18 @@ type Location struct {
 }
 
 type Miner struct {
-	ID                   string        `json:"id"`
-	Claimed              bool          `json:"claimed"`
-	PersonalInfo         *PersonalInfo `json:"personalInfo"`
-	Worker               *Worker       `json:"worker"`
-	Owner                *Owner        `json:"owner"`
-	Location             *Location     `json:"location"`
-	QualityAdjustedPower string        `json:"qualityAdjustedPower"`
-	Service              *Service      `json:"service"`
-	Pricing              *Pricing      `json:"pricing"`
-	ReputationScore      int           `json:"reputationScore"`
-	TransparencyScore    int           `json:"transparencyScore"`
+	ID                   string         `json:"id"`
+	Claimed              bool           `json:"claimed"`
+	PersonalInfo         *PersonalInfo  `json:"personalInfo"`
+	Worker               *Worker        `json:"worker"`
+	Owner                *Owner         `json:"owner"`
+	Location             *Location      `json:"location"`
+	QualityAdjustedPower string         `json:"qualityAdjustedPower"`
+	Service              *Service       `json:"service"`
+	Pricing              *Pricing       `json:"pricing"`
+	ReputationScore      int            `json:"reputationScore"`
+	TransparencyScore    int            `json:"transparencyScore"`
+	Transactions         []*Transaction `json:"transactions"`
 }
 
 type NetworkStats struct {
@@ -88,6 +89,21 @@ type ServiceTypes struct {
 	Storage   bool `json:"storage"`
 	Retrieval bool `json:"retrieval"`
 	Repair    bool `json:"repair"`
+}
+
+type Transaction struct {
+	ID              string  `json:"id"`
+	Miner           *Miner  `json:"miner"`
+	Height          int     `json:"height"`
+	TransactionType string  `json:"transactionType"`
+	MethodName      string  `json:"methodName"`
+	Value           float64 `json:"value"`
+	MinerFee        float64 `json:"minerFee"`
+	BurnFee         float64 `json:"burnFee"`
+	From            string  `json:"from"`
+	To              string  `json:"to"`
+	ExitCode        int     `json:"exitCode"`
+	Deals           []*int  `json:"deals"`
 }
 
 type Worker struct {

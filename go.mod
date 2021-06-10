@@ -10,6 +10,7 @@ require (
 	github.com/filecoin-project/lotus v1.9.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-pg/pg/v10 v10.9.3
+	github.com/ipfs/go-cid v0.0.7 // indirect
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/rs/cors v1.7.0

@@ -13,8 +13,8 @@ type Miner struct {
 	StorageAskPrice      string
 	VerifiedAskPrice     string
 	RetrievalAskPrice    string
-	ReputationScore      int `pg:",notnull"`
-	TransparencyScore    int `pg:",notnull"`
+	ReputationScore      int `pg:",notnull,use_zero"`
+	TransparencyScore    int `pg:",notnull,use_zero"`
 }
 
 type MinerPersonalInfo struct {
@@ -34,4 +34,26 @@ type MinerService struct {
 	Repair              bool   `pg:",notnull"`
 	DataTransferOnline  bool   `pg:",notnull"`
 	DataTransferOffline bool   `pg:",notnull"`
+}
+
+type Transaction struct {
+	ID              string `pg:",pk,notnull"`
+	MinerID         string `pg:",notnull"`
+	Height          int64  `pg:",notnull"`
+	TransactionType string `pg:",notnull"`
+	MethodName      string `pg:",notnull"`
+	Value           string `pg:",notnull,use_zero"`
+	MinerFee        string `pg:",notnull,use_zero"`
+	BurnFee         string `pg:",notnull,use_zero"`
+	From            string `pg:",notnull"`
+	To              string `pg:",notnull"`
+	ExitCode        int    `pg:",notnull,use_zero"`
+	Deals           []*int `pg:","`
+}
+
+type FilfoxMessagesCount struct {
+	ID                             string `pg:",pk,notnull"`
+	MinerMessagesTotalCount        int64  `pg:",use_zero"`
+	MinerTransfersRewardTotalCount int64  `pg:",use_zero"`
+	MarketActorMessagesTotalCount  int64  `pg:",use_zero"`
 }
