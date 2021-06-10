@@ -118,6 +118,33 @@ func (r *minerResolver) TransparencyScore(ctx context.Context, obj *model.Miner)
 	return obj.TransparencyScore, nil
 }
 
+func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner) ([]*model.Transaction, error) {
+	var dbTransactions []*dbmodel.Transaction
+	if err := r.DB.Model(&dbTransactions).
+		Where("miner_id = ?", obj.ID).
+		Select(); err != nil {
+		return []*model.Transaction{}, err
+	}
+	var transactions []*model.Transaction
+	for _, dbTransaction := range dbTransactions {
+		transactions = append(transactions, &model.Transaction{
+			ID:              dbTransaction.ID,
+			Miner:           obj,
+			Height:          int(dbTransaction.Height),
+			TransactionType: dbTransaction.TransactionType,
+			MethodName:      dbTransaction.MethodName,
+			Value:           dbTransaction.Value,
+			MinerFee:        dbTransaction.MinerFee,
+			BurnFee:         dbTransaction.BurnFee,
+			From:            dbTransaction.From,
+			To:              dbTransaction.To,
+			ExitCode:        dbTransaction.ExitCode,
+			Deals:           dbTransaction.Deals,
+		})
+	}
+	return transactions, nil
+}
+
 func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error) {
 	fmt.Println("i", input.MinerID, "t", reflect.TypeOf(input.MinerID))
 	fmt.Println("j", input.LedgerAddress, "t", reflect.TypeOf(input.LedgerAddress))
@@ -455,7 +482,7 @@ func (r *serviceResolver) DataTransferMechanism(ctx context.Context, obj *model.
 }
 
 func (r *transactionResolver) Miner(ctx context.Context, obj *model.Transaction) (*model.Miner, error) {
-	panic(fmt.Errorf("not implemented"))
+	return obj.Miner, nil
 }
 
 func (r *workerResolver) Miner(ctx context.Context, obj *model.Worker) (*model.Miner, error) {

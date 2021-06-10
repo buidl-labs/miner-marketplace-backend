@@ -92,18 +92,18 @@ type ServiceTypes struct {
 }
 
 type Transaction struct {
-	ID              string  `json:"id"`
-	Miner           *Miner  `json:"miner"`
-	Height          int     `json:"height"`
-	TransactionType string  `json:"transactionType"`
-	MethodName      string  `json:"methodName"`
-	Value           float64 `json:"value"`
-	MinerFee        float64 `json:"minerFee"`
-	BurnFee         float64 `json:"burnFee"`
-	From            string  `json:"from"`
-	To              string  `json:"to"`
-	ExitCode        int     `json:"exitCode"`
-	Deals           []*int  `json:"deals"`
+	ID              string `json:"id"`
+	Miner           *Miner `json:"miner"`
+	Height          int    `json:"height"`
+	TransactionType string `json:"transactionType"`
+	MethodName      string `json:"methodName"`
+	Value           string `json:"value"`
+	MinerFee        string `json:"minerFee"`
+	BurnFee         string `json:"burnFee"`
+	From            string `json:"from"`
+	To              string `json:"to"`
+	ExitCode        int    `json:"exitCode"`
+	Deals           []*int `json:"deals"`
 }
 
 type Worker struct {
