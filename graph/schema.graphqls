@@ -85,9 +85,9 @@ type Transaction {
   height: Int!
   transactionType: String!
   methodName: String!
-  value: Float!
-  minerFee: Float!
-  burnFee: Float!
+  value: String!
+  minerFee: String!
+  burnFee: String!
   from: String!
   to: String!
   exitCode: Int!

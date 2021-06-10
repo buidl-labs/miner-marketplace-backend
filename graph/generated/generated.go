@@ -161,6 +161,7 @@ type MinerResolver interface {
 	Pricing(ctx context.Context, obj *model.Miner) (*model.Pricing, error)
 	ReputationScore(ctx context.Context, obj *model.Miner) (int, error)
 	TransparencyScore(ctx context.Context, obj *model.Miner) (int, error)
+	Transactions(ctx context.Context, obj *model.Miner) ([]*model.Transaction, error)
 }
 type MutationResolver interface {
 	ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error)
@@ -719,7 +720,7 @@ type Miner {
   pricing: Pricing @goField(forceResolver: true) # by default, fetch from filrep (can be edited by miner)
   reputationScore: Int! @goField(forceResolver: true)
   transparencyScore: Int! @goField(forceResolver: true)
-  transactions: [Transaction!]!
+  transactions: [Transaction!]! @goField(forceResolver: true)
 }
 
 type PersonalInfo {
@@ -776,9 +777,9 @@ type Transaction {
   height: Int!
   transactionType: String!
   methodName: String!
-  value: Float!
-  minerFee: Float!
-  burnFee: Float!
+  value: String!
+  minerFee: String!
+  burnFee: String!
   from: String!
   to: String!
   exitCode: Int!
@@ -1490,14 +1491,14 @@ func (ec *executionContext) _Miner_transactions(ctx context.Context, field graph
 		Object:     "Miner",
 		Field:      field,
 		Args:       nil,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Transactions, nil
+		return ec.resolvers.Miner().Transactions(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -2678,9 +2679,9 @@ func (ec *executionContext) _Transaction_value(ctx context.Context, field graphq
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_minerFee(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -2713,9 +2714,9 @@ func (ec *executionContext) _Transaction_minerFee(ctx context.Context, field gra
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_burnFee(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -2748,9 +2749,9 @@ func (ec *executionContext) _Transaction_burnFee(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(float64)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_from(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -4483,10 +4484,19 @@ func (ec *executionContext) _Miner(ctx context.Context, sel ast.SelectionSet, ob
 				return res
 			})
 		case "transactions":
-			out.Values[i] = ec._Miner_transactions(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&invalids, 1)
-			}
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Miner_transactions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5314,21 +5324,6 @@ func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interf
 
 func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
 	res := graphql.MarshalBoolean(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "must not be null")
-		}
-	}
-	return res
-}
-
-func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
-	res, err := graphql.UnmarshalFloat(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.SelectionSet, v float64) graphql.Marshaler {
-	res := graphql.MarshalFloat(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "must not be null")
