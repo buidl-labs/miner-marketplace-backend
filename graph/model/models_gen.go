@@ -3,14 +3,53 @@
 package model
 
 type AggregateEarnings struct {
-	Income      string `json:"income"`
-	Expenditure string `json:"expenditure"`
-	NetEarnings string `json:"netEarnings"`
+	Income      *AggregateIncome      `json:"income"`
+	Expenditure *AggregateExpenditure `json:"expenditure"`
+	NetEarnings string                `json:"netEarnings"`
+}
+
+type AggregateExpenditure struct {
+	Total             string `json:"total"`
+	CollateralDeposit string `json:"collateralDeposit"`
+	Gas               string `json:"gas"`
+	Penalty           string `json:"penalty"`
+	Others            string `json:"others"`
+}
+
+type AggregateIncome struct {
+	Total               string `json:"total"`
+	StorageDealPayments string `json:"storageDealPayments"`
+	BlockRewards        string `json:"blockRewards"`
+}
+
+type BlockRewards struct {
+	BlockRewards      string `json:"blockRewards"`
+	DaysUntilEligible int    `json:"daysUntilEligible"`
 }
 
 type DataTransferMechanism struct {
 	Online  bool `json:"online"`
 	Offline bool `json:"offline"`
+}
+
+type EstimatedEarnings struct {
+	Income      *EstimatedIncome      `json:"income"`
+	Expenditure *EstimatedExpenditure `json:"expenditure"`
+	NetEarnings string                `json:"netEarnings"`
+}
+
+type EstimatedExpenditure struct {
+	Total             string `json:"total"`
+	CollateralDeposit string `json:"collateralDeposit"`
+	Gas               string `json:"gas"`
+	Penalty           string `json:"penalty"`
+	Others            string `json:"others"`
+}
+
+type EstimatedIncome struct {
+	Total               string               `json:"total"`
+	StorageDealPayments *StorageDealPayments `json:"storageDealPayments"`
+	BlockRewards        *BlockRewards        `json:"blockRewards"`
 }
 
 type Location struct {
@@ -32,6 +71,7 @@ type Miner struct {
 	TransparencyScore    int                `json:"transparencyScore"`
 	Transactions         []*Transaction     `json:"transactions"`
 	AggregateEarnings    *AggregateEarnings `json:"aggregateEarnings"`
+	EstimatedEarnings    *EstimatedEarnings `json:"estimatedEarnings"`
 }
 
 type NetworkStats struct {
@@ -96,6 +136,11 @@ type ServiceTypes struct {
 	Storage   bool `json:"storage"`
 	Retrieval bool `json:"retrieval"`
 	Repair    bool `json:"repair"`
+}
+
+type StorageDealPayments struct {
+	ExistingDeals        string `json:"existingDeals"`
+	PotentialFutureDeals string `json:"potentialFutureDeals"`
 }
 
 type Transaction struct {

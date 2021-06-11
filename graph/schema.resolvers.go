@@ -6,6 +6,7 @@ package graph
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 
@@ -15,19 +16,108 @@ import (
 	"github.com/buidl-labs/miner-marketplace-backend/service"
 	"github.com/buidl-labs/miner-marketplace-backend/util"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	filecoinbig "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/specs-actors/v4/actors/builtin"
+	mineractor "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/v4/actors/util/smoothing"
 )
 
-func (r *aggregateEarningsResolver) Income(ctx context.Context, obj *model.AggregateEarnings) (string, error) {
+func (r *aggregateEarningsResolver) Income(ctx context.Context, obj *model.AggregateEarnings) (*model.AggregateIncome, error) {
 	return obj.Income, nil
 }
 
-func (r *aggregateEarningsResolver) Expenditure(ctx context.Context, obj *model.AggregateEarnings) (string, error) {
+func (r *aggregateEarningsResolver) Expenditure(ctx context.Context, obj *model.AggregateEarnings) (*model.AggregateExpenditure, error) {
 	return obj.Expenditure, nil
 }
 
 func (r *aggregateEarningsResolver) NetEarnings(ctx context.Context, obj *model.AggregateEarnings) (string, error) {
 	return obj.NetEarnings, nil
+}
+
+func (r *aggregateExpenditureResolver) Total(ctx context.Context, obj *model.AggregateExpenditure) (string, error) {
+	return obj.Total, nil
+}
+
+func (r *aggregateExpenditureResolver) CollateralDeposit(ctx context.Context, obj *model.AggregateExpenditure) (string, error) {
+	return obj.CollateralDeposit, nil
+}
+
+func (r *aggregateExpenditureResolver) Gas(ctx context.Context, obj *model.AggregateExpenditure) (string, error) {
+	return obj.Gas, nil
+}
+
+func (r *aggregateExpenditureResolver) Penalty(ctx context.Context, obj *model.AggregateExpenditure) (string, error) {
+	return obj.Penalty, nil
+}
+
+func (r *aggregateExpenditureResolver) Others(ctx context.Context, obj *model.AggregateExpenditure) (string, error) {
+	return obj.Gas, nil
+}
+
+func (r *aggregateIncomeResolver) Total(ctx context.Context, obj *model.AggregateIncome) (string, error) {
+	return obj.Total, nil
+}
+
+func (r *aggregateIncomeResolver) StorageDealPayments(ctx context.Context, obj *model.AggregateIncome) (string, error) {
+	return obj.StorageDealPayments, nil
+}
+
+func (r *aggregateIncomeResolver) BlockRewards(ctx context.Context, obj *model.AggregateIncome) (string, error) {
+	return obj.BlockRewards, nil
+}
+
+func (r *blockRewardsResolver) BlockRewards(ctx context.Context, obj *model.BlockRewards) (string, error) {
+	return obj.BlockRewards, nil
+}
+
+func (r *blockRewardsResolver) DaysUntilEligible(ctx context.Context, obj *model.BlockRewards) (int, error) {
+	return obj.DaysUntilEligible, nil
+}
+
+func (r *estimatedEarningsResolver) Income(ctx context.Context, obj *model.EstimatedEarnings) (*model.EstimatedIncome, error) {
+	return obj.Income, nil
+}
+
+func (r *estimatedEarningsResolver) Expenditure(ctx context.Context, obj *model.EstimatedEarnings) (*model.EstimatedExpenditure, error) {
+	return obj.Expenditure, nil
+}
+
+func (r *estimatedEarningsResolver) NetEarnings(ctx context.Context, obj *model.EstimatedEarnings) (string, error) {
+	return obj.NetEarnings, nil
+}
+
+func (r *estimatedExpenditureResolver) Total(ctx context.Context, obj *model.EstimatedExpenditure) (string, error) {
+	return obj.Total, nil
+}
+
+func (r *estimatedExpenditureResolver) CollateralDeposit(ctx context.Context, obj *model.EstimatedExpenditure) (string, error) {
+	return obj.CollateralDeposit, nil
+}
+
+func (r *estimatedExpenditureResolver) Gas(ctx context.Context, obj *model.EstimatedExpenditure) (string, error) {
+	return obj.Gas, nil
+}
+
+func (r *estimatedExpenditureResolver) Penalty(ctx context.Context, obj *model.EstimatedExpenditure) (string, error) {
+	return obj.Penalty, nil
+}
+
+func (r *estimatedExpenditureResolver) Others(ctx context.Context, obj *model.EstimatedExpenditure) (string, error) {
+	return obj.Others, nil
+}
+
+func (r *estimatedIncomeResolver) Total(ctx context.Context, obj *model.EstimatedIncome) (string, error) {
+	return obj.Total, nil
+}
+
+func (r *estimatedIncomeResolver) StorageDealPayments(ctx context.Context, obj *model.EstimatedIncome) (*model.StorageDealPayments, error) {
+	return obj.StorageDealPayments, nil
+}
+
+func (r *estimatedIncomeResolver) BlockRewards(ctx context.Context, obj *model.EstimatedIncome) (*model.BlockRewards, error) {
+	return obj.BlockRewards, nil
 }
 
 func (r *locationResolver) Region(ctx context.Context, obj *model.Location) (string, error) {
@@ -165,11 +255,10 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 	} else if len(transactionTypes) == 0 {
 		fmt.Println("empty", transactionTypes)
 		useAllTransactionTypes = true
-		// transactionTypes = []bool{true, true, true, true, true, true}
 	} else if len(transactionTypes) != 6 {
 		return &model.AggregateEarnings{
-			Income:      "0",
-			Expenditure: "0",
+			Income:      &model.AggregateIncome{Total: "0", StorageDealPayments: "0", BlockRewards: "0"},
+			Expenditure: &model.AggregateExpenditure{Total: "0", CollateralDeposit: "0", Gas: "0", Penalty: "0", Others: "0"},
 			NetEarnings: "0",
 		}, fmt.Errorf("length of transactionTypes array should be 6")
 	}
@@ -185,8 +274,8 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 			Where("exit_code = ?", 0).
 			Select(); err != nil {
 			return &model.AggregateEarnings{
-				Income:      "0",
-				Expenditure: "0",
+				Income:      &model.AggregateIncome{Total: "0", StorageDealPayments: "0", BlockRewards: "0"},
+				Expenditure: &model.AggregateExpenditure{Total: "0", CollateralDeposit: "0", Gas: "0", Penalty: "0", Others: "0"},
 				NetEarnings: "0",
 			}, err
 		}
@@ -200,23 +289,73 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 			Where("exit_code = ?", 0).
 			Select(); err != nil {
 			return &model.AggregateEarnings{
-				Income:      "0",
-				Expenditure: "0",
+				Income:      &model.AggregateIncome{Total: "0", StorageDealPayments: "0", BlockRewards: "0"},
+				Expenditure: &model.AggregateExpenditure{Total: "0", CollateralDeposit: "0", Gas: "0", Penalty: "0", Others: "0"},
 				NetEarnings: "0",
 			}, err
 		}
 	}
 
 	income := big.NewInt(0)
+	storageDealPayments := big.NewInt(0)
+	blockRewards := big.NewInt(0)
+
 	expenditure := big.NewInt(0)
+	collateralDeposit := big.NewInt(0)
+	gas := big.NewInt(0)
+	penalty := big.NewInt(0)
+	others := big.NewInt(0)
 
 	for _, dbTransaction := range dbTransactions {
 		switch dbTransaction.MethodName {
-		case "PreCommitSector", "ProveCommitSector",
-			"TerminateSectors", "RepayDebt",
-			"ReportConsensusFault", "DisputeWindowedPoSt",
-
-			"SubmitWindowedPoSt", "ChangeWorkerAddress", "ChangePeerID",
+		case "PreCommitSector", "ProveCommitSector":
+			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
+			if !ok {
+				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+			}
+			collateralDeposit = new(big.Int).Add(collateralDeposit, val)
+			expenditure = new(big.Int).Add(expenditure, val)
+			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
+			if !ok {
+				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+			}
+			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
+			if !ok {
+				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+			}
+			gas = new(big.Int).Add(gas, minerFee)
+			gas = new(big.Int).Add(gas, burnFee)
+			if includeGas {
+				collateralDeposit = new(big.Int).Add(collateralDeposit, minerFee)
+				collateralDeposit = new(big.Int).Add(collateralDeposit, burnFee)
+				expenditure = new(big.Int).Add(expenditure, minerFee)
+				expenditure = new(big.Int).Add(expenditure, burnFee)
+			}
+		case "TerminateSectors", "RepayDebt",
+			"ReportConsensusFault", "DisputeWindowedPoSt":
+			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
+			if !ok {
+				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+			}
+			penalty = new(big.Int).Add(penalty, val)
+			expenditure = new(big.Int).Add(expenditure, val)
+			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
+			if !ok {
+				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+			}
+			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
+			if !ok {
+				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+			}
+			gas = new(big.Int).Add(gas, minerFee)
+			gas = new(big.Int).Add(gas, burnFee)
+			if includeGas {
+				penalty = new(big.Int).Add(penalty, minerFee)
+				penalty = new(big.Int).Add(penalty, burnFee)
+				expenditure = new(big.Int).Add(expenditure, minerFee)
+				expenditure = new(big.Int).Add(expenditure, burnFee)
+			}
+		case "SubmitWindowedPoSt", "ChangeWorkerAddress", "ChangePeerID",
 			"ExtendSectorExpiration", "DeclareFaults", "DeclareFaultsRecovered",
 			"ChangeMultiaddrs", "CompactSectorNumbers", "ConfirmUpdateWorkerKey",
 			"ChangeOwnerAddress":
@@ -224,16 +363,21 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
 			}
+			others = new(big.Int).Add(others, val)
 			expenditure = new(big.Int).Add(expenditure, val)
+			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
+			if !ok {
+				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+			}
+			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
+			if !ok {
+				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+			}
+			gas = new(big.Int).Add(gas, minerFee)
+			gas = new(big.Int).Add(gas, burnFee)
 			if includeGas {
-				minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
-				if !ok {
-					fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
-				}
-				burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
-				if !ok {
-					fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
-				}
+				others = new(big.Int).Add(others, minerFee)
+				others = new(big.Int).Add(others, burnFee)
 				expenditure = new(big.Int).Add(expenditure, minerFee)
 				expenditure = new(big.Int).Add(expenditure, burnFee)
 			}
@@ -242,6 +386,7 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
 			}
+			blockRewards = new(big.Int).Add(blockRewards, val)
 			income = new(big.Int).Add(income, val)
 		}
 	}
@@ -251,9 +396,149 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 	fmt.Println("income", income, "expenditure", expenditure, "netEarnings", netEarnings)
 
 	return &model.AggregateEarnings{
-		Income:      income.String(),
-		Expenditure: expenditure.String(),
+		Income: &model.AggregateIncome{
+			Total:               income.String(),
+			StorageDealPayments: storageDealPayments.String(),
+			BlockRewards:        blockRewards.String(),
+		},
+		Expenditure: &model.AggregateExpenditure{
+			Total:             expenditure.String(),
+			CollateralDeposit: collateralDeposit.String(),
+			Gas:               gas.String(),
+			Penalty:           penalty.String(),
+			Others:            others.String(),
+		},
 		NetEarnings: netEarnings.String(),
+	}, nil
+}
+
+func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner, days int, transactionTypes []bool, includeGas bool) (*model.EstimatedEarnings, error) {
+	minerID, _ := address.NewFromString(obj.ID)
+	powerActorID, _ := address.NewFromString("f04")
+	rewardActorID, _ := address.NewFromString("f02")
+	ts, _ := r.LensAPI.ChainHead(context.Background())
+
+	daysUntilEligible := big.NewInt(-1)
+	nrwd := filecoinbig.NewInt(0)
+	minQAP := big.NewInt(10995116277760) // 10 TiB
+	minerPower, _ := r.LensAPI.StateMinerPower(context.Background(), minerID, ts.Key())
+	cmpR := minerPower.MinerPower.QualityAdjPower.Int.Cmp(minQAP)
+	if cmpR == -1 {
+		// find daysUntilEligible
+		lastMonthTs, _ := r.LensAPI.ChainGetTipSetByHeight(context.Background(), ts.Height()-30*2880, types.EmptyTSK)
+		minerPowerLastMonth, _ := r.LensAPI.StateMinerPower(context.Background(), minerID, lastMonthTs.Key())
+		dailyPowerGrowthLastMonth := new(big.Int).Div(
+			new(big.Int).Sub(
+				minerPower.MinerPower.QualityAdjPower.Int,
+				minerPowerLastMonth.MinerPower.QualityAdjPower.Int,
+			),
+			big.NewInt(int64(30)),
+		)
+		fmt.Println("dailyPowerGrowthLastMonth", dailyPowerGrowthLastMonth)
+		if dailyPowerGrowthLastMonth.String() == "0" {
+			fmt.Println("minerPower.MinerPower.QualityAdjPower.Int", minerPower.MinerPower.QualityAdjPower.Int)
+			if minerPower.MinerPower.QualityAdjPower.Int.Cmp(big.NewInt(0)) == 1 { // if miner's current QAP=0
+				daysUntilEligible = new(big.Int).Div(
+					new(big.Int).Sub(
+						minerPower.MinerPower.QualityAdjPower.Int,
+						big.NewInt(0),
+					),
+					big.NewInt(int64(30)), // TODO: replace 30 with days since miner was created
+				)
+			}
+		} else {
+			daysUntilEligible = new(big.Int).Div(
+				new(big.Int).Sub(minQAP, minerPower.MinerPower.QualityAdjPower.Int),
+				dailyPowerGrowthLastMonth,
+			)
+		}
+	} else {
+		daysUntilEligible = big.NewInt(0)
+		PowerActorState, err := r.LensAPI.StateReadState(context.Background(), powerActorID, ts.Key())
+		if err != nil {
+			panic(err)
+		}
+		RewardActorState, err := r.LensAPI.StateReadState(context.Background(), rewardActorID, ts.Key())
+		if err != nil {
+			panic(err)
+		}
+
+		pas, _ := PowerActorState.State.(map[string]interface{})
+		ras, _ := RewardActorState.State.(map[string]interface{})
+		// fmt.Println(reflect.TypeOf(pas["ThisEpochQAPowerSmoothed"]), " ", pas["ThisEpochQAPowerSmoothed"])
+
+		ThisEpochQAPowerSmoothed, _ := pas["ThisEpochQAPowerSmoothed"].(map[string]interface{})
+		// fmt.Println(reflect.TypeOf(ThisEpochQAPowerSmoothed), ThisEpochQAPowerSmoothed,
+		// 	"pe:", ThisEpochQAPowerSmoothed["PositionEstimate"],
+		// 	"ve:", ThisEpochQAPowerSmoothed["VelocityEstimate"])
+
+		ThisEpochRewardSmoothed, _ := ras["ThisEpochRewardSmoothed"].(map[string]interface{})
+		// fmt.Println(reflect.TypeOf(ThisEpochRewardSmoothed), ThisEpochRewardSmoothed,
+		// 	"pe:", ThisEpochRewardSmoothed["PositionEstimate"],
+		// 	"ve:", ThisEpochRewardSmoothed["VelocityEstimate"])
+
+		a := ThisEpochQAPowerSmoothed["PositionEstimate"].(string)
+		ThisEpochQAPowerSmoothedPositionEstimate, _ := new(big.Int).SetString(a, 10)
+
+		b := ThisEpochQAPowerSmoothed["VelocityEstimate"].(string)
+		ThisEpochQAPowerSmoothedVelocityEstimate, _ := new(big.Int).SetString(b, 10)
+
+		c := ThisEpochRewardSmoothed["PositionEstimate"].(string)
+		ThisEpochRewardSmoothedPositionEstimate, _ := new(big.Int).SetString(c, 10)
+
+		d := ThisEpochRewardSmoothed["VelocityEstimate"].(string)
+		ThisEpochRewardSmoothedVelocityEstimate, _ := new(big.Int).SetString(d, 10)
+
+		// fmt.Println("pas", pas, " old ", reflect.TypeOf(PowerActorState.State), " ", PowerActorState.State)
+		// fmt.Println("ras", ras, " old ", reflect.TypeOf(RewardActorState.State), " ", RewardActorState.State)
+
+		qaPower := minerPower.MinerPower.QualityAdjPower // filecoinbig.NewInt(int64(100000 * math.Pow(2, 30)))
+		fmt.Println("minerqaPower", qaPower)
+		nrwd = mineractor.ExpectedRewardForPower(smoothing.FilterEstimate{
+			PositionEstimate: filecoinbig.NewFromGo(ThisEpochRewardSmoothedPositionEstimate),
+			VelocityEstimate: filecoinbig.NewFromGo(ThisEpochRewardSmoothedVelocityEstimate),
+		}, smoothing.FilterEstimate{
+			PositionEstimate: filecoinbig.NewFromGo(ThisEpochQAPowerSmoothedPositionEstimate),
+			VelocityEstimate: filecoinbig.NewFromGo(ThisEpochQAPowerSmoothedVelocityEstimate),
+		}, qaPower, builtin.EpochsInDay*abi.ChainEpoch(days))
+
+		// atto := big.NewInt(1e18)
+		// minerProjectedReward := nrwd.Int.Div(nrwd.Int, atto)
+		// fmt.Println("minerProjectedReward", minerProjectedReward)
+	}
+
+	fmt.Println("nrwd", nrwd)
+	fmt.Println("BEFORE daysUntilEligible", daysUntilEligible)
+	daysUntilEligibleInt := 0
+	if daysUntilEligible.Cmp(big.NewInt(-1)) == 0 && cmpR == -1 {
+		daysUntilEligibleInt = int(math.Inf(1))
+		fmt.Println("miner power zero, daysUntilEligibleInt", daysUntilEligibleInt)
+	} else {
+		daysUntilEligibleInt = int(daysUntilEligible.Int64())
+		fmt.Println("else, daysUntilEligibleInt", daysUntilEligibleInt)
+	}
+	fmt.Println("NOW daysUntilEligible", daysUntilEligible)
+
+	return &model.EstimatedEarnings{
+		Income: &model.EstimatedIncome{
+			Total: nrwd.String(),
+			StorageDealPayments: &model.StorageDealPayments{
+				ExistingDeals:        "0",
+				PotentialFutureDeals: "0",
+			},
+			BlockRewards: &model.BlockRewards{
+				BlockRewards:      nrwd.String(),
+				DaysUntilEligible: daysUntilEligibleInt,
+			},
+		},
+		Expenditure: &model.EstimatedExpenditure{
+			Total:             "",
+			CollateralDeposit: "",
+			Gas:               "",
+			Penalty:           "",
+			Others:            "",
+		},
+		NetEarnings: nrwd.String(),
 	}, nil
 }
 
@@ -587,6 +872,14 @@ func (r *serviceResolver) DataTransferMechanism(ctx context.Context, obj *model.
 	return obj.DataTransferMechanism, nil
 }
 
+func (r *storageDealPaymentsResolver) ExistingDeals(ctx context.Context, obj *model.StorageDealPayments) (string, error) {
+	return obj.ExistingDeals, nil
+}
+
+func (r *storageDealPaymentsResolver) PotentialFutureDeals(ctx context.Context, obj *model.StorageDealPayments) (string, error) {
+	return obj.PotentialFutureDeals, nil
+}
+
 func (r *transactionResolver) Miner(ctx context.Context, obj *model.Transaction) (*model.Miner, error) {
 	return obj.Miner, nil
 }
@@ -598,6 +891,34 @@ func (r *workerResolver) Miner(ctx context.Context, obj *model.Worker) (*model.M
 // AggregateEarnings returns generated.AggregateEarningsResolver implementation.
 func (r *Resolver) AggregateEarnings() generated.AggregateEarningsResolver {
 	return &aggregateEarningsResolver{r}
+}
+
+// AggregateExpenditure returns generated.AggregateExpenditureResolver implementation.
+func (r *Resolver) AggregateExpenditure() generated.AggregateExpenditureResolver {
+	return &aggregateExpenditureResolver{r}
+}
+
+// AggregateIncome returns generated.AggregateIncomeResolver implementation.
+func (r *Resolver) AggregateIncome() generated.AggregateIncomeResolver {
+	return &aggregateIncomeResolver{r}
+}
+
+// BlockRewards returns generated.BlockRewardsResolver implementation.
+func (r *Resolver) BlockRewards() generated.BlockRewardsResolver { return &blockRewardsResolver{r} }
+
+// EstimatedEarnings returns generated.EstimatedEarningsResolver implementation.
+func (r *Resolver) EstimatedEarnings() generated.EstimatedEarningsResolver {
+	return &estimatedEarningsResolver{r}
+}
+
+// EstimatedExpenditure returns generated.EstimatedExpenditureResolver implementation.
+func (r *Resolver) EstimatedExpenditure() generated.EstimatedExpenditureResolver {
+	return &estimatedExpenditureResolver{r}
+}
+
+// EstimatedIncome returns generated.EstimatedIncomeResolver implementation.
+func (r *Resolver) EstimatedIncome() generated.EstimatedIncomeResolver {
+	return &estimatedIncomeResolver{r}
 }
 
 // Location returns generated.LocationResolver implementation.
@@ -624,6 +945,11 @@ func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 // Service returns generated.ServiceResolver implementation.
 func (r *Resolver) Service() generated.ServiceResolver { return &serviceResolver{r} }
 
+// StorageDealPayments returns generated.StorageDealPaymentsResolver implementation.
+func (r *Resolver) StorageDealPayments() generated.StorageDealPaymentsResolver {
+	return &storageDealPaymentsResolver{r}
+}
+
 // Transaction returns generated.TransactionResolver implementation.
 func (r *Resolver) Transaction() generated.TransactionResolver { return &transactionResolver{r} }
 
@@ -631,6 +957,12 @@ func (r *Resolver) Transaction() generated.TransactionResolver { return &transac
 func (r *Resolver) Worker() generated.WorkerResolver { return &workerResolver{r} }
 
 type aggregateEarningsResolver struct{ *Resolver }
+type aggregateExpenditureResolver struct{ *Resolver }
+type aggregateIncomeResolver struct{ *Resolver }
+type blockRewardsResolver struct{ *Resolver }
+type estimatedEarningsResolver struct{ *Resolver }
+type estimatedExpenditureResolver struct{ *Resolver }
+type estimatedIncomeResolver struct{ *Resolver }
 type locationResolver struct{ *Resolver }
 type minerResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
@@ -639,5 +971,6 @@ type personalInfoResolver struct{ *Resolver }
 type pricingResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type serviceResolver struct{ *Resolver }
+type storageDealPaymentsResolver struct{ *Resolver }
 type transactionResolver struct{ *Resolver }
 type workerResolver struct{ *Resolver }
