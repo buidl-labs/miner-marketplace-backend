@@ -413,6 +413,139 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 }
 
 func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner, days int, transactionTypes []bool, includeGas bool) (*model.EstimatedEarnings, error) {
+	dbTransaction := dbmodel.Transaction{}
+	err := r.DB.Model(&dbTransaction).
+		Where("method_name = 'CreateMiner'").
+		Where("miner_id = ?", obj.ID).
+		Select()
+	if err != nil {
+		return &model.EstimatedEarnings{}, err
+	}
+	minerCreationHeight := int(dbTransaction.Height)
+
+	var dbTransactions []*dbmodel.Transaction
+	// transactionTypesQuery := util.GenerateTransactionTypesQuery(transactionTypes)
+	if err := r.DB.Model(&dbTransactions).
+		Where("miner_id = ?", obj.ID).
+		// Where("height >= ?", startHeight).
+		// Where("height <= ?", endHeight).
+		// Where(transactionTypesQuery).
+		Where("exit_code = ?", 0).
+		Select(); err != nil {
+		return &model.EstimatedEarnings{
+			Income:      &model.EstimatedIncome{Total: "0", StorageDealPayments: &model.StorageDealPayments{}, BlockRewards: &model.BlockRewards{}},
+			Expenditure: &model.EstimatedExpenditure{Total: "0", CollateralDeposit: "0", Gas: "0", Penalty: "0", Others: "0"},
+			NetEarnings: "0",
+		}, err
+	}
+
+	income := big.NewInt(0)
+	storageDealPayments := big.NewInt(0) // TODO: estimate storageDealPayments
+	blockRewards := big.NewInt(0)
+
+	expenditure := big.NewInt(0)
+	collateralDeposit := big.NewInt(0)
+	gas := big.NewInt(0)
+	penalty := big.NewInt(0)
+	others := big.NewInt(0)
+
+	for _, dbTransaction := range dbTransactions {
+		switch dbTransaction.MethodName {
+		case "PreCommitSector", "ProveCommitSector":
+			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
+			if !ok {
+				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+			}
+			collateralDeposit = new(big.Int).Add(collateralDeposit, val)
+			expenditure = new(big.Int).Add(expenditure, val)
+			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
+			if !ok {
+				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+			}
+			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
+			if !ok {
+				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+			}
+			gas = new(big.Int).Add(gas, minerFee)
+			gas = new(big.Int).Add(gas, burnFee)
+			if includeGas {
+				collateralDeposit = new(big.Int).Add(collateralDeposit, minerFee)
+				collateralDeposit = new(big.Int).Add(collateralDeposit, burnFee)
+				expenditure = new(big.Int).Add(expenditure, minerFee)
+				expenditure = new(big.Int).Add(expenditure, burnFee)
+			}
+		case "TerminateSectors", "RepayDebt",
+			"ReportConsensusFault", "DisputeWindowedPoSt":
+			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
+			if !ok {
+				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+			}
+			penalty = new(big.Int).Add(penalty, val)
+			expenditure = new(big.Int).Add(expenditure, val)
+			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
+			if !ok {
+				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+			}
+			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
+			if !ok {
+				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+			}
+			gas = new(big.Int).Add(gas, minerFee)
+			gas = new(big.Int).Add(gas, burnFee)
+			if includeGas {
+				penalty = new(big.Int).Add(penalty, minerFee)
+				penalty = new(big.Int).Add(penalty, burnFee)
+				expenditure = new(big.Int).Add(expenditure, minerFee)
+				expenditure = new(big.Int).Add(expenditure, burnFee)
+			}
+		case "SubmitWindowedPoSt", "ChangeWorkerAddress", "ChangePeerID",
+			"ExtendSectorExpiration", "DeclareFaults", "DeclareFaultsRecovered",
+			"ChangeMultiaddrs", "CompactSectorNumbers", "ConfirmUpdateWorkerKey",
+			"ChangeOwnerAddress":
+			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
+			if !ok {
+				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+			}
+			others = new(big.Int).Add(others, val)
+			expenditure = new(big.Int).Add(expenditure, val)
+			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
+			if !ok {
+				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+			}
+			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
+			if !ok {
+				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+			}
+			gas = new(big.Int).Add(gas, minerFee)
+			gas = new(big.Int).Add(gas, burnFee)
+			if includeGas {
+				others = new(big.Int).Add(others, minerFee)
+				others = new(big.Int).Add(others, burnFee)
+				expenditure = new(big.Int).Add(expenditure, minerFee)
+				expenditure = new(big.Int).Add(expenditure, burnFee)
+			}
+		case "ApplyRewards":
+			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
+			if !ok {
+				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+			}
+			blockRewards = new(big.Int).Add(blockRewards, val)
+			income = new(big.Int).Add(income, val)
+		}
+	}
+
+	expenditurePerDay := new(big.Int).Div(expenditure, big.NewInt(int64(minerCreationHeight)))
+	collateralDepositPerDay := new(big.Int).Div(collateralDeposit, big.NewInt(int64(minerCreationHeight)))
+	gasPerDay := new(big.Int).Div(gas, big.NewInt(int64(minerCreationHeight)))
+	penaltyPerDay := new(big.Int).Div(penalty, big.NewInt(int64(minerCreationHeight)))
+	othersPerDay := new(big.Int).Div(others, big.NewInt(int64(minerCreationHeight)))
+
+	estimatedExpenditure := new(big.Int).Mul(expenditurePerDay, big.NewInt(int64(days)))
+	estimatedCollateralDeposit := new(big.Int).Mul(collateralDepositPerDay, big.NewInt(int64(days)))
+	estimatedGas := new(big.Int).Mul(gasPerDay, big.NewInt(int64(days)))
+	estimatedPenalty := new(big.Int).Mul(penaltyPerDay, big.NewInt(int64(days)))
+	estimatedOthers := new(big.Int).Mul(othersPerDay, big.NewInt(int64(days)))
+
 	minerID, _ := address.NewFromString(obj.ID)
 	powerActorID, _ := address.NewFromString("f04")
 	rewardActorID, _ := address.NewFromString("f02")
@@ -443,7 +576,7 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 						minerPower.MinerPower.QualityAdjPower.Int,
 						big.NewInt(0),
 					),
-					big.NewInt(int64(30)), // TODO: replace 30 with days since miner was created
+					big.NewInt(int64(minerCreationHeight)), // TODO: replace 30 with days since miner was created
 				)
 			}
 		} else {
@@ -519,6 +652,9 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 	}
 	fmt.Println("NOW daysUntilEligible", daysUntilEligible)
 
+	netEarnings := new(big.Int).Sub(nrwd.Int, estimatedExpenditure)
+	netEarnings = new(big.Int).Add(netEarnings, storageDealPayments)
+
 	return &model.EstimatedEarnings{
 		Income: &model.EstimatedIncome{
 			Total: nrwd.String(),
@@ -532,13 +668,13 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 			},
 		},
 		Expenditure: &model.EstimatedExpenditure{
-			Total:             "",
-			CollateralDeposit: "",
-			Gas:               "",
-			Penalty:           "",
-			Others:            "",
+			Total:             estimatedExpenditure.String(),
+			CollateralDeposit: estimatedCollateralDeposit.String(),
+			Gas:               estimatedGas.String(),
+			Penalty:           estimatedPenalty.String(),
+			Others:            estimatedOthers.String(),
 		},
-		NetEarnings: nrwd.String(),
+		NetEarnings: netEarnings.String(),
 	}, nil
 }
 
