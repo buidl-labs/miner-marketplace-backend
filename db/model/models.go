@@ -40,6 +40,7 @@ type Transaction struct {
 	ID              string `pg:",pk,notnull"`
 	MinerID         string `pg:",notnull"`
 	Height          int64  `pg:",notnull"`
+	Timestamp       int64  `pg:",use_zero"`
 	TransactionType string `pg:",notnull"`
 	MethodName      string `pg:",notnull"`
 	Value           string `pg:",notnull,use_zero"`

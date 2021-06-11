@@ -431,15 +431,19 @@ func Bulk(DB *pg.DB, node lens.API) {
 
 		if db_miner_transfers_reward_total_count != int64(totalRewardCount) {
 			for _, mr := range minerRewards {
+				value := "0"
+				if mr.Value != "" {
+					value = mr.Value
+				}
 				_, err := DB.Model(&model.Transaction{
 					ID:              mr.To + fmt.Sprintf("%v", mr.Height) + "reward", // cid not available in filfox
 					MinerID:         mr.To,
 					Height:          int64(mr.Height),
 					TransactionType: "Block Reward",
 					MethodName:      "ApplyRewards",
-					Value:           mr.Value,
-					MinerFee:        "N/A",
-					BurnFee:         "N/A",
+					Value:           value,
+					MinerFee:        "0",
+					BurnFee:         "0",
 					From:            mr.From,
 					To:              mr.To,
 					ExitCode:        0,
@@ -527,6 +531,15 @@ func Bulk(DB *pg.DB, node lens.API) {
 				filFoxMessage := new(FilFoxMessage)
 				util.GetJson(FILFOX_MESSAGE+mr.Cid, filFoxMessage)
 				transactionType, value, minerFee, burnFee := GetMessageAttributes(node, *filFoxMessage)
+				if value == "" {
+					value = "0"
+				}
+				if minerFee == "" {
+					minerFee = "0"
+				}
+				if burnFee == "" {
+					burnFee = "0"
+				}
 				_, err := DB.Model(&model.Transaction{
 					ID:              mr.Cid,
 					MinerID:         m,
@@ -724,7 +737,7 @@ func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, s
 	fmt.Println("inside GetMessageAttributes", filfoxMessage)
 	switch filfoxMessage.Method {
 	case "PreCommitSector", "ProveCommitSector":
-		burnFee := "N/A"
+		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
@@ -733,25 +746,25 @@ func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, s
 		transfer, _ := strconv.ParseInt(filfoxMessage.Transfers[2].Value, 10, 64)
 		burn, _ := strconv.ParseInt(filfoxMessage.Transfers[3].Value, 10, 64)
 		amt := -1 * (transfer + burn)
-		burnFee := "N/A"
+		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
 		return "Penalty", fmt.Sprintf("%v", amt), filfoxMessage.Fee.MinerTip, burnFee
 	case "TerminateSectors":
-		burnFee := "N/A"
+		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
 		return "Penalty", filfoxMessage.Transfers[2].Value, filfoxMessage.Fee.MinerTip, burnFee
 	case "RepayDebt":
-		burnFee := "N/A"
+		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
 		return "Penalty", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, burnFee
 	case "WithdrawBalance (miner)":
-		burnFee := "N/A"
+		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}

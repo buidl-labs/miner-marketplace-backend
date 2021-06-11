@@ -35,6 +35,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	AggregateEarnings() AggregateEarningsResolver
 	Location() LocationResolver
 	Miner() MinerResolver
 	Mutation() MutationResolver
@@ -51,6 +52,12 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	AggregateEarnings struct {
+		Expenditure func(childComplexity int) int
+		Income      func(childComplexity int) int
+		NetEarnings func(childComplexity int) int
+	}
+
 	DataTransferMechanism struct {
 		Offline func(childComplexity int) int
 		Online  func(childComplexity int) int
@@ -62,6 +69,7 @@ type ComplexityRoot struct {
 	}
 
 	Miner struct {
+		AggregateEarnings    func(childComplexity int, startHeight int, endHeight int, transactionTypes []bool, includeGas bool) int
 		Claimed              func(childComplexity int) int
 		ID                   func(childComplexity int) int
 		Location             func(childComplexity int) int
@@ -135,6 +143,7 @@ type ComplexityRoot struct {
 		MethodName      func(childComplexity int) int
 		Miner           func(childComplexity int) int
 		MinerFee        func(childComplexity int) int
+		Timestamp       func(childComplexity int) int
 		To              func(childComplexity int) int
 		TransactionType func(childComplexity int) int
 		Value           func(childComplexity int) int
@@ -147,6 +156,11 @@ type ComplexityRoot struct {
 	}
 }
 
+type AggregateEarningsResolver interface {
+	Income(ctx context.Context, obj *model.AggregateEarnings) (string, error)
+	Expenditure(ctx context.Context, obj *model.AggregateEarnings) (string, error)
+	NetEarnings(ctx context.Context, obj *model.AggregateEarnings) (string, error)
+}
 type LocationResolver interface {
 	Region(ctx context.Context, obj *model.Location) (string, error)
 	Country(ctx context.Context, obj *model.Location) (string, error)
@@ -162,6 +176,7 @@ type MinerResolver interface {
 	ReputationScore(ctx context.Context, obj *model.Miner) (int, error)
 	TransparencyScore(ctx context.Context, obj *model.Miner) (int, error)
 	Transactions(ctx context.Context, obj *model.Miner) ([]*model.Transaction, error)
+	AggregateEarnings(ctx context.Context, obj *model.Miner, startHeight int, endHeight int, transactionTypes []bool, includeGas bool) (*model.AggregateEarnings, error)
 }
 type MutationResolver interface {
 	ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error)
@@ -214,6 +229,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
+	case "AggregateEarnings.expenditure":
+		if e.complexity.AggregateEarnings.Expenditure == nil {
+			break
+		}
+
+		return e.complexity.AggregateEarnings.Expenditure(childComplexity), true
+
+	case "AggregateEarnings.income":
+		if e.complexity.AggregateEarnings.Income == nil {
+			break
+		}
+
+		return e.complexity.AggregateEarnings.Income(childComplexity), true
+
+	case "AggregateEarnings.netEarnings":
+		if e.complexity.AggregateEarnings.NetEarnings == nil {
+			break
+		}
+
+		return e.complexity.AggregateEarnings.NetEarnings(childComplexity), true
+
 	case "DataTransferMechanism.offline":
 		if e.complexity.DataTransferMechanism.Offline == nil {
 			break
@@ -241,6 +277,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Location.Region(childComplexity), true
+
+	case "Miner.aggregateEarnings":
+		if e.complexity.Miner.AggregateEarnings == nil {
+			break
+		}
+
+		args, err := ec.field_Miner_aggregateEarnings_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Miner.AggregateEarnings(childComplexity, args["startHeight"].(int), args["endHeight"].(int), args["transactionTypes"].([]bool), args["includeGas"].(bool)), true
 
 	case "Miner.claimed":
 		if e.complexity.Miner.Claimed == nil {
@@ -584,6 +632,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Transaction.MinerFee(childComplexity), true
 
+	case "Transaction.timestamp":
+		if e.complexity.Transaction.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.Transaction.Timestamp(childComplexity), true
+
 	case "Transaction.to":
 		if e.complexity.Transaction.To == nil {
 			break
@@ -721,6 +776,18 @@ type Miner {
   reputationScore: Int! @goField(forceResolver: true)
   transparencyScore: Int! @goField(forceResolver: true)
   transactions: [Transaction!]! @goField(forceResolver: true)
+  aggregateEarnings(
+    startHeight: Int!
+    endHeight: Int!
+    transactionTypes: [Boolean!]
+    includeGas: Boolean!
+  ): AggregateEarnings! @goField(forceResolver: true)
+}
+
+type AggregateEarnings {
+  income: String! @goField(forceResolver: true)
+  expenditure: String! @goField(forceResolver: true)
+  netEarnings: String! @goField(forceResolver: true)
 }
 
 type PersonalInfo {
@@ -775,6 +842,7 @@ type Transaction {
   id: ID!
   miner: Miner @goField(forceResolver: true)
   height: Int!
+  timestamp: Int
   transactionType: String!
   methodName: String!
   value: String!
@@ -850,6 +918,48 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Miner_aggregateEarnings_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["startHeight"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startHeight"))
+		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["startHeight"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["endHeight"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endHeight"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["endHeight"] = arg1
+	var arg2 []bool
+	if tmp, ok := rawArgs["transactionTypes"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transactionTypes"))
+		arg2, err = ec.unmarshalOBoolean2ᚕboolᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["transactionTypes"] = arg2
+	var arg3 bool
+	if tmp, ok := rawArgs["includeGas"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeGas"))
+		arg3, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["includeGas"] = arg3
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_claimProfile_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -972,6 +1082,111 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _AggregateEarnings_income(ctx context.Context, field graphql.CollectedField, obj *model.AggregateEarnings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "AggregateEarnings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AggregateEarnings().Income(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AggregateEarnings_expenditure(ctx context.Context, field graphql.CollectedField, obj *model.AggregateEarnings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "AggregateEarnings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AggregateEarnings().Expenditure(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _AggregateEarnings_netEarnings(ctx context.Context, field graphql.CollectedField, obj *model.AggregateEarnings) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "AggregateEarnings",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.AggregateEarnings().NetEarnings(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
 
 func (ec *executionContext) _DataTransferMechanism_online(ctx context.Context, field graphql.CollectedField, obj *model.DataTransferMechanism) (ret graphql.Marshaler) {
 	defer func() {
@@ -1513,6 +1728,48 @@ func (ec *executionContext) _Miner_transactions(ctx context.Context, field graph
 	res := resTmp.([]*model.Transaction)
 	fc.Result = res
 	return ec.marshalNTransaction2ᚕᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Miner_aggregateEarnings(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Miner",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Miner_aggregateEarnings_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Miner().AggregateEarnings(rctx, obj, args["startHeight"].(int), args["endHeight"].(int), args["transactionTypes"].([]bool), args["includeGas"].(bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.AggregateEarnings)
+	fc.Result = res
+	return ec.marshalNAggregateEarnings2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐAggregateEarnings(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Mutation_claimProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2577,6 +2834,38 @@ func (ec *executionContext) _Transaction_height(ctx context.Context, field graph
 	res := resTmp.(int)
 	fc.Result = res
 	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Transaction_timestamp(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_transactionType(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -4272,6 +4561,70 @@ func (ec *executionContext) unmarshalInputProfileSettingsInput(ctx context.Conte
 
 // region    **************************** object.gotpl ****************************
 
+var aggregateEarningsImplementors = []string{"AggregateEarnings"}
+
+func (ec *executionContext) _AggregateEarnings(ctx context.Context, sel ast.SelectionSet, obj *model.AggregateEarnings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aggregateEarningsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AggregateEarnings")
+		case "income":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AggregateEarnings_income(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "expenditure":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AggregateEarnings_expenditure(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "netEarnings":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._AggregateEarnings_netEarnings(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var dataTransferMechanismImplementors = []string{"DataTransferMechanism"}
 
 func (ec *executionContext) _DataTransferMechanism(ctx context.Context, sel ast.SelectionSet, obj *model.DataTransferMechanism) graphql.Marshaler {
@@ -4492,6 +4845,20 @@ func (ec *executionContext) _Miner(ctx context.Context, sel ast.SelectionSet, ob
 					}
 				}()
 				res = ec._Miner_transactions(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "aggregateEarnings":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Miner_aggregateEarnings(ctx, field, obj)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -4976,6 +5343,8 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "timestamp":
+			out.Values[i] = ec._Transaction_timestamp(ctx, field, obj)
 		case "transactionType":
 			out.Values[i] = ec._Transaction_transactionType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -5316,6 +5685,20 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 // endregion **************************** object.gotpl ****************************
 
 // region    ***************************** type.gotpl *****************************
+
+func (ec *executionContext) marshalNAggregateEarnings2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐAggregateEarnings(ctx context.Context, sel ast.SelectionSet, v model.AggregateEarnings) graphql.Marshaler {
+	return ec._AggregateEarnings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAggregateEarnings2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐAggregateEarnings(ctx context.Context, sel ast.SelectionSet, v *model.AggregateEarnings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._AggregateEarnings(ctx, sel, v)
+}
 
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v interface{}) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
@@ -5731,6 +6114,42 @@ func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interf
 
 func (ec *executionContext) marshalOBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
 	return graphql.MarshalBoolean(v)
+}
+
+func (ec *executionContext) unmarshalOBoolean2ᚕboolᚄ(ctx context.Context, v interface{}) ([]bool, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]bool, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNBoolean2bool(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOBoolean2ᚕboolᚄ(ctx context.Context, sel ast.SelectionSet, v []bool) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNBoolean2bool(ctx, sel, v[i])
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOBoolean2ᚖbool(ctx context.Context, v interface{}) (*bool, error) {
