@@ -4,15 +4,13 @@ go 1.16
 
 require (
 	github.com/99designs/gqlgen v0.13.0
-	github.com/alecthomas/units v0.0.0-20210208195552-ff826a37aa15 // indirect
 	github.com/buidl-labs/filecoin-chain-indexer v0.0.0-20210530115401-579e482bb5d3
 	github.com/filecoin-project/go-address v0.0.5
-	github.com/filecoin-project/go-state-types v0.1.0 // indirect
+	github.com/filecoin-project/go-state-types v0.1.0
 	github.com/filecoin-project/lotus v1.9.0
-	github.com/filecoin-project/specs-actors/v4 v4.0.1 // indirect
+	github.com/filecoin-project/specs-actors/v4 v4.0.1
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-pg/pg/v10 v10.9.3
-	github.com/ipfs/go-cid v0.0.7 // indirect
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/rs/cors v1.7.0
