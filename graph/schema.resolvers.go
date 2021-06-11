@@ -18,6 +18,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+func (r *aggregateEarningsResolver) Income(ctx context.Context, obj *model.AggregateEarnings) (string, error) {
+	return obj.Income, nil
+}
+
+func (r *aggregateEarningsResolver) Expenditure(ctx context.Context, obj *model.AggregateEarnings) (string, error) {
+	return obj.Expenditure, nil
+}
+
+func (r *aggregateEarningsResolver) NetEarnings(ctx context.Context, obj *model.AggregateEarnings) (string, error) {
+	return obj.NetEarnings, nil
+}
+
 func (r *locationResolver) Region(ctx context.Context, obj *model.Location) (string, error) {
 	return obj.Region, nil
 }
@@ -145,15 +157,109 @@ func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner) ([]*
 	return transactions, nil
 }
 
+func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner, startHeight int, endHeight int, transactionTypes []bool, includeGas bool) (*model.AggregateEarnings, error) {
+	useAllTransactionTypes := false
+	if transactionTypes == nil {
+		fmt.Println("nil", transactionTypes)
+		useAllTransactionTypes = true
+	} else if len(transactionTypes) == 0 {
+		fmt.Println("empty", transactionTypes)
+		useAllTransactionTypes = true
+		// transactionTypes = []bool{true, true, true, true, true, true}
+	} else if len(transactionTypes) != 6 {
+		return &model.AggregateEarnings{
+			Income:      "0",
+			Expenditure: "0",
+			NetEarnings: "0",
+		}, fmt.Errorf("length of transactionTypes array should be 6")
+	}
+
+	fmt.Println("useAllTransactionTypes", useAllTransactionTypes)
+
+	var dbTransactions []*dbmodel.Transaction
+	if useAllTransactionTypes {
+		if err := r.DB.Model(&dbTransactions).
+			Where("miner_id = ?", obj.ID).
+			Where("height >= ?", startHeight).
+			Where("height <= ?", endHeight).
+			Where("exit_code = ?", 0).
+			Select(); err != nil {
+			return &model.AggregateEarnings{
+				Income:      "0",
+				Expenditure: "0",
+				NetEarnings: "0",
+			}, err
+		}
+	} else {
+		transactionTypesQuery := util.GenerateTransactionTypesQuery(transactionTypes)
+		if err := r.DB.Model(&dbTransactions).
+			Where("miner_id = ?", obj.ID).
+			Where("height >= ?", startHeight).
+			Where("height <= ?", endHeight).
+			Where(transactionTypesQuery).
+			Where("exit_code = ?", 0).
+			Select(); err != nil {
+			return &model.AggregateEarnings{
+				Income:      "0",
+				Expenditure: "0",
+				NetEarnings: "0",
+			}, err
+		}
+	}
+
+	income := big.NewInt(0)
+	expenditure := big.NewInt(0)
+
+	for _, dbTransaction := range dbTransactions {
+		switch dbTransaction.MethodName {
+		case "PreCommitSector", "ProveCommitSector",
+			"TerminateSectors", "RepayDebt",
+			"ReportConsensusFault", "DisputeWindowedPoSt",
+
+			"SubmitWindowedPoSt", "ChangeWorkerAddress", "ChangePeerID",
+			"ExtendSectorExpiration", "DeclareFaults", "DeclareFaultsRecovered",
+			"ChangeMultiaddrs", "CompactSectorNumbers", "ConfirmUpdateWorkerKey",
+			"ChangeOwnerAddress":
+			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
+			if !ok {
+				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+			}
+			expenditure = new(big.Int).Add(expenditure, val)
+			if includeGas {
+				minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
+				if !ok {
+					fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+				}
+				burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
+				if !ok {
+					fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+				}
+				expenditure = new(big.Int).Add(expenditure, minerFee)
+				expenditure = new(big.Int).Add(expenditure, burnFee)
+			}
+		case "ApplyRewards":
+			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
+			if !ok {
+				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+			}
+			income = new(big.Int).Add(income, val)
+		}
+	}
+
+	netEarnings := new(big.Int).Sub(income, expenditure)
+
+	fmt.Println("income", income, "expenditure", expenditure, "netEarnings", netEarnings)
+
+	return &model.AggregateEarnings{
+		Income:      income.String(),
+		Expenditure: expenditure.String(),
+		NetEarnings: netEarnings.String(),
+	}, nil
+}
+
 func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error) {
 	fmt.Println("i", input.MinerID, "t", reflect.TypeOf(input.MinerID))
 	fmt.Println("j", input.LedgerAddress, "t", reflect.TypeOf(input.LedgerAddress))
-
-	var isClaimed bool
-	err := r.DB.Model((*dbmodel.Miner)(nil)).
-		Column("claimed").
-		Where("id = ?", input.MinerID).
-		Select(&isClaimed)
 
 	// ######
 	// NOTE: just for testing with our ledger wallets
@@ -489,6 +595,11 @@ func (r *workerResolver) Miner(ctx context.Context, obj *model.Worker) (*model.M
 	return obj.Miner, nil
 }
 
+// AggregateEarnings returns generated.AggregateEarningsResolver implementation.
+func (r *Resolver) AggregateEarnings() generated.AggregateEarningsResolver {
+	return &aggregateEarningsResolver{r}
+}
+
 // Location returns generated.LocationResolver implementation.
 func (r *Resolver) Location() generated.LocationResolver { return &locationResolver{r} }
 
@@ -519,6 +630,7 @@ func (r *Resolver) Transaction() generated.TransactionResolver { return &transac
 // Worker returns generated.WorkerResolver implementation.
 func (r *Resolver) Worker() generated.WorkerResolver { return &workerResolver{r} }
 
+type aggregateEarningsResolver struct{ *Resolver }
 type locationResolver struct{ *Resolver }
 type minerResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }

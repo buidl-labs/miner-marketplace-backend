@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 )
 
 func GetJson(url string, target interface{}) (interface{}, error) {
@@ -27,4 +28,43 @@ func GetJson(url string, target interface{}) (interface{}, error) {
 		return target, jsonErr
 	}
 	return target, nil
+}
+
+func GenerateTransactionTypesQuery(transactionTypes []bool) string {
+	fmt.Println("len", len(transactionTypes))
+	query := ""
+	for i, tt := range transactionTypes {
+		switch i {
+		case 0:
+			if tt {
+				query += "transaction_type = 'Collateral Deposit' OR "
+			}
+		case 1:
+			if tt {
+				query += "transaction_type = 'Block Reward' OR "
+			}
+		case 2:
+			if tt {
+				query += "transaction_type = 'Deals Publish' OR "
+			}
+		case 3:
+			if tt {
+				query += "transaction_type = 'Penalty' OR "
+			}
+		case 4:
+			if tt {
+				query += "transaction_type = 'Transfer' OR "
+			}
+		case 5:
+			if tt {
+				query += "transaction_type = 'Others' OR "
+			}
+		}
+	}
+	fmt.Println("tempquery:", query)
+	if len(query) > 0 && strings.HasSuffix(query, " OR ") {
+		query = query[:len(query)-len(" OR ")]
+	}
+	fmt.Println("finalquery:", query)
+	return query
 }

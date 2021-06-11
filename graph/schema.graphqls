@@ -29,6 +29,18 @@ type Miner {
   reputationScore: Int! @goField(forceResolver: true)
   transparencyScore: Int! @goField(forceResolver: true)
   transactions: [Transaction!]! @goField(forceResolver: true)
+  aggregateEarnings(
+    startHeight: Int!
+    endHeight: Int!
+    transactionTypes: [Boolean!]
+    includeGas: Boolean!
+  ): AggregateEarnings! @goField(forceResolver: true)
+}
+
+type AggregateEarnings {
+  income: String! @goField(forceResolver: true)
+  expenditure: String! @goField(forceResolver: true)
+  netEarnings: String! @goField(forceResolver: true)
 }
 
 type PersonalInfo {
@@ -83,6 +95,7 @@ type Transaction {
   id: ID!
   miner: Miner @goField(forceResolver: true)
   height: Int!
+  timestamp: Int
   transactionType: String!
   methodName: String!
   value: String!
