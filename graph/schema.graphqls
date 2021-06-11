@@ -35,12 +35,61 @@ type Miner {
     transactionTypes: [Boolean!]
     includeGas: Boolean!
   ): AggregateEarnings! @goField(forceResolver: true)
+  estimatedEarnings(
+    days: Int!
+    transactionTypes: [Boolean!]
+    includeGas: Boolean!
+  ): EstimatedEarnings! @goField(forceResolver: true)
 }
 
 type AggregateEarnings {
-  income: String! @goField(forceResolver: true)
-  expenditure: String! @goField(forceResolver: true)
+  income: AggregateIncome! @goField(forceResolver: true)
+  expenditure: AggregateExpenditure! @goField(forceResolver: true)
   netEarnings: String! @goField(forceResolver: true)
+}
+
+type AggregateIncome {
+  total: String! @goField(forceResolver: true)
+  storageDealPayments: String! @goField(forceResolver: true)
+  blockRewards: String! @goField(forceResolver: true)
+}
+
+type AggregateExpenditure {
+  total: String! @goField(forceResolver: true)
+  collateralDeposit: String! @goField(forceResolver: true)
+  gas: String! @goField(forceResolver: true)
+  penalty: String! @goField(forceResolver: true)
+  others: String! @goField(forceResolver: true)
+}
+
+type EstimatedEarnings {
+  income: EstimatedIncome! @goField(forceResolver: true)
+  expenditure: EstimatedExpenditure! @goField(forceResolver: true)
+  netEarnings: String! @goField(forceResolver: true)
+}
+
+type EstimatedIncome {
+  total: String! @goField(forceResolver: true)
+  storageDealPayments: StorageDealPayments! @goField(forceResolver: true)
+  blockRewards: BlockRewards! @goField(forceResolver: true)
+}
+
+type StorageDealPayments {
+  existingDeals: String! @goField(forceResolver: true)
+  potentialFutureDeals: String! @goField(forceResolver: true)
+}
+
+type BlockRewards {
+  blockRewards: String! @goField(forceResolver: true) # "0" if not eligible
+  daysUntilEligible: Int! @goField(forceResolver: true) # 0 if eligible
+}
+
+type EstimatedExpenditure {
+  total: String! @goField(forceResolver: true)
+  collateralDeposit: String! @goField(forceResolver: true)
+  gas: String! @goField(forceResolver: true)
+  penalty: String! @goField(forceResolver: true)
+  others: String! @goField(forceResolver: true)
 }
 
 type PersonalInfo {
