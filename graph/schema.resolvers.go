@@ -419,7 +419,19 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 		Where("miner_id = ?", obj.ID).
 		Select()
 	if err != nil {
-		return &model.EstimatedEarnings{}, err
+		return &model.EstimatedEarnings{
+			Income: &model.EstimatedIncome{
+				Total: "0",
+				StorageDealPayments: &model.StorageDealPayments{
+					ExistingDeals:        "0",
+					PotentialFutureDeals: "0",
+				}, BlockRewards: &model.BlockRewards{
+					BlockRewards:      "0",
+					DaysUntilEligible: 0,
+				}},
+			Expenditure: &model.EstimatedExpenditure{Total: "0", CollateralDeposit: "0", Gas: "0", Penalty: "0", Others: "0"},
+			NetEarnings: "0",
+		}, err
 	}
 	minerCreationHeight := int(dbTransaction.Height)
 
@@ -433,7 +445,15 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 		Where("exit_code = ?", 0).
 		Select(); err != nil {
 		return &model.EstimatedEarnings{
-			Income:      &model.EstimatedIncome{Total: "0", StorageDealPayments: &model.StorageDealPayments{}, BlockRewards: &model.BlockRewards{}},
+			Income: &model.EstimatedIncome{
+				Total: "0",
+				StorageDealPayments: &model.StorageDealPayments{
+					ExistingDeals:        "0",
+					PotentialFutureDeals: "0",
+				}, BlockRewards: &model.BlockRewards{
+					BlockRewards:      "0",
+					DaysUntilEligible: 0,
+				}},
 			Expenditure: &model.EstimatedExpenditure{Total: "0", CollateralDeposit: "0", Gas: "0", Penalty: "0", Others: "0"},
 			NetEarnings: "0",
 		}, err
