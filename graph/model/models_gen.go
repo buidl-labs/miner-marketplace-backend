@@ -156,7 +156,7 @@ type Transaction struct {
 	From            string `json:"from"`
 	To              string `json:"to"`
 	ExitCode        int    `json:"exitCode"`
-	Deals           []*int `json:"deals"`
+	Deals           []int  `json:"deals"`
 }
 
 type Worker struct {

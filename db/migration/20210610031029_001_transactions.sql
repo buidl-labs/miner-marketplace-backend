@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS transactions
     id TEXT NOT NULL,
     miner_id TEXT NOT NULL,
     height BIGINT NOT NULL,
+    "timestamp" BIGINT,
     transaction_type TEXT NOT NULL,
     method_name TEXT NOT NULL,
     "value" TEXT NOT NULL,

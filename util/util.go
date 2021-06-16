@@ -11,20 +11,20 @@ import (
 func GetJson(url string, target interface{}) (interface{}, error) {
 	r, err := http.Get(url)
 	if err != nil {
-		fmt.Println("err:", err)
+		fmt.Println("url:", url, "err:", err)
 		return target, err
 	}
 	defer r.Body.Close()
 
 	body, readErr := ioutil.ReadAll(r.Body)
 	if readErr != nil {
-		fmt.Println("readErr:", readErr)
+		fmt.Println("url:", url, "readErr:", readErr)
 		return target, readErr
 	}
 
 	jsonErr := json.Unmarshal(body, target)
 	if jsonErr != nil {
-		fmt.Println("jsonErr:", jsonErr)
+		fmt.Println("url:", url, "jsonErr:", jsonErr)
 		return target, jsonErr
 	}
 	return target, nil

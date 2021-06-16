@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -47,30 +49,44 @@ func main() {
 	}
 	defer closer()
 
-	// service.Bulk(newDB, node)
-	go service.Indexer(newDB, node)
+	var command string
+	flag.StringVar(&command, "cmd", "", "Command to run")
+	flag.Parse()
 
-	router := chi.NewRouter()
+	fmt.Println("command selected:", command)
+	if command == "psdm" {
+		service.PublishStorageDealsMessages(newDB, node)
+	} else if command == "wbmm" {
+		service.WithdrawBalanceMarketMessages(newDB, node)
+	} else if command == "abm" {
+		service.AddBalanceMessages(newDB, node)
+	} else if command == "mm" {
+		service.MinerPageMessages(newDB, node)
+	} else {
+		go service.Indexer(newDB, node)
 
-	router.Use(cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowCredentials: true,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		Debug:            true,
-	}).Handler)
-	// router.Use(cors.AllowAll().Handler)
+		router := chi.NewRouter()
 
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{
-		DB:      newDB,
-		LensAPI: node,
-	}}))
+		router.Use(cors.New(cors.Options{
+			AllowedOrigins:   []string{"*"},
+			AllowCredentials: true,
+			AllowedMethods:   []string{"GET", "POST", "PUT", "OPTIONS"},
+			AllowedHeaders:   []string{"*"},
+			Debug:            true,
+		}).Handler)
+		// router.Use(cors.AllowAll().Handler)
 
-	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	router.Handle("/query", srv)
+		srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{
+			DB:      newDB,
+			LensAPI: node,
+		}}))
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, router))
+		router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+		router.Handle("/query", srv)
+
+		log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
+		log.Fatal(http.ListenAndServe(":"+port, router))
+	}
 }
 
 func NewDB() (*pg.DB, error) {

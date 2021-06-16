@@ -14,6 +14,12 @@ go build
 
 Sample present in [.env.sample](.env.sample)
 
+### Run db migrations
+
+```
+goose -dir ./db/migration postgres "user=username dbname=fmmdbname sslmode=disable" up
+```
+
 ### Run localhost
 
 ```

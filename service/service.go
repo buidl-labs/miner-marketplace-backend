@@ -2,22 +2,30 @@ package service
 
 import (
 	// "context"
+	"bytes"
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/buidl-labs/filecoin-chain-indexer/lens"
 	"github.com/buidl-labs/miner-marketplace-backend/db/model"
 	gqlmodel "github.com/buidl-labs/miner-marketplace-backend/graph/model"
 	"github.com/buidl-labs/miner-marketplace-backend/util"
-
+	"github.com/spf13/viper"
 	// "github.com/ipfs/go-cid"
 	// "github.com/filecoin-project/go-address"
 	// "github.com/filecoin-project/lotus/api"
 	// "github.com/filecoin-project/lotus/chain/types"
 	"github.com/go-pg/pg/v10"
 )
+
+var yamlExample = []byte(`
+miners:
+- f0115238
+- f08403
+`)
 
 func Indexer(DB *pg.DB, node lens.API) {
 	hourlyTasks(DB, node)
@@ -37,7 +45,6 @@ func Indexer(DB *pg.DB, node lens.API) {
 }
 
 func hourlyTasks(DB *pg.DB, node lens.API) {
-	Bulk(DB, node)
 	var FILREP_MINERS string = "https://api.filrep.io/api/v1/miners"
 
 	filRepMiners := FilRepMiners{}
@@ -331,9 +338,9 @@ func ComputeTransparencyScore(input gqlmodel.ProfileSettingsInput) int {
 	return int(transparencyScore)
 }
 
-func Bulk(DB *pg.DB, node lens.API) {
+func MinerPageMessages(DB *pg.DB, node lens.API) {
 	/*
-		fmt.Println("bulk")
+		fmt.Println("MinerPageMessages")
 		rewardActor, _ := address.NewFromString("f02")
 		fmt.Println("rewardActor", rewardActor) // From: rewardActor,
 		miner, _ := address.NewFromString("f0123261")
@@ -364,7 +371,14 @@ func Bulk(DB *pg.DB, node lens.API) {
 	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
 
 	// var FILREP_MINER_TRANSFERS="https://filfox.info/api/v1/address/f0152712/transfers?pageSize=100&page=0&type=reward"
-	miners := []string{"f0115238", "f08403"}
+
+	viper.SetConfigType("yaml")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	viper.ReadConfig(bytes.NewBuffer(yamlExample))
+
+	miners := viper.GetStringSlice("miners")
+
 	for _, m := range miners {
 		fmt.Println("miner", m)
 		// block rewards
@@ -391,7 +405,7 @@ func Bulk(DB *pg.DB, node lens.API) {
 		minerRewards = append(minerRewards, filFoxMinerTransfersReward.Transfers...)
 
 		var db_miner_transfers_reward_total_count int64
-		err := DB.Model((*model.FilfoxMessagesCount)(nil)).
+		err := DB.Model((*model.FilfoxMinerMessagesCount)(nil)).
 			Column("miner_transfers_reward_total_count").
 			Where("id = ?", m).
 			Select(&db_miner_transfers_reward_total_count)
@@ -408,6 +422,8 @@ func Bulk(DB *pg.DB, node lens.API) {
 			pagesRw = int(diffRw) / 100
 			fmt.Println("case1 diffRw", diffRw, "pagesRw", pagesRw)
 			for i := 1; i <= pagesRw; i++ {
+				fmt.Println("page", i)
+				fmt.Println("iterminerRewards", len(minerRewards))
 				util.GetJson(FILFOX_MINER+m+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerTransfersReward)
 				minerRewards = append(minerRewards, filFoxMinerTransfersReward.Transfers...)
 			}
@@ -421,7 +437,7 @@ func Bulk(DB *pg.DB, node lens.API) {
 				minerRewards = append(minerRewards, filFoxMinerTransfersReward.Transfers...)
 			}
 		}
-		// DB.Model(&model.FilfoxMessagesCount{
+		// DB.Model(&model.FilfoxMinerMessagesCount{
 		// 	MinerTransfersRewardTotalCount: int64(totalRewardCount),
 		// }).
 		// 	Column("miner_transfers_reward_total_count").
@@ -439,6 +455,7 @@ func Bulk(DB *pg.DB, node lens.API) {
 					ID:              mr.To + fmt.Sprintf("%v", mr.Height) + "reward", // cid not available in filfox
 					MinerID:         mr.To,
 					Height:          int64(mr.Height),
+					Timestamp:       int64(mr.Timestamp),
 					TransactionType: "Block Reward",
 					MethodName:      "ApplyRewards",
 					Value:           value,
@@ -453,7 +470,7 @@ func Bulk(DB *pg.DB, node lens.API) {
 				}
 			}
 		}
-		_, err = DB.Model(&model.FilfoxMessagesCount{
+		_, err = DB.Model(&model.FilfoxMinerMessagesCount{
 			// ID:                             m,
 			MinerTransfersRewardTotalCount: int64(totalRewardCount),
 		}).
@@ -488,7 +505,7 @@ func Bulk(DB *pg.DB, node lens.API) {
 		minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
 
 		var db_miner_messages_total_count int64
-		err = DB.Model((*model.FilfoxMessagesCount)(nil)).
+		err = DB.Model((*model.FilfoxMinerMessagesCount)(nil)).
 			Column("miner_messages_total_count").
 			Where("id = ?", m).
 			Select(&db_miner_messages_total_count)
@@ -505,6 +522,8 @@ func Bulk(DB *pg.DB, node lens.API) {
 			pages = int(diff) / 100
 			fmt.Println("case1 diff", diff, "pages", pages)
 			for i := 1; i <= pages; i++ {
+				fmt.Println("page", i)
+				fmt.Println("iterminerMessages", len(minerMessages))
 				util.GetJson(FILFOX_MINER+m+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerMessages)
 				minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
 			}
@@ -518,7 +537,7 @@ func Bulk(DB *pg.DB, node lens.API) {
 				minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
 			}
 		}
-		// DB.Model(&model.FilfoxMessagesCount{
+		// DB.Model(&model.FilfoxMinerMessagesCount{
 		// 	MinerMessagesTotalCount: int64(totalMinerMessageCount),
 		// }).
 		// 	Column("miner_messages_total_count").
@@ -530,7 +549,7 @@ func Bulk(DB *pg.DB, node lens.API) {
 				// https://filfox.info/api/v1/message/bafy2bzacebo54zcaakbqov2e7shpfvxqugmpgmn4m7mpirsbac6w7jumkra3i
 				filFoxMessage := new(FilFoxMessage)
 				util.GetJson(FILFOX_MESSAGE+mr.Cid, filFoxMessage)
-				transactionType, value, minerFee, burnFee := GetMessageAttributes(node, *filFoxMessage)
+				transactionType, value, minerFee, burnFee, _, _ := GetMessageAttributes(node, *filFoxMessage)
 				if value == "" {
 					value = "0"
 				}
@@ -544,6 +563,7 @@ func Bulk(DB *pg.DB, node lens.API) {
 					ID:              mr.Cid,
 					MinerID:         m,
 					Height:          int64(mr.Height),
+					Timestamp:       int64(mr.Timestamp),
 					TransactionType: transactionType,
 					MethodName:      mr.Method,
 					Value:           value,
@@ -558,7 +578,7 @@ func Bulk(DB *pg.DB, node lens.API) {
 				}
 			}
 		}
-		_, err = DB.Model(&model.FilfoxMessagesCount{
+		_, err = DB.Model(&model.FilfoxMinerMessagesCount{
 			// ID:                      m,
 			MinerMessagesTotalCount: int64(totalMinerMessageCount),
 		}).
@@ -570,6 +590,368 @@ func Bulk(DB *pg.DB, node lens.API) {
 		if err != nil {
 			fmt.Println("inserting/updating MinerMessagesTotalCount", err)
 		}
+	}
+}
+
+func PublishStorageDealsMessages(DB *pg.DB, node lens.API) {
+	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
+
+	filFoxMessagesList := new(FilFoxMessagesList)
+	util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page=0&method=PublishStorageDeals", filFoxMessagesList)
+
+	publishStorageDealsMessages := []struct {
+		Cid       string `json:"cid"`
+		Height    int    `json:"height"`
+		Timestamp int    `json:"timestamp"`
+		From      string `json:"from"`
+		To        string `json:"to"`
+		ToTag     struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"toTag"`
+		Value   string `json:"value"`
+		Method  string `json:"method"`
+		Receipt struct {
+			ExitCode int `json:"exitCode"`
+		} `json:"receipt"`
+		FromTag struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"fromTag,omitempty"`
+	}{}
+
+	publishStorageDealsMessages = append(publishStorageDealsMessages, filFoxMessagesList.Messages...)
+
+	var db_publish_storage_deals_messages_total_count int64
+	err := DB.Model((*model.FilfoxMessagesCount)(nil)).
+		Column("publish_storage_deals_messages_total_count").
+		Where("id = 'psdm'").
+		Select(&db_publish_storage_deals_messages_total_count)
+
+	fmt.Println("db_publish_storage_deals_messages_total_count", db_publish_storage_deals_messages_total_count)
+
+	totalPublishStorageDealsMessageCount := filFoxMessagesList.TotalCount
+	fmt.Println("totalPublishStorageDealsMessageCount", totalPublishStorageDealsMessageCount)
+
+	var diff int64
+	var pages int
+	if err == nil && db_publish_storage_deals_messages_total_count < int64(totalPublishStorageDealsMessageCount) {
+		diff = int64(totalPublishStorageDealsMessageCount) - db_publish_storage_deals_messages_total_count
+		pages = int(diff) / 100
+		fmt.Println("case1 diff", diff, "pages", pages)
+		for i := 1; i <= pages; i++ {
+			fmt.Println("page", i)
+			fmt.Println("iterminerMessages", len(publishStorageDealsMessages))
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxMessagesList)
+			publishStorageDealsMessages = append(publishStorageDealsMessages, filFoxMessagesList.Messages...)
+		}
+	} else if db_publish_storage_deals_messages_total_count != int64(totalPublishStorageDealsMessageCount) {
+		minerMessagePagesCount := totalPublishStorageDealsMessageCount / 100
+		fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
+		for i := 1; i <= minerMessagePagesCount; i++ {
+			fmt.Println("page", i)
+			fmt.Println("iterminerMessages", len(publishStorageDealsMessages))
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxMessagesList)
+			publishStorageDealsMessages = append(publishStorageDealsMessages, filFoxMessagesList.Messages...)
+		}
+	}
+
+	if db_publish_storage_deals_messages_total_count != int64(totalPublishStorageDealsMessageCount) {
+		for _, psdm := range publishStorageDealsMessages {
+			filFoxMessage := new(FilFoxPublishStorageDealsMessage)
+			util.GetJson(FILFOX_MESSAGE+psdm.Cid, filFoxMessage)
+
+			transactionType := "Deals Publish"
+			burnFee := "0"
+			if len(filFoxMessage.Transfers) >= 2 {
+				burnFee = filFoxMessage.Transfers[1].Value
+			}
+			ids := filFoxMessage.DecodedReturnValue.IDs
+			provider := filFoxMessage.DecodedParams.Deals[0].Proposal.Provider
+			value := filFoxMessage.Value
+			minerFee := filFoxMessage.Fee.MinerTip
+
+			if value == "" {
+				value = "0"
+			}
+			if minerFee == "" {
+				minerFee = "0"
+			}
+			if burnFee == "" {
+				burnFee = "0"
+			}
+			_, err := DB.Model(&model.Transaction{
+				ID:              psdm.Cid,
+				MinerID:         provider,
+				Height:          int64(psdm.Height),
+				Timestamp:       int64(psdm.Timestamp),
+				TransactionType: transactionType,
+				MethodName:      psdm.Method,
+				Value:           value,
+				MinerFee:        minerFee,
+				BurnFee:         burnFee,
+				From:            psdm.From,
+				To:              psdm.To,
+				ExitCode:        psdm.Receipt.ExitCode,
+				Deals:           ids,
+			}).Insert()
+			if err != nil {
+				fmt.Println("publishStorageDealsMessages insert err:", err)
+			}
+		}
+	}
+
+	_, err = DB.Model(&model.FilfoxMessagesCount{
+		// ID:                      m,
+		PublishStorageDealsMessagesTotalCount: int64(totalPublishStorageDealsMessageCount),
+	}).
+		// OnConflict("(id) DO UPDATE").
+		// Set("title = EXCLUDED.title").
+		Column("publish_storage_deals_messages_total_count").
+		Where("id = 'psdm'").
+		Update()
+	if err != nil {
+		fmt.Println("inserting/updating PublishStorageDealsMessagesTotalCount", err)
+	}
+}
+
+func WithdrawBalanceMarketMessages(DB *pg.DB, node lens.API) {
+	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
+
+	filFoxMessagesList := new(FilFoxMessagesList)
+	util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page=0&method=WithdrawBalance%20(market)", filFoxMessagesList)
+
+	withdrawBalanceMarketMessages := []struct {
+		Cid       string `json:"cid"`
+		Height    int    `json:"height"`
+		Timestamp int    `json:"timestamp"`
+		From      string `json:"from"`
+		To        string `json:"to"`
+		ToTag     struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"toTag"`
+		Value   string `json:"value"`
+		Method  string `json:"method"`
+		Receipt struct {
+			ExitCode int `json:"exitCode"`
+		} `json:"receipt"`
+		FromTag struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"fromTag,omitempty"`
+	}{}
+
+	withdrawBalanceMarketMessages = append(withdrawBalanceMarketMessages, filFoxMessagesList.Messages...)
+
+	var db_withdraw_balance_market_messages_total_count int64
+	err := DB.Model((*model.FilfoxMessagesCount)(nil)).
+		Column("withdraw_balance_market_messages_total_count").
+		Where("id = 'wbmm'").
+		Select(&db_withdraw_balance_market_messages_total_count)
+
+	fmt.Println("db_withdraw_balance_market_messages_total_count", db_withdraw_balance_market_messages_total_count)
+
+	totalWithdrawBalanceMarketMessageCount := filFoxMessagesList.TotalCount
+	fmt.Println("totalWithdrawBalanceMarketMessageCount", totalWithdrawBalanceMarketMessageCount)
+
+	var diff int64
+	var pages int
+	if err == nil && db_withdraw_balance_market_messages_total_count < int64(totalWithdrawBalanceMarketMessageCount) {
+		diff = int64(totalWithdrawBalanceMarketMessageCount) - db_withdraw_balance_market_messages_total_count
+		pages = int(diff) / 100
+		fmt.Println("case1 diff", diff, "pages", pages)
+		for i := 1; i <= pages; i++ {
+			fmt.Println("page", i)
+			fmt.Println("iterminerMessages", len(withdrawBalanceMarketMessages))
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=WithdrawBalance%20(market)", filFoxMessagesList)
+			withdrawBalanceMarketMessages = append(withdrawBalanceMarketMessages, filFoxMessagesList.Messages...)
+		}
+	} else if db_withdraw_balance_market_messages_total_count != int64(totalWithdrawBalanceMarketMessageCount) {
+		minerMessagePagesCount := totalWithdrawBalanceMarketMessageCount / 100
+		fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
+		for i := 1; i <= minerMessagePagesCount; i++ {
+			fmt.Println("page", i)
+			fmt.Println("iterminerMessages", len(withdrawBalanceMarketMessages))
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=WithdrawBalance%20(market)", filFoxMessagesList)
+			withdrawBalanceMarketMessages = append(withdrawBalanceMarketMessages, filFoxMessagesList.Messages...)
+		}
+	}
+
+	if db_withdraw_balance_market_messages_total_count != int64(totalWithdrawBalanceMarketMessageCount) {
+		for _, wbmm := range withdrawBalanceMarketMessages {
+			filFoxMessage := new(FilFoxWithdrawBalanceMarketMessage)
+			util.GetJson(FILFOX_MESSAGE+wbmm.Cid, filFoxMessage)
+
+			burnFee := "0"
+			if len(filFoxMessage.Transfers) >= 2 {
+				burnFee = filFoxMessage.Transfers[1].Value
+			}
+			miner := filFoxMessage.DecodedParams.Address
+			transactionType := "Transfer"
+			value := filFoxMessage.DecodedParams.Amount
+			minerFee := filFoxMessage.Fee.MinerTip
+
+			if value == "" {
+				value = "0"
+			}
+			if minerFee == "" {
+				minerFee = "0"
+			}
+			if burnFee == "" {
+				burnFee = "0"
+			}
+			_, err := DB.Model(&model.Transaction{
+				ID:              wbmm.Cid,
+				MinerID:         miner,
+				Height:          int64(wbmm.Height),
+				Timestamp:       int64(wbmm.Timestamp),
+				TransactionType: transactionType,
+				MethodName:      wbmm.Method,
+				Value:           value,
+				MinerFee:        minerFee,
+				BurnFee:         burnFee,
+				From:            wbmm.From,
+				To:              wbmm.To,
+				ExitCode:        wbmm.Receipt.ExitCode,
+			}).Insert()
+			if err != nil {
+				fmt.Println("withdrawBalanceMarketMessages insert err:", err)
+			}
+		}
+	}
+
+	_, err = DB.Model(&model.FilfoxMessagesCount{
+		// ID:                      m,
+		WithdrawBalanceMarketMessagesTotalCount: int64(totalWithdrawBalanceMarketMessageCount),
+	}).
+		// OnConflict("(id) DO UPDATE").
+		// Set("title = EXCLUDED.title").
+		Column("withdraw_balance_market_messages_total_count").
+		Where("id = 'wbmm'").
+		Update()
+	if err != nil {
+		fmt.Println("inserting/updating WithdrawBalanceMarketMessagesTotalCount", err)
+	}
+}
+
+func AddBalanceMessages(DB *pg.DB, node lens.API) {
+	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
+
+	filFoxMessagesList := new(FilFoxMessagesList)
+	util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page=0&method=AddBalance", filFoxMessagesList)
+
+	addBalanceMessages := []struct {
+		Cid       string `json:"cid"`
+		Height    int    `json:"height"`
+		Timestamp int    `json:"timestamp"`
+		From      string `json:"from"`
+		To        string `json:"to"`
+		ToTag     struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"toTag"`
+		Value   string `json:"value"`
+		Method  string `json:"method"`
+		Receipt struct {
+			ExitCode int `json:"exitCode"`
+		} `json:"receipt"`
+		FromTag struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"fromTag,omitempty"`
+	}{}
+
+	addBalanceMessages = append(addBalanceMessages, filFoxMessagesList.Messages...)
+
+	var db_add_balance_messages_total_count int64
+	err := DB.Model((*model.FilfoxMessagesCount)(nil)).
+		Column("add_balance_messages_total_count").
+		Where("id = 'abm'").
+		Select(&db_add_balance_messages_total_count)
+
+	fmt.Println("db_add_balance_messages_total_count", db_add_balance_messages_total_count)
+
+	totalAddBalanceMessageCount := filFoxMessagesList.TotalCount
+	fmt.Println("totalAddBalanceMessageCount", totalAddBalanceMessageCount)
+
+	var diff int64
+	var pages int
+	if err == nil && db_add_balance_messages_total_count < int64(totalAddBalanceMessageCount) {
+		diff = int64(totalAddBalanceMessageCount) - db_add_balance_messages_total_count
+		pages = int(diff) / 100
+		fmt.Println("case1 diff", diff, "pages", pages)
+		for i := 1; i <= pages; i++ {
+			fmt.Println("page", i)
+			fmt.Println("iterminerMessages", len(addBalanceMessages))
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxMessagesList)
+			addBalanceMessages = append(addBalanceMessages, filFoxMessagesList.Messages...)
+		}
+	} else if db_add_balance_messages_total_count != int64(totalAddBalanceMessageCount) {
+		minerMessagePagesCount := totalAddBalanceMessageCount / 100
+		fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
+		for i := 1; i <= minerMessagePagesCount; i++ {
+			fmt.Println("page", i)
+			fmt.Println("iterminerMessages", len(addBalanceMessages))
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxMessagesList)
+			addBalanceMessages = append(addBalanceMessages, filFoxMessagesList.Messages...)
+		}
+	}
+
+	if db_add_balance_messages_total_count != int64(totalAddBalanceMessageCount) {
+		for _, abm := range addBalanceMessages {
+			filFoxAddBalanceMessage := new(FilFoxAddBalanceMessage)
+			util.GetJson(FILFOX_MESSAGE+abm.Cid, filFoxAddBalanceMessage)
+
+			burnFee := "0"
+			if len(filFoxAddBalanceMessage.Transfers) >= 2 {
+				burnFee = filFoxAddBalanceMessage.Transfers[1].Value
+			}
+			provider := filFoxAddBalanceMessage.DecodedParams
+			transactionType := "Collateral Deposit"
+			value := filFoxAddBalanceMessage.Value
+			minerFee := filFoxAddBalanceMessage.Fee.MinerTip
+
+			if value == "" {
+				value = "0"
+			}
+			if minerFee == "" {
+				minerFee = "0"
+			}
+			if burnFee == "" {
+				burnFee = "0"
+			}
+			_, err := DB.Model(&model.Transaction{
+				ID:              abm.Cid,
+				MinerID:         provider,
+				Height:          int64(abm.Height),
+				Timestamp:       int64(abm.Timestamp),
+				TransactionType: transactionType,
+				MethodName:      abm.Method,
+				Value:           value,
+				MinerFee:        minerFee,
+				BurnFee:         burnFee,
+				From:            abm.From,
+				To:              abm.To,
+				ExitCode:        abm.Receipt.ExitCode,
+			}).Insert()
+			if err != nil {
+				fmt.Println("addBalanceMessages insert err:", err)
+			}
+		}
+	}
+
+	_, err = DB.Model(&model.FilfoxMessagesCount{
+		// ID:                      m,
+		AddBalanceMessagesTotalCount: int64(totalAddBalanceMessageCount),
+	}).
+		// OnConflict("(id) DO UPDATE").
+		// Set("title = EXCLUDED.title").
+		Column("add_balance_messages_total_count").
+		Where("id = 'abm'").
+		Update()
+	if err != nil {
+		fmt.Println("inserting/updating AddBalanceMessagesTotalCount", err)
 	}
 }
 
@@ -621,6 +1003,290 @@ type FilFoxMinerMessages struct {
 	Methods []string `json:"methods"`
 }
 
+type FilFoxAddBalanceMessage struct {
+	Cid           string   `json:"cid"`
+	Height        int      `json:"height"`
+	Timestamp     int      `json:"timestamp"`
+	Confirmations int      `json:"confirmations"`
+	Blocks        []string `json:"blocks"`
+	Version       int      `json:"version"`
+	From          string   `json:"from"`
+	FromID        string   `json:"fromId"`
+	FromActor     string   `json:"fromActor"`
+	To            string   `json:"to"`
+	ToID          string   `json:"toId"`
+	ToActor       string   `json:"toActor"`
+	ToTag         struct {
+		Name   string `json:"name"`
+		Signed bool   `json:"signed"`
+	} `json:"toTag"`
+	Nonce        int    `json:"nonce"`
+	Value        string `json:"value"`
+	GasLimit     int    `json:"gasLimit"`
+	GasFeeCap    string `json:"gasFeeCap"`
+	GasPremium   string `json:"gasPremium"`
+	Method       string `json:"method"`
+	MethodNumber int    `json:"methodNumber"`
+	Params       string `json:"params"`
+	Receipt      struct {
+		ExitCode int    `json:"exitCode"`
+		Return   string `json:"return"`
+		GasUsed  int    `json:"gasUsed"`
+	} `json:"receipt"`
+	DecodedParams      string      `json:"decodedParams"`
+	DecodedReturnValue interface{} `json:"decodedReturnValue"`
+	Size               int         `json:"size"`
+	Error              string      `json:"error"`
+	BaseFee            string      `json:"baseFee"`
+	Fee                struct {
+		BaseFeeBurn        string `json:"baseFeeBurn"`
+		OverEstimationBurn string `json:"overEstimationBurn"`
+		MinerPenalty       string `json:"minerPenalty"`
+		MinerTip           string `json:"minerTip"`
+		Refund             string `json:"refund"`
+	} `json:"fee"`
+	Subcalls []struct {
+		From         string `json:"from"`
+		FromID       string `json:"fromId"`
+		FromActor    string `json:"fromActor"`
+		To           string `json:"to"`
+		ToID         string `json:"toId"`
+		ToActor      string `json:"toActor"`
+		Value        string `json:"value"`
+		Method       string `json:"method"`
+		MethodNumber int    `json:"methodNumber"`
+		Params       string `json:"params"`
+		Receipt      struct {
+			ExitCode int    `json:"exitCode"`
+			Return   string `json:"return"`
+			GasUsed  int    `json:"gasUsed"`
+		} `json:"receipt"`
+		DecodedParams      interface{} `json:"decodedParams"`
+		DecodedReturnValue struct {
+			Owner        string   `json:"Owner"`
+			Worker       string   `json:"Worker"`
+			ControlAddrs []string `json:"ControlAddrs"`
+		} `json:"decodedReturnValue"`
+		Error    string        `json:"error"`
+		Subcalls []interface{} `json:"subcalls"`
+	} `json:"subcalls"`
+	Transfers []struct {
+		From   string `json:"from"`
+		FromID string `json:"fromId"`
+		To     string `json:"to"`
+		ToID   string `json:"toId"`
+		ToTag  struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"toTag"`
+		Value string `json:"value"`
+		Type  string `json:"type"`
+	} `json:"transfers"`
+}
+
+type FilFoxWithdrawBalanceMarketMessage struct {
+	Cid           string   `json:"cid"`
+	Height        int      `json:"height"`
+	Timestamp     int      `json:"timestamp"`
+	Confirmations int      `json:"confirmations"`
+	Blocks        []string `json:"blocks"`
+	Version       int      `json:"version"`
+	From          string   `json:"from"`
+	FromID        string   `json:"fromId"`
+	FromActor     string   `json:"fromActor"`
+	FromTag       struct {
+		Name   string `json:"name"`
+		Signed bool   `json:"signed"`
+	} `json:"fromTag"`
+	To      string `json:"to"`
+	ToID    string `json:"toId"`
+	ToActor string `json:"toActor"`
+	ToTag   struct {
+		Name   string `json:"name"`
+		Signed bool   `json:"signed"`
+	} `json:"toTag"`
+	Nonce        int    `json:"nonce"`
+	Value        string `json:"value"`
+	GasLimit     int    `json:"gasLimit"`
+	GasFeeCap    string `json:"gasFeeCap"`
+	GasPremium   string `json:"gasPremium"`
+	Method       string `json:"method"`
+	MethodNumber int    `json:"methodNumber"`
+	Params       string `json:"params"`
+	Receipt      struct {
+		ExitCode int    `json:"exitCode"`
+		Return   string `json:"return"`
+		GasUsed  int    `json:"gasUsed"`
+	} `json:"receipt"`
+	DecodedParams struct {
+		Address string `json:"Address"`
+		Amount  string `json:"Amount"`
+	} `json:"decodedParams"`
+	DecodedReturnValue interface{} `json:"decodedReturnValue"`
+	Size               int         `json:"size"`
+	Error              string      `json:"error"`
+	BaseFee            string      `json:"baseFee"`
+	Fee                struct {
+		BaseFeeBurn        string `json:"baseFeeBurn"`
+		OverEstimationBurn string `json:"overEstimationBurn"`
+		MinerPenalty       string `json:"minerPenalty"`
+		MinerTip           string `json:"minerTip"`
+		Refund             string `json:"refund"`
+	} `json:"fee"`
+	Subcalls []struct {
+		From         string `json:"from"`
+		FromID       string `json:"fromId"`
+		FromActor    string `json:"fromActor"`
+		To           string `json:"to"`
+		ToID         string `json:"toId"`
+		ToActor      string `json:"toActor"`
+		Value        string `json:"value"`
+		Method       string `json:"method"`
+		MethodNumber int    `json:"methodNumber"`
+		Params       string `json:"params"`
+		Receipt      struct {
+			ExitCode int    `json:"exitCode"`
+			Return   string `json:"return"`
+			GasUsed  int    `json:"gasUsed"`
+		} `json:"receipt"`
+		DecodedParams      interface{}   `json:"decodedParams"`
+		DecodedReturnValue interface{}   `json:"decodedReturnValue"`
+		Error              string        `json:"error"`
+		Subcalls           []interface{} `json:"subcalls"`
+	} `json:"subcalls"`
+	Transfers []struct {
+		From    string `json:"from"`
+		FromID  string `json:"fromId"`
+		FromTag struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"fromTag"`
+		To    string `json:"to"`
+		ToID  string `json:"toId"`
+		Value string `json:"value"`
+		Type  string `json:"type"`
+		ToTag struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"toTag,omitempty"`
+	} `json:"transfers"`
+}
+
+type FilFoxPublishStorageDealsMessage struct {
+	Cid           string   `json:"cid"`
+	Height        int      `json:"height"`
+	Timestamp     int      `json:"timestamp"`
+	Confirmations int      `json:"confirmations"`
+	Blocks        []string `json:"blocks"`
+	Version       int      `json:"version"`
+	From          string   `json:"from"`
+	FromID        string   `json:"fromId"`
+	FromActor     string   `json:"fromActor"`
+	To            string   `json:"to"`
+	ToID          string   `json:"toId"`
+	ToActor       string   `json:"toActor"`
+	ToTag         struct {
+		Name   string `json:"name"`
+		Signed bool   `json:"signed"`
+	} `json:"toTag"`
+	Nonce        int    `json:"nonce"`
+	Value        string `json:"value"`
+	GasLimit     int    `json:"gasLimit"`
+	GasFeeCap    string `json:"gasFeeCap"`
+	GasPremium   string `json:"gasPremium"`
+	Method       string `json:"method"`
+	MethodNumber int    `json:"methodNumber"`
+	Params       string `json:"params"`
+	Receipt      struct {
+		ExitCode int    `json:"exitCode"`
+		Return   string `json:"return"`
+		GasUsed  int    `json:"gasUsed"`
+	} `json:"receipt"`
+	DecodedParams struct {
+		Deals []struct {
+			Proposal struct {
+				PieceCID             string `json:"PieceCID"`
+				PieceSize            int64  `json:"PieceSize"`
+				VerifiedDeal         bool   `json:"VerifiedDeal"`
+				Client               string `json:"Client"`
+				Provider             string `json:"Provider"`
+				Label                string `json:"Label"`
+				StartEpoch           int    `json:"StartEpoch"`
+				EndEpoch             int    `json:"endEpoch"`
+				StoragePricePerEpoch string `json:"StoragePricePerEpoch"`
+				ProviderCollateral   string `json:"ProviderCollateral"`
+				ClientCollateral     string `json:"ClientCollateral"`
+			} `json:"Proposal"`
+			ClientSignature struct {
+				Type      int    `json:"Type"`
+				Signature string `json:"Signature"`
+			} `json:"ClientSignature"`
+		} `json:"Deals"`
+	} `json:"decodedParams"`
+	DecodedReturnValue struct {
+		IDs []int `json:"IDs"`
+	} `json:"decodedReturnValue"`
+	Size    int    `json:"size"`
+	Error   string `json:"error"`
+	BaseFee string `json:"baseFee"`
+	Fee     struct {
+		BaseFeeBurn        string `json:"baseFeeBurn"`
+		OverEstimationBurn string `json:"overEstimationBurn"`
+		MinerPenalty       string `json:"minerPenalty"`
+		MinerTip           string `json:"minerTip"`
+		Refund             string `json:"refund"`
+	} `json:"fee"`
+	Subcalls []struct {
+		From         string `json:"from"`
+		FromID       string `json:"fromId"`
+		FromActor    string `json:"fromActor"`
+		To           string `json:"to"`
+		ToID         string `json:"toId"`
+		ToActor      string `json:"toActor"`
+		Value        string `json:"value"`
+		Method       string `json:"method"`
+		MethodNumber int    `json:"methodNumber"`
+		Params       string `json:"params"`
+		Receipt      struct {
+			ExitCode int    `json:"exitCode"`
+			Return   string `json:"return"`
+			GasUsed  int    `json:"gasUsed"`
+		} `json:"receipt"`
+		DecodedParams      interface{} `json:"decodedParams"`
+		DecodedReturnValue struct {
+			Owner                   string   `json:"Owner"`
+			Worker                  string   `json:"Worker"`
+			ControlAddrs            []string `json:"ControlAddrs"`
+			RawBytePower            string   `json:"RawBytePower"`
+			QualityAdjPower         string   `json:"QualityAdjPower"`
+			PledgeCollateral        string   `json:"PledgeCollateral"`
+			QualityAdjPowerSmoothed struct {
+				PositionEstimate string `json:"PositionEstimate"`
+				VelocityEstimate string `json:"VelocityEstimate"`
+			} `json:"QualityAdjPowerSmoothed"`
+			ThisEpochRewardSmoothed struct {
+				PositionEstimate string `json:"PositionEstimate"`
+				VelocityEstimate string `json:"VelocityEstimate"`
+			} `json:"ThisEpochRewardSmoothed"`
+			ThisEpochBaselinePower string `json:"ThisEpochBaselinePower"`
+		} `json:"decodedReturnValue,omitempty"`
+		Error    string        `json:"error"`
+		Subcalls []interface{} `json:"subcalls"`
+	} `json:"subcalls"`
+	Transfers []struct {
+		From   string `json:"from"`
+		FromID string `json:"fromId"`
+		To     string `json:"to"`
+		ToID   string `json:"toId"`
+		ToTag  struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"toTag"`
+		Value string `json:"value"`
+		Type  string `json:"type"`
+	} `json:"transfers"`
+}
+
 type FilFoxMessage struct {
 	Cid           string   `json:"cid"`
 	Height        int      `json:"height"`
@@ -656,10 +1322,31 @@ type FilFoxMessage struct {
 		GasUsed  int    `json:"gasUsed"`
 	} `json:"receipt"`
 	DecodedParams struct {
+		Address         string `json:"Address"`
+		Amount          string `json:"Amount"`
 		AmountRequested string `json:"AmountRequested"`
 		Deadline        int    `json:"Deadline"`
-		PoStIndex       int    `json:"PoStIndex"`
-		Partitions      []struct {
+		Deals           []struct {
+			Proposal struct {
+				PieceCID             string `json:"PieceCID"`
+				PieceSize            int64  `json:"PieceSize"`
+				VerifiedDeal         bool   `json:"VerifiedDeal"`
+				Client               string `json:"Client"`
+				Provider             string `json:"Provider"`
+				Label                string `json:"Label"`
+				StartEpoch           int    `json:"StartEpoch"`
+				EndEpoch             int    `json:"endEpoch"`
+				StoragePricePerEpoch string `json:"StoragePricePerEpoch"`
+				ProviderCollateral   string `json:"ProviderCollateral"`
+				ClientCollateral     string `json:"ClientCollateral"`
+			} `json:"Proposal"`
+			ClientSignature struct {
+				Type      int    `json:"Type"`
+				Signature string `json:"Signature"`
+			} `json:"ClientSignature"`
+		} `json:"Deals"`
+		PoStIndex  int `json:"PoStIndex"`
+		Partitions []struct {
 			Index   int    `json:"Index"`
 			Skipped string `json:"Skipped"`
 		} `json:"Partitions"`
@@ -670,11 +1357,13 @@ type FilFoxMessage struct {
 		ChainCommitEpoch int    `json:"ChainCommitEpoch"`
 		ChainCommitRand  string `json:"ChainCommitRand"`
 	} `json:"decodedParams"`
-	DecodedReturnValue interface{} `json:"decodedReturnValue"`
-	Size               int         `json:"size"`
-	Error              string      `json:"error"`
-	BaseFee            string      `json:"baseFee"`
-	Fee                struct {
+	DecodedReturnValue struct {
+		IDs []int `json:"IDs"`
+	} `json:"decodedReturnValue"`
+	Size    int    `json:"size"`
+	Error   string `json:"error"`
+	BaseFee string `json:"baseFee"`
+	Fee     struct {
 		BaseFeeBurn        string `json:"baseFeeBurn"`
 		OverEstimationBurn string `json:"overEstimationBurn"`
 		MinerPenalty       string `json:"minerPenalty"`
@@ -701,9 +1390,12 @@ type FilFoxMessage struct {
 		Error              string        `json:"error"`
 		Subcalls           []interface{} `json:"subcalls"`
 		DecodedReturnValue struct {
-			RawBytePower            string `json:"RawBytePower"`
-			QualityAdjPower         string `json:"QualityAdjPower"`
-			PledgeCollateral        string `json:"PledgeCollateral"`
+			Owner                   string   `json:"Owner"`
+			Worker                  string   `json:"Worker"`
+			ControlAddrs            []string `json:"ControlAddrs"`
+			RawBytePower            string   `json:"RawBytePower"`
+			QualityAdjPower         string   `json:"QualityAdjPower"`
+			PledgeCollateral        string   `json:"PledgeCollateral"`
 			QualityAdjPowerSmoothed struct {
 				PositionEstimate string `json:"PositionEstimate"`
 				VelocityEstimate string `json:"VelocityEstimate"`
@@ -733,7 +1425,32 @@ type FilFoxMessage struct {
 	} `json:"transfers"`
 }
 
-func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, string, string, string) {
+type FilFoxMessagesList struct {
+	TotalCount int `json:"totalCount"`
+	Messages   []struct {
+		Cid       string `json:"cid"`
+		Height    int    `json:"height"`
+		Timestamp int    `json:"timestamp"`
+		From      string `json:"from"`
+		To        string `json:"to"`
+		ToTag     struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"toTag"`
+		Value   string `json:"value"`
+		Method  string `json:"method"`
+		Receipt struct {
+			ExitCode int `json:"exitCode"`
+		} `json:"receipt"`
+		FromTag struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"fromTag,omitempty"`
+	} `json:"messages"`
+	Methods []string `json:"methods"`
+}
+
+func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, string, string, string, string, []int) {
 	fmt.Println("inside GetMessageAttributes", filfoxMessage)
 	switch filfoxMessage.Method {
 	case "PreCommitSector", "ProveCommitSector":
@@ -741,7 +1458,7 @@ func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, s
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
-		return "Collateral Deposit", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, burnFee
+		return "Collateral Deposit", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
 	case "ReportConsensusFault", "DisputeWindowedPoSt":
 		transfer, _ := strconv.ParseInt(filfoxMessage.Transfers[2].Value, 10, 64)
 		burn, _ := strconv.ParseInt(filfoxMessage.Transfers[3].Value, 10, 64)
@@ -750,25 +1467,50 @@ func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, s
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
-		return "Penalty", fmt.Sprintf("%v", amt), filfoxMessage.Fee.MinerTip, burnFee
+		return "Penalty", fmt.Sprintf("%v", amt), filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
 	case "TerminateSectors":
 		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
-		return "Penalty", filfoxMessage.Transfers[2].Value, filfoxMessage.Fee.MinerTip, burnFee
+		return "Penalty", filfoxMessage.Transfers[2].Value, filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
 	case "RepayDebt":
 		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
-		return "Penalty", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, burnFee
+		return "Penalty", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
 	case "WithdrawBalance (miner)":
 		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
-		return "Transfer", filfoxMessage.DecodedParams.AmountRequested, filfoxMessage.Fee.MinerTip, burnFee
+		return "Transfer", filfoxMessage.DecodedParams.AmountRequested, filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
+	// case "WithdrawBalance (market)":
+	// 	burnFee := "0"
+	// 	if len(filfoxMessage.Transfers) >= 2 {
+	// 		burnFee = filfoxMessage.Transfers[1].Value
+	// 	}
+	// 	miner := filfoxMessage.DecodedParams.Address
+	// 	return "Transfer", filfoxMessage.DecodedParams.Amount, filfoxMessage.Fee.MinerTip, burnFee, miner, []int{}
+
+	// case "PublishStorageDeals":
+	// 	burnFee := "0"
+	// 	if len(filfoxMessage.Transfers) >= 2 {
+	// 		burnFee = filfoxMessage.Transfers[1].Value
+	// 	}
+	// 	ids := filfoxMessage.DecodedReturnValue.IDs
+	// 	provider := filfoxMessage.DecodedParams.Deals[0].Proposal.Provider
+	// 	return "Deals Publish", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, burnFee, provider, ids
+
+	// case "AddBalance":
+	// 	burnFee := "0"
+	// 	if len(filfoxMessage.Transfers) >= 2 {
+	// 		burnFee = filfoxMessage.Transfers[1].Value
+	// 	}
+	// 	provider := filfoxMessage.DecodedParams
+
+	// return "Collateral Deposit", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
 	// case "SubmitWindowedPoSt", "ChangeWorkerAddress", "ChangePeerID", "ExtendSectorExpiration",
 	// 	"DeclareFaults", "DeclareFaultsRecovered", "ChangeMultiaddrs", "CompactSectorNumbers",
 	// 	"ConfirmUpdateWorkerKey", "ChangeOwnerAddress", "CreateMiner":
@@ -776,7 +1518,7 @@ func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, s
 		basefeeburn, _ := strconv.ParseInt(filfoxMessage.Fee.BaseFeeBurn, 10, 64)
 		overestimationburn, _ := strconv.ParseInt(filfoxMessage.Fee.OverEstimationBurn, 10, 64)
 		burnfee := basefeeburn + overestimationburn
-		return "Others", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, fmt.Sprintf("%d", burnfee)
+		return "Others", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, fmt.Sprintf("%d", burnfee), "", []int{}
 	}
 	// return transationType, value, minerFee, burnFee
 }

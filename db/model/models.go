@@ -49,12 +49,18 @@ type Transaction struct {
 	From            string `pg:",notnull"`
 	To              string `pg:",notnull"`
 	ExitCode        int    `pg:",notnull,use_zero"`
-	Deals           []*int `pg:","`
+	Deals           []int  `pg:",array"`
 }
 
-type FilfoxMessagesCount struct {
+type FilfoxMinerMessagesCount struct {
 	ID                             string `pg:",pk,notnull"`
 	MinerMessagesTotalCount        int64  `pg:",use_zero"`
 	MinerTransfersRewardTotalCount int64  `pg:",use_zero"`
-	MarketActorMessagesTotalCount  int64  `pg:",use_zero"`
+}
+
+type FilfoxMessagesCount struct {
+	ID                                      string `pg:",pk,notnull"`
+	PublishStorageDealsMessagesTotalCount   int64  `pg:",use_zero"`
+	WithdrawBalanceMarketMessagesTotalCount int64  `pg:",use_zero"`
+	AddBalanceMessagesTotalCount            int64  `pg:",use_zero"`
 }
