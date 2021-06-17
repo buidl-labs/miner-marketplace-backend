@@ -52,6 +52,18 @@ type Transaction struct {
 	Deals           []int  `pg:",array"`
 }
 
+type MinerStorageDealStats struct {
+	ID              string `pg:",pk,notnull"`
+	AveragePrice    string `pg:",use_zero"`
+	DataStored      string `pg:",use_zero"`
+	FaultTerminated int64  `pg:",use_zero"`
+	NoPenalties     int64  `pg:",use_zero"`
+	Slashed         int64  `pg:",use_zero"`
+	SuccessRate     string `pg:",use_zero"`
+	Terminated      int64  `pg:",use_zero"`
+	Total           int64  `pg:",use_zero"`
+}
+
 type FilfoxMinerMessagesCount struct {
 	ID                             string `pg:",pk,notnull"`
 	MinerMessagesTotalCount        int64  `pg:",use_zero"`

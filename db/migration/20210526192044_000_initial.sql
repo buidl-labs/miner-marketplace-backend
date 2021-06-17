@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS miners
 (
     id TEXT NOT NULL,
     claimed BOOLEAN,
-    region TEXT ,
+    region TEXT,
     country TEXT,
     worker_id TEXT,
     worker_address TEXT,

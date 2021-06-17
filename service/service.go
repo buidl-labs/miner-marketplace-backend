@@ -52,7 +52,7 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 	filRepMiners := FilRepMiners{}
 	util.GetJson(FILREP_MINERS, &filRepMiners)
 
-	fmt.Println("pagination:", filRepMiners.Pagination)
+	fmt.Println("hourly pagination:", filRepMiners.Pagination)
 
 	if filRepMiners.Pagination.Total > 0 {
 		for _, m := range filRepMiners.Miners {
@@ -110,6 +110,25 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 						continue
 					}
 				}
+				minerStorageDealStats := &model.MinerStorageDealStats{
+					AveragePrice:    m.StorageDeals.AveragePrice,
+					DataStored:      m.StorageDeals.DataStored,
+					FaultTerminated: m.StorageDeals.FaultTerminated,
+					NoPenalties:     m.StorageDeals.NoPenalties,
+					Slashed:         m.StorageDeals.Slashed,
+					SuccessRate:     m.StorageDeals.SuccessRate,
+					Terminated:      m.StorageDeals.Terminated,
+					Total:           m.StorageDeals.Total,
+				}
+				_, err = DB.Model(minerStorageDealStats).
+					Column("average_price", "data_stored", "fault_terminated",
+						"no_penalties", "slashed", "success_rate", "terminated",
+						"total").
+					Where("id = ?", m.Address).
+					Update()
+				if err != nil {
+					log.Println("updating minerStorageDealStats:", m.Address, " error:", err)
+				}
 			} else { // if never indexed
 				miner := &model.Miner{
 					ID:                   m.Address,
@@ -156,6 +175,22 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 				if err != nil {
 					log.Println("inserting minerService:", m.Address, " error:", err)
 				}
+
+				minerStorageDealStats := &model.MinerStorageDealStats{
+					ID:              m.Address,
+					AveragePrice:    m.StorageDeals.AveragePrice,
+					DataStored:      m.StorageDeals.DataStored,
+					FaultTerminated: m.StorageDeals.FaultTerminated,
+					NoPenalties:     m.StorageDeals.NoPenalties,
+					Slashed:         m.StorageDeals.Slashed,
+					SuccessRate:     m.StorageDeals.SuccessRate,
+					Terminated:      m.StorageDeals.Terminated,
+					Total:           m.StorageDeals.Total,
+				}
+				_, err = DB.Model(minerStorageDealStats).Insert()
+				if err != nil {
+					log.Println("inserting minerStorageDealStats:", m.Address, " error:", err)
+				}
 			}
 		}
 	}
@@ -170,7 +205,7 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 	filRepMiners := new(FilRepMiners)
 	util.GetJson(FILREP_MINERS, filRepMiners)
 
-	fmt.Println("pagination:", filRepMiners.Pagination)
+	fmt.Println("daily pagination:", filRepMiners.Pagination)
 
 	if filRepMiners.Pagination.Total > 0 {
 		for _, m := range filRepMiners.Miners {

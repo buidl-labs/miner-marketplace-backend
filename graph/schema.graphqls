@@ -28,6 +28,7 @@ type Miner {
   pricing: Pricing @goField(forceResolver: true) # by default, fetch from filrep (can be edited by miner)
   reputationScore: Int! @goField(forceResolver: true)
   transparencyScore: Int! @goField(forceResolver: true)
+  storageDealStats: StorageDealStats! @goField(forceResolver: true)
   transactions: [Transaction!]! @goField(forceResolver: true)
   aggregateEarnings(
     startHeight: Int!
@@ -90,6 +91,17 @@ type EstimatedExpenditure {
   gas: String! @goField(forceResolver: true)
   penalty: String! @goField(forceResolver: true)
   others: String! @goField(forceResolver: true)
+}
+
+type StorageDealStats {
+  averagePrice: String!
+  dataStored: String!
+  faultTerminated: Int!
+  noPenalties: Int!
+  slashed: Int!
+  successRate: String!
+  terminated: Int!
+  total: Int!
 }
 
 type PersonalInfo {

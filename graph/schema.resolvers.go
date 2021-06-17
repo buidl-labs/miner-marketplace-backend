@@ -220,6 +220,24 @@ func (r *minerResolver) TransparencyScore(ctx context.Context, obj *model.Miner)
 	return obj.TransparencyScore, nil
 }
 
+func (r *minerResolver) StorageDealStats(ctx context.Context, obj *model.Miner) (*model.StorageDealStats, error) {
+	minerStorageDealStats := dbmodel.MinerStorageDealStats{}
+	err := r.DB.Model(&minerStorageDealStats).Where("id = ?", obj.ID).Select()
+	if err != nil {
+		return &model.StorageDealStats{}, nil
+	}
+	return &model.StorageDealStats{
+		AveragePrice:    minerStorageDealStats.AveragePrice,
+		DataStored:      minerStorageDealStats.DataStored,
+		FaultTerminated: int(minerStorageDealStats.FaultTerminated),
+		NoPenalties:     int(minerStorageDealStats.NoPenalties),
+		Slashed:         int(minerStorageDealStats.Slashed),
+		SuccessRate:     minerStorageDealStats.SuccessRate,
+		Terminated:      int(minerStorageDealStats.Terminated),
+		Total:           int(minerStorageDealStats.Total),
+	}, nil
+}
+
 func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner) ([]*model.Transaction, error) {
 	var dbTransactions []*dbmodel.Transaction
 	if err := r.DB.Model(&dbTransactions).

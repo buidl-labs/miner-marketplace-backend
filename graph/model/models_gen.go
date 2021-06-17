@@ -69,6 +69,7 @@ type Miner struct {
 	Pricing              *Pricing           `json:"pricing"`
 	ReputationScore      int                `json:"reputationScore"`
 	TransparencyScore    int                `json:"transparencyScore"`
+	StorageDealStats     *StorageDealStats  `json:"storageDealStats"`
 	Transactions         []*Transaction     `json:"transactions"`
 	AggregateEarnings    *AggregateEarnings `json:"aggregateEarnings"`
 	EstimatedEarnings    *EstimatedEarnings `json:"estimatedEarnings"`
@@ -141,6 +142,17 @@ type ServiceTypes struct {
 type StorageDealPayments struct {
 	ExistingDeals        string `json:"existingDeals"`
 	PotentialFutureDeals string `json:"potentialFutureDeals"`
+}
+
+type StorageDealStats struct {
+	AveragePrice    string `json:"averagePrice"`
+	DataStored      string `json:"dataStored"`
+	FaultTerminated int    `json:"faultTerminated"`
+	NoPenalties     int    `json:"noPenalties"`
+	Slashed         int    `json:"slashed"`
+	SuccessRate     string `json:"successRate"`
+	Terminated      int    `json:"terminated"`
+	Total           int    `json:"total"`
 }
 
 type Transaction struct {

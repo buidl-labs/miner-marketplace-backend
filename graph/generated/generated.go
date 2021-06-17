@@ -126,6 +126,7 @@ type ComplexityRoot struct {
 		QualityAdjustedPower func(childComplexity int) int
 		ReputationScore      func(childComplexity int) int
 		Service              func(childComplexity int) int
+		StorageDealStats     func(childComplexity int) int
 		Transactions         func(childComplexity int) int
 		TransparencyScore    func(childComplexity int) int
 		Worker               func(childComplexity int) int
@@ -183,6 +184,17 @@ type ComplexityRoot struct {
 	StorageDealPayments struct {
 		ExistingDeals        func(childComplexity int) int
 		PotentialFutureDeals func(childComplexity int) int
+	}
+
+	StorageDealStats struct {
+		AveragePrice    func(childComplexity int) int
+		DataStored      func(childComplexity int) int
+		FaultTerminated func(childComplexity int) int
+		NoPenalties     func(childComplexity int) int
+		Slashed         func(childComplexity int) int
+		SuccessRate     func(childComplexity int) int
+		Terminated      func(childComplexity int) int
+		Total           func(childComplexity int) int
 	}
 
 	Transaction struct {
@@ -260,6 +272,7 @@ type MinerResolver interface {
 	Pricing(ctx context.Context, obj *model.Miner) (*model.Pricing, error)
 	ReputationScore(ctx context.Context, obj *model.Miner) (int, error)
 	TransparencyScore(ctx context.Context, obj *model.Miner) (int, error)
+	StorageDealStats(ctx context.Context, obj *model.Miner) (*model.StorageDealStats, error)
 	Transactions(ctx context.Context, obj *model.Miner) ([]*model.Transaction, error)
 	AggregateEarnings(ctx context.Context, obj *model.Miner, startHeight int, endHeight int, transactionTypes []bool, includeGas bool) (*model.AggregateEarnings, error)
 	EstimatedEarnings(ctx context.Context, obj *model.Miner, days int, transactionTypes []bool, includeGas bool) (*model.EstimatedEarnings, error)
@@ -602,6 +615,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Miner.Service(childComplexity), true
 
+	case "Miner.storageDealStats":
+		if e.complexity.Miner.StorageDealStats == nil {
+			break
+		}
+
+		return e.complexity.Miner.StorageDealStats(childComplexity), true
+
 	case "Miner.transactions":
 		if e.complexity.Miner.Transactions == nil {
 			break
@@ -832,6 +852,62 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.StorageDealPayments.PotentialFutureDeals(childComplexity), true
 
+	case "StorageDealStats.averagePrice":
+		if e.complexity.StorageDealStats.AveragePrice == nil {
+			break
+		}
+
+		return e.complexity.StorageDealStats.AveragePrice(childComplexity), true
+
+	case "StorageDealStats.dataStored":
+		if e.complexity.StorageDealStats.DataStored == nil {
+			break
+		}
+
+		return e.complexity.StorageDealStats.DataStored(childComplexity), true
+
+	case "StorageDealStats.faultTerminated":
+		if e.complexity.StorageDealStats.FaultTerminated == nil {
+			break
+		}
+
+		return e.complexity.StorageDealStats.FaultTerminated(childComplexity), true
+
+	case "StorageDealStats.noPenalties":
+		if e.complexity.StorageDealStats.NoPenalties == nil {
+			break
+		}
+
+		return e.complexity.StorageDealStats.NoPenalties(childComplexity), true
+
+	case "StorageDealStats.slashed":
+		if e.complexity.StorageDealStats.Slashed == nil {
+			break
+		}
+
+		return e.complexity.StorageDealStats.Slashed(childComplexity), true
+
+	case "StorageDealStats.successRate":
+		if e.complexity.StorageDealStats.SuccessRate == nil {
+			break
+		}
+
+		return e.complexity.StorageDealStats.SuccessRate(childComplexity), true
+
+	case "StorageDealStats.terminated":
+		if e.complexity.StorageDealStats.Terminated == nil {
+			break
+		}
+
+		return e.complexity.StorageDealStats.Terminated(childComplexity), true
+
+	case "StorageDealStats.total":
+		if e.complexity.StorageDealStats.Total == nil {
+			break
+		}
+
+		return e.complexity.StorageDealStats.Total(childComplexity), true
+
 	case "Transaction.burnFee":
 		if e.complexity.Transaction.BurnFee == nil {
 			break
@@ -1038,6 +1114,7 @@ type Miner {
   pricing: Pricing @goField(forceResolver: true) # by default, fetch from filrep (can be edited by miner)
   reputationScore: Int! @goField(forceResolver: true)
   transparencyScore: Int! @goField(forceResolver: true)
+  storageDealStats: StorageDealStats! @goField(forceResolver: true)
   transactions: [Transaction!]! @goField(forceResolver: true)
   aggregateEarnings(
     startHeight: Int!
@@ -1100,6 +1177,17 @@ type EstimatedExpenditure {
   gas: String! @goField(forceResolver: true)
   penalty: String! @goField(forceResolver: true)
   others: String! @goField(forceResolver: true)
+}
+
+type StorageDealStats {
+  averagePrice: String!
+  dataStored: String!
+  faultTerminated: Int!
+  noPenalties: Int!
+  slashed: Int!
+  successRate: String!
+  terminated: Int!
+  total: Int!
 }
 
 type PersonalInfo {
@@ -2775,6 +2863,41 @@ func (ec *executionContext) _Miner_transparencyScore(ctx context.Context, field 
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Miner_storageDealStats(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Miner",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Miner().StorageDealStats(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.StorageDealStats)
+	fc.Result = res
+	return ec.marshalNStorageDealStats2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐStorageDealStats(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Miner_transactions(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -3924,6 +4047,286 @@ func (ec *executionContext) _StorageDealPayments_potentialFutureDeals(ctx contex
 	res := resTmp.(string)
 	fc.Result = res
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StorageDealStats_averagePrice(ctx context.Context, field graphql.CollectedField, obj *model.StorageDealStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StorageDealStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AveragePrice, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StorageDealStats_dataStored(ctx context.Context, field graphql.CollectedField, obj *model.StorageDealStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StorageDealStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DataStored, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StorageDealStats_faultTerminated(ctx context.Context, field graphql.CollectedField, obj *model.StorageDealStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StorageDealStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FaultTerminated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StorageDealStats_noPenalties(ctx context.Context, field graphql.CollectedField, obj *model.StorageDealStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StorageDealStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NoPenalties, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StorageDealStats_slashed(ctx context.Context, field graphql.CollectedField, obj *model.StorageDealStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StorageDealStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Slashed, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StorageDealStats_successRate(ctx context.Context, field graphql.CollectedField, obj *model.StorageDealStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StorageDealStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SuccessRate, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StorageDealStats_terminated(ctx context.Context, field graphql.CollectedField, obj *model.StorageDealStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StorageDealStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Terminated, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _StorageDealStats_total(ctx context.Context, field graphql.CollectedField, obj *model.StorageDealStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "StorageDealStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Total, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_id(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -6454,6 +6857,20 @@ func (ec *executionContext) _Miner(ctx context.Context, sel ast.SelectionSet, ob
 				}
 				return res
 			})
+		case "storageDealStats":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Miner_storageDealStats(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "transactions":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -6982,6 +7399,68 @@ func (ec *executionContext) _StorageDealPayments(ctx context.Context, sel ast.Se
 				}
 				return res
 			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var storageDealStatsImplementors = []string{"StorageDealStats"}
+
+func (ec *executionContext) _StorageDealStats(ctx context.Context, sel ast.SelectionSet, obj *model.StorageDealStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, storageDealStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("StorageDealStats")
+		case "averagePrice":
+			out.Values[i] = ec._StorageDealStats_averagePrice(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "dataStored":
+			out.Values[i] = ec._StorageDealStats_dataStored(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "faultTerminated":
+			out.Values[i] = ec._StorageDealStats_faultTerminated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "noPenalties":
+			out.Values[i] = ec._StorageDealStats_noPenalties(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "slashed":
+			out.Values[i] = ec._StorageDealStats_slashed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "successRate":
+			out.Values[i] = ec._StorageDealStats_successRate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "terminated":
+			out.Values[i] = ec._StorageDealStats_terminated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "total":
+			out.Values[i] = ec._StorageDealStats_total(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -7594,6 +8073,20 @@ func (ec *executionContext) marshalNStorageDealPayments2ᚖgithubᚗcomᚋbuidl�
 		return graphql.Null
 	}
 	return ec._StorageDealPayments(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNStorageDealStats2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐStorageDealStats(ctx context.Context, sel ast.SelectionSet, v model.StorageDealStats) graphql.Marshaler {
+	return ec._StorageDealStats(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNStorageDealStats2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐStorageDealStats(ctx context.Context, sel ast.SelectionSet, v *model.StorageDealStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._StorageDealStats(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
