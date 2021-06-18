@@ -62,6 +62,8 @@ func main() {
 		service.AddBalanceMessages(newDB, node)
 	} else if command == "mm" {
 		service.MinerPageMessages(newDB, node)
+	} else if command == "dtc" {
+		service.StorageDeals(newDB, node)
 	} else {
 		go service.Indexer(newDB, node)
 

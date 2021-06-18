@@ -1,7 +1,6 @@
 package service
 
 import (
-	// "context"
 	"bytes"
 	"fmt"
 	"log"
@@ -13,12 +12,8 @@ import (
 	"github.com/buidl-labs/miner-marketplace-backend/db/model"
 	gqlmodel "github.com/buidl-labs/miner-marketplace-backend/graph/model"
 	"github.com/buidl-labs/miner-marketplace-backend/util"
-	"github.com/spf13/viper"
-	// "github.com/ipfs/go-cid"
-	// "github.com/filecoin-project/go-address"
-	// "github.com/filecoin-project/lotus/api"
-	// "github.com/filecoin-project/lotus/chain/types"
 	"github.com/go-pg/pg/v10"
+	"github.com/spf13/viper"
 )
 
 var yamlExample = []byte(`
@@ -1015,6 +1010,168 @@ func AddBalanceMessages(DB *pg.DB, node lens.API) {
 	}
 }
 
+func StorageDeals(DB *pg.DB, node lens.API) {
+	// update storage market deals
+
+	FILFOX_DEAL := "https://filfox.info/api/v1/deal"
+
+	deals := []struct {
+		ID             int    `json:"id"`
+		Height         int    `json:"height"`
+		Timestamp      int    `json:"timestamp"`
+		PieceSize      int64  `json:"pieceSize"`
+		VerifiedDeal   bool   `json:"verifiedDeal"`
+		Client         string `json:"client"`
+		Provider       string `json:"provider"`
+		StartEpoch     int    `json:"startEpoch"`
+		StartTimestamp int    `json:"startTimestamp"`
+		EndEpoch       int    `json:"endEpoch"`
+		EndTimestamp   int    `json:"endTimestamp"`
+		StroagePrice   string `json:"stroagePrice"`
+		ProviderTag    struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"providerTag,omitempty"`
+	}{}
+	filFoxDealsList := new(FilFoxDealsList)
+	util.GetJson(FILFOX_DEAL+"/list?pageSize=100&page=0", filFoxDealsList)
+
+	deals = append(deals, filFoxDealsList.Deals...)
+
+	var db_deals_total_count int64
+	err := DB.Model((*model.FilfoxMessagesCount)(nil)).
+		Column("deals_total_count").
+		Where("id = 'dtc'").
+		Select(&db_deals_total_count)
+
+	fmt.Println("db_deals_total_count", db_deals_total_count)
+
+	totalDealsCount := filFoxDealsList.TotalCount
+	fmt.Println("totalDealsCount", totalDealsCount)
+
+	var diff int64
+	var pages int
+	if err == nil && db_deals_total_count < int64(totalDealsCount) {
+		diff = int64(totalDealsCount) - db_deals_total_count
+		pages = int(diff) / 100
+		fmt.Println("case1 diff", diff, "pages", pages)
+		for i := 0; i <= pages; i++ {
+			fmt.Println("page", i)
+			fmt.Println("iterdeals", len(deals))
+			util.GetJson(FILFOX_DEAL+"/list?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxDealsList)
+			// if db_deals_total_count != int64(totalDealsCount) {
+			for _, d := range filFoxDealsList.Deals {
+				_, err := DB.Model(&model.MarketDealProposal{
+					ID:             uint64(d.ID),
+					Height:         int64(d.Height),
+					Timestamp:      int64(d.Timestamp),
+					PieceSize:      uint64(d.PieceSize),
+					VerifiedDeal:   d.VerifiedDeal,
+					Client:         d.Client,
+					Provider:       d.Provider,
+					StartEpoch:     int64(d.StartEpoch),
+					EndEpoch:       int64(d.EndEpoch),
+					StartTimestamp: int64(d.StartTimestamp),
+					EndTimestamp:   int64(d.EndTimestamp),
+					StoragePrice:   d.StroagePrice,
+				}).Insert()
+				if err != nil {
+					fmt.Println("deals insert err:", err)
+				}
+			}
+			// }
+
+			dealsCount, _ := DB.Model((*model.MarketDealProposal)(nil)).Count()
+
+			_, err = DB.Model(&model.FilfoxMessagesCount{
+				DealsTotalCount: int64(dealsCount),
+			}).
+				Column("deals_total_count").
+				Where("id = 'dtc'").
+				Update()
+			if err != nil {
+				fmt.Println("inserting/updating DealsTotalCount", err)
+			}
+			// deals = append(deals, filFoxDealsList.Deals...)
+		}
+	} else if db_deals_total_count != int64(totalDealsCount) {
+		dealsListPagesCount := totalDealsCount / 100
+		fmt.Println("dealsListPagesCount", dealsListPagesCount)
+		for i := 0; i <= dealsListPagesCount; i++ {
+			fmt.Println("page", i)
+			fmt.Println("iterdeals", len(deals))
+			util.GetJson(FILFOX_DEAL+"/list?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxDealsList)
+			// if db_deals_total_count != int64(totalDealsCount) {
+			for _, d := range filFoxDealsList.Deals {
+				_, err := DB.Model(&model.MarketDealProposal{
+					ID:             uint64(d.ID),
+					Height:         int64(d.Height),
+					Timestamp:      int64(d.Timestamp),
+					PieceSize:      uint64(d.PieceSize),
+					VerifiedDeal:   d.VerifiedDeal,
+					Client:         d.Client,
+					Provider:       d.Provider,
+					StartEpoch:     int64(d.StartEpoch),
+					EndEpoch:       int64(d.EndEpoch),
+					StartTimestamp: int64(d.StartTimestamp),
+					EndTimestamp:   int64(d.EndTimestamp),
+					StoragePrice:   d.StroagePrice,
+				}).Insert()
+				if err != nil {
+					fmt.Println("deals insert err:", err)
+				}
+			}
+			// }
+
+			dealsCount, _ := DB.Model((*model.MarketDealProposal)(nil)).Count()
+
+			_, err = DB.Model(&model.FilfoxMessagesCount{
+				DealsTotalCount: int64(dealsCount),
+			}).
+				Column("deals_total_count").
+				Where("id = 'dtc'").
+				Update()
+			if err != nil {
+				fmt.Println("inserting/updating DealsTotalCount", err)
+			}
+			// deals = append(deals, filFoxDealsList.Deals...)
+		}
+	}
+
+	fmt.Println("deals", len(deals))
+
+	// if db_deals_total_count != int64(totalDealsCount) {
+	// 	for _, d := range deals {
+	// 		_, err := DB.Model(&model.MarketDealProposal{
+	// 			ID:             uint64(d.ID),
+	// 			Height:         int64(d.Height),
+	// 			Timestamp:      int64(d.Timestamp),
+	// 			PieceSize:      uint64(d.PieceSize),
+	// 			VerifiedDeal:   d.VerifiedDeal,
+	// 			Client:         d.Client,
+	// 			Provider:       d.Provider,
+	// 			StartEpoch:     int64(d.StartEpoch),
+	// 			EndEpoch:       int64(d.EndEpoch),
+	// 			StartTimestamp: int64(d.StartTimestamp),
+	// 			EndTimestamp:   int64(d.EndTimestamp),
+	// 			StoragePrice:   d.StroagePrice,
+	// 		}).Insert()
+	// 		if err != nil {
+	// 			fmt.Println("deals insert err:", err)
+	// 		}
+	// 	}
+	// }
+	// _, err = DB.Model(&model.FilfoxMessagesCount{
+	// 	DealsTotalCount: int64(totalDealsCount),
+	// }).
+	// 	Column("deals_total_count").
+	// 	Where("id = 'dtc'").
+	// 	Update()
+	// if err != nil {
+	// 	fmt.Println("inserting/updating DealsTotalCount", err)
+	// }
+}
+
 type FilFoxStatsPower []struct {
 	Height               int    `json:"height"`
 	Timestamp            int    `json:"timestamp"`
@@ -1522,6 +1679,28 @@ type FilFoxMessagesList struct {
 		} `json:"fromTag,omitempty"`
 	} `json:"messages"`
 	Methods []string `json:"methods"`
+}
+
+type FilFoxDealsList struct {
+	TotalCount int `json:"totalCount"`
+	Deals      []struct {
+		ID             int    `json:"id"`
+		Height         int    `json:"height"`
+		Timestamp      int    `json:"timestamp"`
+		PieceSize      int64  `json:"pieceSize"`
+		VerifiedDeal   bool   `json:"verifiedDeal"`
+		Client         string `json:"client"`
+		Provider       string `json:"provider"`
+		StartEpoch     int    `json:"startEpoch"`
+		StartTimestamp int    `json:"startTimestamp"`
+		EndEpoch       int    `json:"endEpoch"`
+		EndTimestamp   int    `json:"endTimestamp"`
+		StroagePrice   string `json:"stroagePrice"`
+		ProviderTag    struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"providerTag,omitempty"`
+	} `json:"deals"`
 }
 
 func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, string, string, string, string, []int) {

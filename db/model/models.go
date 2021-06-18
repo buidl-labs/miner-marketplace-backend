@@ -64,6 +64,26 @@ type MinerStorageDealStats struct {
 	Total           int64  `pg:",use_zero"`
 }
 
+type MarketDealProposal struct {
+	ID                   uint64 `pg:",pk,notnull,use_zero"`
+	Height               int64  `pg:",use_zero"`
+	Timestamp            int64  `pg:",use_zero"`
+	PieceCID             string
+	PieceSize            uint64 `pg:",notnull,use_zero"`
+	VerifiedDeal         bool   `pg:",notnull,use_zero"`
+	Provider             string `pg:",notnull"`
+	Client               string `pg:",notnull"`
+	Label                string
+	StartEpoch           int64  `pg:",notnull,use_zero"`
+	EndEpoch             int64  `pg:",notnull,use_zero"`
+	StartTimestamp       int64  `pg:",use_zero"`
+	EndTimestamp         int64  `pg:",use_zero"`
+	StoragePrice         string `pg:",notnull,use_zero"`
+	StoragePricePerEpoch string `pg:",use_zero"`
+	ProviderCollateral   string `pg:",use_zero"`
+	ClientCollateral     string `pg:",use_zero"`
+}
+
 type FilfoxMinerMessagesCount struct {
 	ID                             string `pg:",pk,notnull"`
 	MinerMessagesTotalCount        int64  `pg:",use_zero"`
@@ -75,4 +95,5 @@ type FilfoxMessagesCount struct {
 	PublishStorageDealsMessagesTotalCount   int64  `pg:",use_zero"`
 	WithdrawBalanceMarketMessagesTotalCount int64  `pg:",use_zero"`
 	AddBalanceMessagesTotalCount            int64  `pg:",use_zero"`
+	DealsTotalCount                         int64  `pg:",use_zero"`
 }
