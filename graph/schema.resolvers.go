@@ -314,8 +314,49 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 		}
 	}
 
-	income := big.NewInt(0)
 	storageDealPayments := big.NewInt(0)
+
+	var dbMarketDealProposals []*dbmodel.MarketDealProposal
+	err := r.DB.Model(&dbMarketDealProposals).
+		Where("provider = ?", obj.ID).
+		Where("start_epoch <= ?", endHeight).
+		Where("end_epoch >= ?", startHeight).
+		Select()
+
+	if err == nil {
+		for _, mdp := range dbMarketDealProposals {
+			fmt.Println("###### dealid:", mdp.ID)
+			duration := mdp.EndEpoch - mdp.StartEpoch
+			durationBigInt := big.NewInt(duration)
+			storagePrice := new(big.Int)
+			storagePrice, ok := storagePrice.SetString(mdp.StoragePrice, 10)
+			if !ok {
+				fmt.Println("SetString: error")
+			}
+			fmt.Println("storagePrice", storagePrice)
+			pricePerEpoch := new(big.Int).Div(storagePrice, durationBigInt)
+			fmt.Println("pricePerEpoch", pricePerEpoch)
+			fmt.Println("durationBigInt", durationBigInt)
+			var startEpochInSelectedRange int64
+			var endEpochInSelectedRange int64
+			if mdp.StartEpoch > int64(startHeight) {
+				startEpochInSelectedRange = mdp.StartEpoch
+			} else {
+				startEpochInSelectedRange = int64(startHeight)
+			}
+			if mdp.EndEpoch < int64(endHeight) {
+				endEpochInSelectedRange = mdp.EndEpoch
+			} else {
+				endEpochInSelectedRange = int64(endHeight)
+			}
+			earningsFromCurrentDeal := new(big.Int).Mul(pricePerEpoch, big.NewInt(endEpochInSelectedRange-startEpochInSelectedRange))
+			fmt.Println("earningsFromCurrentDeal", earningsFromCurrentDeal)
+			storageDealPayments = new(big.Int).Add(storageDealPayments, earningsFromCurrentDeal)
+			fmt.Println("################")
+		}
+	}
+
+	income := big.NewInt(0)
 	blockRewards := big.NewInt(0)
 
 	expenditure := big.NewInt(0)
@@ -409,6 +450,7 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 		}
 	}
 
+	income = new(big.Int).Add(income, storageDealPayments)
 	netEarnings := new(big.Int).Sub(income, expenditure)
 
 	fmt.Println("income", income, "expenditure", expenditure, "netEarnings", netEarnings)
@@ -431,24 +473,122 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 }
 
 func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner, days int, transactionTypes []bool, includeGas bool) (*model.EstimatedEarnings, error) {
+	existingStorageDealPayments := big.NewInt(0)
+	potentialFutureDealPayments := big.NewInt(0)
+
+	ts, _ := r.LensAPI.ChainHead(context.Background())
+
+	startHeight := ts.Height()
+	endHeight := startHeight + 60*2880
+	var dbMarketDealProposals []*dbmodel.MarketDealProposal
+	err := r.DB.Model(&dbMarketDealProposals).
+		Where("provider = ?", obj.ID).
+		Where("start_epoch <= ?", endHeight).
+		Where("end_epoch >= ?", startHeight).
+		Select()
+
+	if err == nil {
+		for _, mdp := range dbMarketDealProposals {
+			fmt.Println("###### dealid:", mdp.ID)
+			duration := mdp.EndEpoch - mdp.StartEpoch
+			durationBigInt := big.NewInt(duration)
+			storagePrice := new(big.Int)
+			storagePrice, ok := storagePrice.SetString(mdp.StoragePrice, 10)
+			if !ok {
+				fmt.Println("SetString: error")
+			}
+			fmt.Println("storagePrice", storagePrice)
+			pricePerEpoch := new(big.Int).Div(storagePrice, durationBigInt)
+			fmt.Println("pricePerEpoch", pricePerEpoch)
+			fmt.Println("durationBigInt", durationBigInt)
+			var startEpochInSelectedRange int64
+			var endEpochInSelectedRange int64
+			if mdp.StartEpoch > int64(startHeight) {
+				startEpochInSelectedRange = mdp.StartEpoch
+			} else {
+				startEpochInSelectedRange = int64(startHeight)
+			}
+			if mdp.EndEpoch < int64(endHeight) {
+				endEpochInSelectedRange = mdp.EndEpoch
+			} else {
+				endEpochInSelectedRange = int64(endHeight)
+			}
+			earningsFromCurrentDeal := new(big.Int).Mul(pricePerEpoch, big.NewInt(endEpochInSelectedRange-startEpochInSelectedRange))
+			fmt.Println("earningsFromCurrentDeal", earningsFromCurrentDeal)
+			existingStorageDealPayments = new(big.Int).Add(existingStorageDealPayments, earningsFromCurrentDeal)
+			fmt.Println("################")
+		}
+	}
+
+	pricePerEpochSum := big.NewInt(0)
+	var last2MonthsMarketDealProposals []*dbmodel.MarketDealProposal
+	err = r.DB.Model(&last2MonthsMarketDealProposals).
+		Where("provider = ?", obj.ID).
+		Where("start_epoch >= ?", ts.Height()-60*2880).
+		Select()
+	if err == nil {
+		// estimatedFutureDealsEarnings := int64(0)
+		last2MonthsDealsCount := int64(len(last2MonthsMarketDealProposals))
+		if last2MonthsDealsCount != 0 {
+			for _, mdp := range last2MonthsMarketDealProposals {
+				duration := mdp.EndEpoch - mdp.StartEpoch
+				durationBigInt := big.NewInt(duration)
+				storagePrice := new(big.Int)
+				storagePrice, ok := storagePrice.SetString(mdp.StoragePrice, 10)
+				if !ok {
+					fmt.Println("SetString: error")
+				}
+				fmt.Println("storagePrice", storagePrice)
+				pricePerEpoch := new(big.Int).Div(storagePrice, durationBigInt)
+
+				// storagePricePerEpoch, _ := strconv.ParseInt(mdp.StoragePricePerEpoch, 10, 64)
+				pricePerEpochSum = new(big.Int).Add(pricePerEpochSum, pricePerEpoch)
+			}
+			averagePricePerEpochLast2Months := new(big.Int).Div(pricePerEpochSum, big.NewInt(last2MonthsDealsCount))
+			// estimatedFutureDealsFloat := new(big.Float).Mul(
+			// 	new(big.Float).Quo(
+			// 		big.NewFloat(float64(last2MonthsDealsCount)),
+			// 		big.NewFloat(float64(60))),
+			// 	big.NewFloat(float64(days)),
+			// )
+			// estimatedFutureDeals := estimatedFutureDealsFloat.Int
+			estimatedFutureDeals := new(big.Int).Mul(
+				new(big.Int).Div(
+					big.NewInt(last2MonthsDealsCount),
+					big.NewInt(int64(60))),
+				big.NewInt(int64(days)),
+			)
+			potentialFutureDealPayments = new(big.Int).Mul(
+				new(big.Int).Mul(
+					estimatedFutureDeals,
+					averagePricePerEpochLast2Months,
+				),
+				big.NewInt(int64(days*2880)),
+			)
+			// averagePricePerEpochLast2Months := pricePerEpochSum / last2MonthsDealsCount
+			// estimatedFutureDeals := (last2MonthsDealsCount / 60) * int64(days)
+			// estimatedFutureDealsEarnings = estimatedFutureDeals * averagePricePerEpochLast2Months * int64(days*2880)
+		}
+	}
+
 	dbTransaction := dbmodel.Transaction{}
-	err := r.DB.Model(&dbTransaction).
+	err = r.DB.Model(&dbTransaction).
 		Where("method_name = 'CreateMiner'").
 		Where("miner_id = ?", obj.ID).
 		Select()
 	if err != nil {
 		return &model.EstimatedEarnings{
 			Income: &model.EstimatedIncome{
-				Total: "0",
+				Total: new(big.Int).Add(existingStorageDealPayments, potentialFutureDealPayments).String(),
 				StorageDealPayments: &model.StorageDealPayments{
-					ExistingDeals:        "0",
-					PotentialFutureDeals: "0",
+					ExistingDeals:        existingStorageDealPayments.String(),
+					PotentialFutureDeals: potentialFutureDealPayments.String(),
 				}, BlockRewards: &model.BlockRewards{
 					BlockRewards:      "0",
 					DaysUntilEligible: 0,
 				}},
 			Expenditure: &model.EstimatedExpenditure{Total: "0", CollateralDeposit: "0", Gas: "0", Penalty: "0", Others: "0"},
-			NetEarnings: "0",
+			NetEarnings: new(big.Int).Add(existingStorageDealPayments, potentialFutureDealPayments).String(),
 		}, err
 	}
 	minerCreationHeight := int(dbTransaction.Height)
@@ -464,21 +604,21 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 		Select(); err != nil {
 		return &model.EstimatedEarnings{
 			Income: &model.EstimatedIncome{
-				Total: "0",
+				Total: new(big.Int).Add(existingStorageDealPayments, potentialFutureDealPayments).String(),
 				StorageDealPayments: &model.StorageDealPayments{
-					ExistingDeals:        "0",
-					PotentialFutureDeals: "0",
+					ExistingDeals:        existingStorageDealPayments.String(),
+					PotentialFutureDeals: potentialFutureDealPayments.String(),
 				}, BlockRewards: &model.BlockRewards{
 					BlockRewards:      "0",
 					DaysUntilEligible: 0,
 				}},
 			Expenditure: &model.EstimatedExpenditure{Total: "0", CollateralDeposit: "0", Gas: "0", Penalty: "0", Others: "0"},
-			NetEarnings: "0",
+			NetEarnings: new(big.Int).Add(existingStorageDealPayments, potentialFutureDealPayments).String(),
 		}, err
 	}
 
 	income := big.NewInt(0)
-	storageDealPayments := big.NewInt(0) // TODO: estimate storageDealPayments
+	// storageDealPayments := big.NewInt(0) // TODO: estimate storageDealPayments
 	blockRewards := big.NewInt(0)
 
 	expenditure := big.NewInt(0)
@@ -568,7 +708,7 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
 			}
 			blockRewards = new(big.Int).Add(blockRewards, val)
-			income = new(big.Int).Add(income, val)
+			// income = new(big.Int).Add(income, val)
 		}
 	}
 
@@ -587,7 +727,7 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 	minerID, _ := address.NewFromString(obj.ID)
 	powerActorID, _ := address.NewFromString("f04")
 	rewardActorID, _ := address.NewFromString("f02")
-	ts, _ := r.LensAPI.ChainHead(context.Background())
+	ts, _ = r.LensAPI.ChainHead(context.Background())
 
 	daysUntilEligible := big.NewInt(-1)
 	nrwd := filecoinbig.NewInt(0)
@@ -690,15 +830,16 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 	}
 	fmt.Println("NOW daysUntilEligible", daysUntilEligible)
 
-	netEarnings := new(big.Int).Sub(nrwd.Int, estimatedExpenditure)
-	netEarnings = new(big.Int).Add(netEarnings, storageDealPayments)
+	income = new(big.Int).Add(existingStorageDealPayments, potentialFutureDealPayments)
+	income = new(big.Int).Add(income, nrwd.Int)
+	netEarnings := new(big.Int).Sub(income, estimatedExpenditure)
 
 	return &model.EstimatedEarnings{
 		Income: &model.EstimatedIncome{
-			Total: nrwd.String(),
+			Total: income.String(),
 			StorageDealPayments: &model.StorageDealPayments{
-				ExistingDeals:        "0",
-				PotentialFutureDeals: "0",
+				ExistingDeals:        existingStorageDealPayments.String(),
+				PotentialFutureDeals: potentialFutureDealPayments.String(),
 			},
 			BlockRewards: &model.BlockRewards{
 				BlockRewards:      nrwd.String(),
