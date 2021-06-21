@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS market_deal_proposals
 (
-    id TEXT NOT NULL,
+    id BIGINT NOT NULL,
     height BIGINT,
     "timestamp" BIGINT,
     piece_cid TEXT,
