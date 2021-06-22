@@ -64,6 +64,8 @@ func main() {
 		service.MinerPageMessages(newDB, node)
 	} else if command == "dtc" {
 		service.StorageDeals(newDB, node)
+	} else if command == "ams" {
+		service.AddressMessages(newDB, node)
 	} else {
 		go service.Indexer(newDB, node)
 

@@ -20,6 +20,8 @@ var yamlExample = []byte(`
 miners:
 - f0115238
 - f08403
+addresses:
+- f3ucljuvj2tbhrue7ggxngkmglnvus52rqspa5qim3ucck2qoiahbey72q5codogfmfrucsxch5ebwjec3dvzq
 `)
 
 func Indexer(DB *pg.DB, node lens.API) {
@@ -1170,6 +1172,201 @@ func StorageDeals(DB *pg.DB, node lens.API) {
 	// if err != nil {
 	// 	fmt.Println("inserting/updating DealsTotalCount", err)
 	// }
+}
+
+func AddressMessages(DB *pg.DB, node lens.API) {
+	// index AddBalance and PublishStorageDeals messages of a particular address
+
+	var FILFOX_ADDRESS string = "https://filfox.info/api/v1/address/"
+	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
+
+	viper.SetConfigType("yaml")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	viper.ReadConfig(bytes.NewBuffer(yamlExample))
+
+	addresses := viper.GetStringSlice("addresses")
+
+	for _, a := range addresses {
+		fmt.Println("address", a)
+
+		addressAddBalanceMessages := []struct {
+			Cid       string `json:"cid"`
+			Height    int    `json:"height"`
+			Timestamp int    `json:"timestamp"`
+			From      string `json:"from"`
+			To        string `json:"to"`
+			Nonce     int    `json:"nonce"`
+			Value     string `json:"value"`
+			Method    string `json:"method"`
+			Receipt   struct {
+				ExitCode int `json:"exitCode"`
+			} `json:"receipt"`
+		}{}
+		addressPublishStorageDealsMessages := []struct {
+			Cid       string `json:"cid"`
+			Height    int    `json:"height"`
+			Timestamp int    `json:"timestamp"`
+			From      string `json:"from"`
+			To        string `json:"to"`
+			Nonce     int    `json:"nonce"`
+			Value     string `json:"value"`
+			Method    string `json:"method"`
+			Receipt   struct {
+				ExitCode int `json:"exitCode"`
+			} `json:"receipt"`
+		}{}
+		filFoxAddressMessages := new(FilFoxMinerMessages)
+
+		// AddBalance
+		util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=100&page=0&method=AddBalance", filFoxAddressMessages)
+		addressAddBalanceMessages = append(addressAddBalanceMessages, filFoxAddressMessages.Messages...)
+
+		var db_add_balance_messages_total_count int64
+		err := DB.Model((*model.FilfoxMessagesCount)(nil)).
+			Column("add_balance_messages_total_count").
+			Where("id = 'abm'").
+			Select(&db_add_balance_messages_total_count)
+
+		fmt.Println("db_add_balance_messages_total_count", db_add_balance_messages_total_count)
+
+		totalAddBalanceMessagesCount := filFoxAddressMessages.TotalCount
+		fmt.Println("totalAddBalanceMessagesCount", totalAddBalanceMessagesCount)
+
+		var diff int64
+		var pages int
+		if err == nil && db_add_balance_messages_total_count < int64(totalAddBalanceMessagesCount) {
+			diff = int64(totalAddBalanceMessagesCount) - db_add_balance_messages_total_count
+			pages = int(diff) / 100
+			fmt.Println("case1 diff", diff, "pages", pages)
+			for i := 0; i <= pages; i++ {
+				fmt.Println("page", i)
+				fmt.Println("iterabms", len(addressAddBalanceMessages))
+				filFoxAddressMessages1 := new(FilFoxMinerMessages)
+
+				util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxAddressMessages1)
+				fmt.Println(FILFOX_ADDRESS + a + "/messages?pageSize=100&page=" + fmt.Sprintf("%d", i) + "&method=AddBalance")
+				for _, abm := range filFoxAddressMessages1.Messages {
+					filFoxAddBalanceMessage := new(FilFoxAddBalanceMessage)
+					_, err = util.GetJson(FILFOX_MESSAGE+abm.Cid, filFoxAddBalanceMessage)
+					if err != nil {
+						fmt.Println("get FilFoxAddBalanceMessage", err)
+					}
+					burnFee := "0"
+					if len(filFoxAddBalanceMessage.Transfers) >= 2 {
+						burnFee = filFoxAddBalanceMessage.Transfers[1].Value
+					}
+					provider := filFoxAddBalanceMessage.DecodedParams
+					transactionType := "Collateral Deposit"
+					value := filFoxAddBalanceMessage.Value
+					minerFee := filFoxAddBalanceMessage.Fee.MinerTip
+
+					if value == "" {
+						value = "0"
+					}
+					if minerFee == "" {
+						minerFee = "0"
+					}
+					if burnFee == "" {
+						burnFee = "0"
+					}
+					_, err := DB.Model(&model.Transaction{
+						ID:              abm.Cid,
+						MinerID:         provider,
+						Height:          int64(abm.Height),
+						Timestamp:       int64(abm.Timestamp),
+						TransactionType: transactionType,
+						MethodName:      abm.Method,
+						Value:           value,
+						MinerFee:        minerFee,
+						BurnFee:         burnFee,
+						From:            abm.From,
+						To:              abm.To,
+						ExitCode:        abm.Receipt.ExitCode,
+					}).Insert()
+					if err != nil {
+						fmt.Println("addBalanceMessages insert err:", err)
+					}
+				}
+			}
+		}
+
+		// PublishStorageDeals
+		util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=100&page=0&method=PublishStorageDeals", filFoxAddressMessages)
+		addressPublishStorageDealsMessages = append(addressPublishStorageDealsMessages, filFoxAddressMessages.Messages...)
+
+		var db_publish_storage_deals_messages_total_count int64
+		err = DB.Model((*model.FilfoxMessagesCount)(nil)).
+			Column("publish_storage_deals_messages_total_count").
+			Where("id = 'psdm'").
+			Select(&db_publish_storage_deals_messages_total_count)
+
+		fmt.Println("db_publish_storage_deals_messages_total_count", db_publish_storage_deals_messages_total_count)
+
+		totalPublishStorageDealsMessagesCount := filFoxAddressMessages.TotalCount
+		fmt.Println("totalPublishStorageDealsMessagesCount", totalPublishStorageDealsMessagesCount)
+
+		var diff1 int64
+		var pages1 int
+		if err == nil && db_publish_storage_deals_messages_total_count < int64(totalAddBalanceMessagesCount) {
+			diff1 = int64(totalPublishStorageDealsMessagesCount) - db_publish_storage_deals_messages_total_count
+			pages1 = int(diff1) / 100
+			fmt.Println("case1 diff", diff1, "pages", pages1)
+			for i := 0; i <= pages1; i++ {
+				fmt.Println("page", i)
+				fmt.Println("iterpsdms", len(addressPublishStorageDealsMessages))
+				filFoxAddressMessages2 := new(FilFoxMinerMessages)
+
+				util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxAddressMessages2)
+				fmt.Println(FILFOX_ADDRESS + a + "/messages?pageSize=100&page=" + fmt.Sprintf("%d", i) + "&method=PublishStorageDeals")
+				for _, psdm := range filFoxAddressMessages2.Messages {
+					filFoxMessage := new(FilFoxPublishStorageDealsMessage)
+
+					_, err = util.GetJson(FILFOX_MESSAGE+psdm.Cid, filFoxMessage)
+					if err != nil {
+						fmt.Println("get FilFoxPublishStorageDealsMessage", err)
+					}
+					transactionType := "Deals Publish"
+					burnFee := "0"
+					if len(filFoxMessage.Transfers) >= 2 {
+						burnFee = filFoxMessage.Transfers[1].Value
+					}
+					ids := filFoxMessage.DecodedReturnValue.IDs
+					provider := filFoxMessage.DecodedParams.Deals[0].Proposal.Provider
+					value := filFoxMessage.Value
+					minerFee := filFoxMessage.Fee.MinerTip
+
+					if value == "" {
+						value = "0"
+					}
+					if minerFee == "" {
+						minerFee = "0"
+					}
+					if burnFee == "" {
+						burnFee = "0"
+					}
+					_, err := DB.Model(&model.Transaction{
+						ID:              psdm.Cid,
+						MinerID:         provider,
+						Height:          int64(psdm.Height),
+						Timestamp:       int64(psdm.Timestamp),
+						TransactionType: transactionType,
+						MethodName:      psdm.Method,
+						Value:           value,
+						MinerFee:        minerFee,
+						BurnFee:         burnFee,
+						From:            psdm.From,
+						To:              psdm.To,
+						ExitCode:        psdm.Receipt.ExitCode,
+						Deals:           ids,
+					}).Insert()
+					if err != nil {
+						fmt.Println("publishStorageDealsMessages insert err:", err)
+					}
+				}
+			}
+		}
+	}
 }
 
 type FilFoxStatsPower []struct {
