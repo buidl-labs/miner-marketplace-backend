@@ -53,7 +53,7 @@ func (r *aggregateExpenditureResolver) Penalty(ctx context.Context, obj *model.A
 }
 
 func (r *aggregateExpenditureResolver) Others(ctx context.Context, obj *model.AggregateExpenditure) (string, error) {
-	return obj.Gas, nil
+	return obj.Others, nil
 }
 
 func (r *aggregateIncomeResolver) Total(ctx context.Context, obj *model.AggregateIncome) (string, error) {
@@ -450,6 +450,10 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 		}
 	}
 
+	if !includeGas {
+		expenditure = new(big.Int).Add(expenditure, gas)
+	}
+
 	income = new(big.Int).Add(income, storageDealPayments)
 	netEarnings := new(big.Int).Sub(income, expenditure)
 
@@ -829,6 +833,10 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 		fmt.Println("else, daysUntilEligibleInt", daysUntilEligibleInt)
 	}
 	fmt.Println("NOW daysUntilEligible", daysUntilEligible)
+
+	if !includeGas {
+		estimatedExpenditure = new(big.Int).Add(estimatedExpenditure, estimatedGas)
+	}
 
 	income = new(big.Int).Add(existingStorageDealPayments, potentialFutureDealPayments)
 	income = new(big.Int).Add(income, nrwd.Int)
