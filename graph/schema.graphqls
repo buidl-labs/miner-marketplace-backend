@@ -29,7 +29,12 @@ type Miner {
   reputationScore: Int! @goField(forceResolver: true)
   transparencyScore: Int! @goField(forceResolver: true)
   storageDealStats: StorageDealStats! @goField(forceResolver: true)
-  transactions: [Transaction!]! @goField(forceResolver: true)
+  transactions(
+    first: Int
+    offset: Int
+    filter: TransactionsFilter
+    orderBy: TransactionsOrderBy
+  ): [Transaction!]! @goField(forceResolver: true)
   aggregateEarnings(
     startHeight: Int!
     endHeight: Int!
@@ -156,7 +161,7 @@ type Transaction {
   id: ID!
   miner: Miner @goField(forceResolver: true)
   height: Int!
-  timestamp: Int
+  timestamp: Int!
   transactionType: String!
   methodName: String!
   value: String!
@@ -201,6 +206,41 @@ input ProfileSettingsInput {
 input ProfileClaimInput {
   minerID: ID!
   ledgerAddress: String!
+}
+
+input TransactionsFilter {
+  or: Boolean! # take OR of all the below filters (if false, then take AND)
+  id: ID
+  minTimestamp: Int
+  maxTimestamp: Int
+  minValue: String
+  maxValue: String
+  transactionType: String
+  methodName: String
+  from: String
+  to: String
+  exitCode: Int
+}
+
+input TransactionsOrderBy {
+  param: TransactionsOrderByParam!
+  sort: Sort!
+}
+
+####################################
+# enums
+####################################
+
+enum TransactionsOrderByParam {
+  timestamp
+  value
+  minerFee
+  burnFee
+}
+
+enum Sort {
+  ASC
+  DESC
 }
 
 ####################################

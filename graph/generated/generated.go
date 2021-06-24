@@ -127,7 +127,7 @@ type ComplexityRoot struct {
 		ReputationScore      func(childComplexity int) int
 		Service              func(childComplexity int) int
 		StorageDealStats     func(childComplexity int) int
-		Transactions         func(childComplexity int) int
+		Transactions         func(childComplexity int, first *int, offset *int, filter *model.TransactionsFilter, orderBy *model.TransactionsOrderBy) int
 		TransparencyScore    func(childComplexity int) int
 		Worker               func(childComplexity int) int
 	}
@@ -273,7 +273,7 @@ type MinerResolver interface {
 	ReputationScore(ctx context.Context, obj *model.Miner) (int, error)
 	TransparencyScore(ctx context.Context, obj *model.Miner) (int, error)
 	StorageDealStats(ctx context.Context, obj *model.Miner) (*model.StorageDealStats, error)
-	Transactions(ctx context.Context, obj *model.Miner) ([]*model.Transaction, error)
+	Transactions(ctx context.Context, obj *model.Miner, first *int, offset *int, filter *model.TransactionsFilter, orderBy *model.TransactionsOrderBy) ([]*model.Transaction, error)
 	AggregateEarnings(ctx context.Context, obj *model.Miner, startHeight int, endHeight int, transactionTypes []bool, includeGas bool) (*model.AggregateEarnings, error)
 	EstimatedEarnings(ctx context.Context, obj *model.Miner, days int, transactionTypes []bool, includeGas bool) (*model.EstimatedEarnings, error)
 }
@@ -627,7 +627,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Miner.Transactions(childComplexity), true
+		args, err := ec.field_Miner_transactions_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Miner.Transactions(childComplexity, args["first"].(*int), args["offset"].(*int), args["filter"].(*model.TransactionsFilter), args["orderBy"].(*model.TransactionsOrderBy)), true
 
 	case "Miner.transparencyScore":
 		if e.complexity.Miner.TransparencyScore == nil {
@@ -1115,7 +1120,12 @@ type Miner {
   reputationScore: Int! @goField(forceResolver: true)
   transparencyScore: Int! @goField(forceResolver: true)
   storageDealStats: StorageDealStats! @goField(forceResolver: true)
-  transactions: [Transaction!]! @goField(forceResolver: true)
+  transactions(
+    first: Int
+    offset: Int
+    filter: TransactionsFilter
+    orderBy: TransactionsOrderBy
+  ): [Transaction!]! @goField(forceResolver: true)
   aggregateEarnings(
     startHeight: Int!
     endHeight: Int!
@@ -1242,7 +1252,7 @@ type Transaction {
   id: ID!
   miner: Miner @goField(forceResolver: true)
   height: Int!
-  timestamp: Int
+  timestamp: Int!
   transactionType: String!
   methodName: String!
   value: String!
@@ -1287,6 +1297,41 @@ input ProfileSettingsInput {
 input ProfileClaimInput {
   minerID: ID!
   ledgerAddress: String!
+}
+
+input TransactionsFilter {
+  or: Boolean! # take OR of all the below filters (if false, then take AND)
+  id: ID
+  minTimestamp: Int
+  maxTimestamp: Int
+  minValue: String
+  maxValue: String
+  transactionType: String
+  methodName: String
+  from: String
+  to: String
+  exitCode: Int
+}
+
+input TransactionsOrderBy {
+  param: TransactionsOrderByParam!
+  sort: Sort!
+}
+
+####################################
+# enums
+####################################
+
+enum TransactionsOrderByParam {
+  timestamp
+  value
+  minerFee
+  burnFee
+}
+
+enum Sort {
+  ASC
+  DESC
 }
 
 ####################################
@@ -1391,6 +1436,48 @@ func (ec *executionContext) field_Miner_estimatedEarnings_args(ctx context.Conte
 		}
 	}
 	args["includeGas"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Miner_transactions_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["first"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["first"] = arg0
+	var arg1 *int
+	if tmp, ok := rawArgs["offset"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg1
+	var arg2 *model.TransactionsFilter
+	if tmp, ok := rawArgs["filter"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filter"))
+		arg2, err = ec.unmarshalOTransactionsFilter2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionsFilter(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["filter"] = arg2
+	var arg3 *model.TransactionsOrderBy
+	if tmp, ok := rawArgs["orderBy"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderBy"))
+		arg3, err = ec.unmarshalOTransactionsOrderBy2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionsOrderBy(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["orderBy"] = arg3
 	return args, nil
 }
 
@@ -2914,9 +3001,16 @@ func (ec *executionContext) _Miner_transactions(ctx context.Context, field graph
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Miner_transactions_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Miner().Transactions(rctx, obj)
+		return ec.resolvers.Miner().Transactions(rctx, obj, args["first"].(*int), args["offset"].(*int), args["filter"].(*model.TransactionsFilter), args["orderBy"].(*model.TransactionsOrderBy))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4456,11 +4550,14 @@ func (ec *executionContext) _Transaction_timestamp(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*int)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Transaction_transactionType(ctx context.Context, field graphql.CollectedField, obj *model.Transaction) (ret graphql.Marshaler) {
@@ -6148,6 +6245,134 @@ func (ec *executionContext) unmarshalInputProfileSettingsInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputTransactionsFilter(ctx context.Context, obj interface{}) (model.TransactionsFilter, error) {
+	var it model.TransactionsFilter
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "or":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("or"))
+			it.Or, err = ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "minTimestamp":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minTimestamp"))
+			it.MinTimestamp, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "maxTimestamp":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxTimestamp"))
+			it.MaxTimestamp, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "minValue":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minValue"))
+			it.MinValue, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "maxValue":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxValue"))
+			it.MaxValue, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "transactionType":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("transactionType"))
+			it.TransactionType, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "methodName":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("methodName"))
+			it.MethodName, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "from":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("from"))
+			it.From, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "to":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("to"))
+			it.To, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "exitCode":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exitCode"))
+			it.ExitCode, err = ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputTransactionsOrderBy(ctx context.Context, obj interface{}) (model.TransactionsOrderBy, error) {
+	var it model.TransactionsOrderBy
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "param":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("param"))
+			it.Param, err = ec.unmarshalNTransactionsOrderByParam2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionsOrderByParam(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "sort":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sort"))
+			it.Sort, err = ec.unmarshalNSort2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐSort(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -7506,6 +7731,9 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			}
 		case "timestamp":
 			out.Values[i] = ec._Transaction_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "transactionType":
 			out.Values[i] = ec._Transaction_transactionType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -8061,6 +8289,16 @@ func (ec *executionContext) unmarshalNProfileSettingsInput2githubᚗcomᚋbuidl�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNSort2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐSort(ctx context.Context, v interface{}) (model.Sort, error) {
+	var res model.Sort
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSort2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐSort(ctx context.Context, sel ast.SelectionSet, v model.Sort) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNStorageDealPayments2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐStorageDealPayments(ctx context.Context, sel ast.SelectionSet, v model.StorageDealPayments) graphql.Marshaler {
 	return ec._StorageDealPayments(ctx, sel, &v)
 }
@@ -8149,6 +8387,16 @@ func (ec *executionContext) marshalNTransaction2ᚖgithubᚗcomᚋbuidlᚑlabs�
 		return graphql.Null
 	}
 	return ec._Transaction(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTransactionsOrderByParam2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionsOrderByParam(ctx context.Context, v interface{}) (model.TransactionsOrderByParam, error) {
+	var res model.TransactionsOrderByParam
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTransactionsOrderByParam2githubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionsOrderByParam(ctx context.Context, sel ast.SelectionSet, v model.TransactionsOrderByParam) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -8447,6 +8695,21 @@ func (ec *executionContext) marshalODataTransferMechanism2ᚖgithubᚗcomᚋbuid
 	return ec._DataTransferMechanism(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalID(*v)
+}
+
 func (ec *executionContext) unmarshalOInt2ᚕintᚄ(ctx context.Context, v interface{}) ([]int, error) {
 	if v == nil {
 		return nil, nil
@@ -8605,6 +8868,22 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 		return graphql.Null
 	}
 	return graphql.MarshalString(*v)
+}
+
+func (ec *executionContext) unmarshalOTransactionsFilter2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionsFilter(ctx context.Context, v interface{}) (*model.TransactionsFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTransactionsFilter(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOTransactionsOrderBy2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐTransactionsOrderBy(ctx context.Context, v interface{}) (*model.TransactionsOrderBy, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputTransactionsOrderBy(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOWorker2ᚖgithubᚗcomᚋbuidlᚑlabsᚋminerᚑmarketplaceᚑbackendᚋgraphᚋmodelᚐWorker(ctx context.Context, sel ast.SelectionSet, v *model.Worker) graphql.Marshaler {

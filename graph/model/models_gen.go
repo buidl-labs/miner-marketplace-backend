@@ -2,6 +2,12 @@
 
 package model
 
+import (
+	"fmt"
+	"io"
+	"strconv"
+)
+
 type AggregateEarnings struct {
 	Income      *AggregateIncome      `json:"income"`
 	Expenditure *AggregateExpenditure `json:"expenditure"`
@@ -159,7 +165,7 @@ type Transaction struct {
 	ID              string `json:"id"`
 	Miner           *Miner `json:"miner"`
 	Height          int    `json:"height"`
-	Timestamp       *int   `json:"timestamp"`
+	Timestamp       int    `json:"timestamp"`
 	TransactionType string `json:"transactionType"`
 	MethodName      string `json:"methodName"`
 	Value           string `json:"value"`
@@ -171,8 +177,113 @@ type Transaction struct {
 	Deals           []int  `json:"deals"`
 }
 
+type TransactionsFilter struct {
+	Or              bool    `json:"or"`
+	ID              *string `json:"id"`
+	MinTimestamp    *int    `json:"minTimestamp"`
+	MaxTimestamp    *int    `json:"maxTimestamp"`
+	MinValue        *string `json:"minValue"`
+	MaxValue        *string `json:"maxValue"`
+	TransactionType *string `json:"transactionType"`
+	MethodName      *string `json:"methodName"`
+	From            *string `json:"from"`
+	To              *string `json:"to"`
+	ExitCode        *int    `json:"exitCode"`
+}
+
+type TransactionsOrderBy struct {
+	Param TransactionsOrderByParam `json:"param"`
+	Sort  Sort                     `json:"sort"`
+}
+
 type Worker struct {
 	ID      string `json:"id"`
 	Address string `json:"address"`
 	Miner   *Miner `json:"miner"`
+}
+
+type Sort string
+
+const (
+	SortAsc  Sort = "ASC"
+	SortDesc Sort = "DESC"
+)
+
+var AllSort = []Sort{
+	SortAsc,
+	SortDesc,
+}
+
+func (e Sort) IsValid() bool {
+	switch e {
+	case SortAsc, SortDesc:
+		return true
+	}
+	return false
+}
+
+func (e Sort) String() string {
+	return string(e)
+}
+
+func (e *Sort) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Sort(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Sort", str)
+	}
+	return nil
+}
+
+func (e Sort) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type TransactionsOrderByParam string
+
+const (
+	TransactionsOrderByParamTimestamp TransactionsOrderByParam = "timestamp"
+	TransactionsOrderByParamValue     TransactionsOrderByParam = "value"
+	TransactionsOrderByParamMinerFee  TransactionsOrderByParam = "minerFee"
+	TransactionsOrderByParamBurnFee   TransactionsOrderByParam = "burnFee"
+)
+
+var AllTransactionsOrderByParam = []TransactionsOrderByParam{
+	TransactionsOrderByParamTimestamp,
+	TransactionsOrderByParamValue,
+	TransactionsOrderByParamMinerFee,
+	TransactionsOrderByParamBurnFee,
+}
+
+func (e TransactionsOrderByParam) IsValid() bool {
+	switch e {
+	case TransactionsOrderByParamTimestamp, TransactionsOrderByParamValue, TransactionsOrderByParamMinerFee, TransactionsOrderByParamBurnFee:
+		return true
+	}
+	return false
+}
+
+func (e TransactionsOrderByParam) String() string {
+	return string(e)
+}
+
+func (e *TransactionsOrderByParam) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TransactionsOrderByParam(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TransactionsOrderByParam", str)
+	}
+	return nil
+}
+
+func (e TransactionsOrderByParam) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }

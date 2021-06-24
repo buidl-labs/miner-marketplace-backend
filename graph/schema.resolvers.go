@@ -238,19 +238,131 @@ func (r *minerResolver) StorageDealStats(ctx context.Context, obj *model.Miner) 
 	}, nil
 }
 
-func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner) ([]*model.Transaction, error) {
-	var dbTransactions []*dbmodel.Transaction
-	if err := r.DB.Model(&dbTransactions).
-		Where("miner_id = ?", obj.ID).
-		Select(); err != nil {
-		return []*model.Transaction{}, err
+func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, first *int, offset *int, filter *model.TransactionsFilter, orderBy *model.TransactionsOrderBy) ([]*model.Transaction, error) {
+	var _first = 100
+	var _offset = 0
+
+	if first != nil {
+		_first = *first
 	}
+	if offset != nil {
+		_offset = *offset
+	}
+
+	filterQuery := ""
+	condition := " OR "
+	if filter != nil {
+		if !filter.Or {
+			condition = " AND "
+		}
+		if filter.ID != nil {
+			filterQuery += "id = '" + fmt.Sprint(*filter.ID) + "'" + condition
+		}
+		if filter.MinTimestamp != nil {
+			filterQuery += "timestamp >= " + fmt.Sprint(*filter.MinTimestamp) + condition
+		}
+		if filter.MaxTimestamp != nil {
+			filterQuery += "\"timestamp\" <= " + fmt.Sprint(*filter.MaxTimestamp) + condition
+		}
+		if filter.MinValue != nil {
+			filterQuery += "value::numeric >= '" + fmt.Sprint(*filter.MinValue) + "'" + condition
+		}
+		if filter.MaxValue != nil {
+			filterQuery += "value::numeric <= '" + fmt.Sprint(*filter.MaxValue) + "'" + condition
+		}
+		if filter.TransactionType != nil {
+			filterQuery += "transaction_type = '" + fmt.Sprint(*filter.TransactionType) + "'" + condition
+		}
+		if filter.MethodName != nil {
+			filterQuery += "method_name = '" + fmt.Sprint(*filter.MethodName) + "'" + condition
+		}
+		if filter.From != nil {
+			filterQuery += "\"from\" = '" + fmt.Sprint(*filter.From) + "'" + condition
+		}
+		if filter.To != nil {
+			filterQuery += "\"to\" = '" + fmt.Sprint(*filter.To) + "'" + condition
+		}
+		if filter.ExitCode != nil {
+			filterQuery += "exit_code = " + fmt.Sprint(*filter.ExitCode) + condition
+		}
+	}
+	fmt.Println("INITIALLY filterQuery", filterQuery, "condition", condition)
+	if len(filterQuery) > 4 {
+		if filterQuery[len(filterQuery)-4:] == " OR " {
+			filterQuery = filterQuery[:len(filterQuery)-4]
+		}
+		if filterQuery[len(filterQuery)-5:] == " AND " {
+			filterQuery = filterQuery[:len(filterQuery)-5]
+		}
+	}
+	fmt.Println("filterQuery", filterQuery, "condition", condition)
+
+	orderByQuery := ""
+	if orderBy != nil {
+		if orderBy.Param.IsValid() && orderBy.Sort.IsValid() {
+			fmt.Println("valid orderBy param:", orderBy.Param, "sort:", orderBy.Sort)
+			switch orderBy.Param {
+			case "timestamp":
+				orderByQuery = "timestamp " + orderBy.Sort.String()
+			case "value":
+				orderByQuery = "value " + orderBy.Sort.String()
+			case "minerFee":
+				orderByQuery = "miner_fee " + orderBy.Sort.String()
+			case "burnFee":
+				orderByQuery = "burn_fee " + orderBy.Sort.String()
+			}
+		}
+	}
+
+	fmt.Println("orderByQuery", orderByQuery)
+
+	var dbTransactions []*dbmodel.Transaction
+
+	if len(filterQuery) == 0 && len(orderByQuery) == 0 {
+		if err := r.DB.Model(&dbTransactions).
+			Where("miner_id = ?", obj.ID).
+			Limit(_first).
+			Offset(_offset).
+			Select(); err != nil {
+			return []*model.Transaction{}, err
+		}
+	} else if len(filterQuery) > 0 && len(orderByQuery) > 0 {
+		if err := r.DB.Model(&dbTransactions).
+			Where("miner_id = ?", obj.ID).
+			Where(filterQuery).
+			Order(orderByQuery).
+			Limit(_first).
+			Offset(_offset).
+			Select(); err != nil {
+			return []*model.Transaction{}, err
+		}
+	} else if len(filterQuery) > 0 && len(orderByQuery) == 0 {
+		if err := r.DB.Model(&dbTransactions).
+			Where("miner_id = ?", obj.ID).
+			Where(filterQuery).
+			Limit(_first).
+			Offset(_offset).
+			Select(); err != nil {
+			return []*model.Transaction{}, err
+		}
+	} else if len(filterQuery) == 0 && len(orderByQuery) > 0 {
+		if err := r.DB.Model(&dbTransactions).
+			Where("miner_id = ?", obj.ID).
+			Order(orderByQuery).
+			Limit(_first).
+			Offset(_offset).
+			Select(); err != nil {
+			return []*model.Transaction{}, err
+		}
+	}
+
 	var transactions []*model.Transaction
 	for _, dbTransaction := range dbTransactions {
 		transactions = append(transactions, &model.Transaction{
 			ID:              dbTransaction.ID,
 			Miner:           obj,
 			Height:          int(dbTransaction.Height),
+			Timestamp:       int(dbTransaction.Timestamp),
 			TransactionType: dbTransaction.TransactionType,
 			MethodName:      dbTransaction.MethodName,
 			Value:           dbTransaction.Value,
