@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"strconv"
 
 	dbmodel "github.com/buidl-labs/miner-marketplace-backend/db/model"
 	"github.com/buidl-labs/miner-marketplace-backend/graph/generated"
@@ -1268,34 +1269,88 @@ func (r *queryResolver) NetworkStats(ctx context.Context) (*model.NetworkStats, 
 		fmt.Println("couldn't get activeminerscount")
 		activeMinersCount = 2247
 	}
-	var FILFOX_STATS_POWER string = "https://filfox.info/api/v1/stats/power"
 
-	filFoxStatsPower := new(service.FilFoxStatsPower)
-	util.GetJson(FILFOX_STATS_POWER, filFoxStatsPower)
+	// var FILFOX_STATS_POWER string = "https://filfox.info/api/v1/stats/power"
 
-	// fmt.Println("pagination:")
-	// for _, fsp := range *filFoxStatsPower {
-	// 	fmt.Println(fsp.QualityAdjPower)
+	// filFoxStatsPower := new(service.FilFoxStatsPower)
+	// util.GetJson(FILFOX_STATS_POWER, filFoxStatsPower)
+
+	// fsp := *filFoxStatsPower
+	// fmt.Println("zeroth", fsp[0].QualityAdjPower, fsp[0])
+	// var powerEiB string = "6.131 EiB"
+	// n := new(big.Int)
+	// n, ok := n.SetString(fsp[0].QualityAdjPower, 10)
+	// if !ok {
+	// 	fmt.Println("SetString: error")
 	// }
-	fsp := *filFoxStatsPower
-	fmt.Println("zeroth", fsp[0].QualityAdjPower, fsp[0])
-	var powerEiB string = "6.131 EiB"
-	n := new(big.Int)
-	n, ok := n.SetString(fsp[0].QualityAdjPower, 10)
-	if !ok {
-		fmt.Println("SetString: error")
-	}
-	fmt.Println("n", n, "factor", big.NewInt(int64(1.153e+18)))
-	// big.
-	dv := new(big.Int).Div(n, big.NewInt(int64(1.153e+18)))
-	fmt.Println("dv", dv)
-	// powerEiB = dv.String()
-	fmt.Println("dvs", powerEiB)
+	// fmt.Println("n", n, "factor", big.NewInt(int64(1.153e+18)))
+	// dv := new(big.Int).Div(n, big.NewInt(int64(1.153e+18)))
+	// fmt.Println("dv", dv)
+	// fmt.Println("dvs", powerEiB)
 	// 1.153e+18
+
+	powerActorID, _ := address.NewFromString("f04")
+	ts, _ := r.LensAPI.ChainHead(context.Background())
+	PowerActorState, err := r.LensAPI.StateReadState(context.Background(), powerActorID, ts.Key())
+	if err != nil {
+		fmt.Println("PowerActorState err", err)
+	}
+	pas, _ := PowerActorState.State.(map[string]interface{})
+	fmt.Println("PASS", pas)
+	TotalQualityAdjPower, _ := pas["TotalQualityAdjPower"].(string)
+	fmt.Println("TotalQualityAdjPower", TotalQualityAdjPower)
+	TotalQualityAdjPowerFloat, _ := strconv.ParseFloat(TotalQualityAdjPower, 64)
+	fmt.Println("TotalQualityAdjPowerFloat", TotalQualityAdjPowerFloat)
+	TotalQualityAdjPowerFloat3 := fmt.Sprintf("%.3f EB", TotalQualityAdjPowerFloat/math.Pow(10, 18))
+	fmt.Println("TotalQualityAdjPowerFloat3", TotalQualityAdjPowerFloat3)
+
+	// TotalQualityAdjPowerBigFloat := big.NewFloat(float64(TotalQualityAdjPower) / math.Pow(10, 18))
+	// fmt.Println("TotalQualityAdjPowerBigFloat", TotalQualityAdjPowerBigFloat)
+	// TotalQualityAdjPowerBigFloat3 := fmt.Sprintf("%.3f EB", TotalQualityAdjPowerBigFloat)
+	// fmt.Println("TotalQualityAdjPowerBigFloat3", TotalQualityAdjPowerBigFloat3)
+
+	// map[
+	// 	Claims:map[
+	// 		/:bafy2bzaceci64uky5ktmevrhfxkl5cx4gyfhrk5mr7czmvnu26dzoouzp5e2i
+	// 	]
+	// 	CronEventQueue:map[
+	// 		/:bafy2bzacecciwiclle7d6eyfjdtxc6j3mx3ens33mxiifdqo736q7ahcaqpjq
+	// 	]
+	// 	FirstCronEpoch:877928
+	// 	MinerAboveMinPowerCount:2396
+	// 	MinerCount:541674
+	// 	ProofValidationBatch:<nil>
+	// 	ThisEpochPledgeCollateral:85516192895349151996304017
+	// 	ThisEpochQAPowerSmoothed:map[
+	// 		PositionEstimate:2656893729959493638207827434037677008360011412642285107756
+	// 		VelocityEstimate:5231850176750976669326368495979697599834815648697453
+	// 	]
+	// 	ThisEpochQualityAdjPower:7807218476250923008
+	// 	ThisEpochRawBytePower:7804680532951826432
+	// 	TotalBytesCommitted:7805127965464854528
+	// 	TotalPledgeCollateral:85516192895349151996304017
+	// 	TotalQABytesCommitted:7807673756255453184
+	// 	TotalQualityAdjPower:7807218476250923008
+	// 	TotalRawBytePower:7804680532951826432
+	// ]
+
+	var size int64
+	err = r.DB.Model((*dbmodel.MarketDealProposal)(nil)).
+		ColumnExpr("sum(piece_size) AS size").
+		Select(&size)
+	if err != nil {
+		fmt.Println("sum(piece_size) err:", err)
+	}
+	// 24008119344596096
+	dataStoredBigFloat := big.NewFloat(float64(size) / math.Pow(10, 16))
+	fmt.Println("dataStoredBigFloat", dataStoredBigFloat)
+	dataStoredBigFloat3 := fmt.Sprintf("%.3f PB", dataStoredBigFloat)
+	fmt.Println("dataStoredBigFloat3", dataStoredBigFloat3)
+
 	return &model.NetworkStats{
 		ActiveMinersCount:      activeMinersCount,
-		NetworkStorageCapacity: powerEiB,
-		DataStored:             powerEiB,
+		NetworkStorageCapacity: TotalQualityAdjPowerFloat3,
+		DataStored:             dataStoredBigFloat3,
 	}, nil
 }
 
