@@ -45,17 +45,13 @@ func GenerateTransactionTypesQuery(transactionTypes []bool) string {
 			}
 		case 2:
 			if tt {
-				query += "transaction_type = 'Deals Publish' OR "
+				query += "transaction_type = 'Penalty' OR "
 			}
 		case 3:
 			if tt {
-				query += "transaction_type = 'Penalty' OR "
-			}
-		case 4:
-			if tt {
 				query += "transaction_type = 'Transfer' OR "
 			}
-		case 5:
+		case 4:
 			if tt {
 				query += "transaction_type = 'Others' OR "
 			}

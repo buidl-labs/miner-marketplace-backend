@@ -718,7 +718,7 @@ func PublishStorageDealsMessages(DB *pg.DB, node lens.API) {
 			filFoxMessage := new(FilFoxPublishStorageDealsMessage)
 			util.GetJson(FILFOX_MESSAGE+psdm.Cid, filFoxMessage)
 
-			transactionType := "Deals Publish"
+			transactionType := "Collateral Deposit"
 			burnFee := "0"
 			if len(filFoxMessage.Transfers) >= 2 {
 				burnFee = filFoxMessage.Transfers[1].Value
@@ -965,7 +965,7 @@ func AddBalanceMessages(DB *pg.DB, node lens.API) {
 				burnFee = filFoxAddBalanceMessage.Transfers[1].Value
 			}
 			provider := filFoxAddBalanceMessage.DecodedParams
-			transactionType := "Collateral Deposit"
+			transactionType := "Transfer"
 			value := filFoxAddBalanceMessage.Value
 			minerFee := filFoxAddBalanceMessage.Fee.MinerTip
 
@@ -1257,7 +1257,7 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 						burnFee = filFoxAddBalanceMessage.Transfers[1].Value
 					}
 					provider := filFoxAddBalanceMessage.DecodedParams
-					transactionType := "Collateral Deposit"
+					transactionType := "Transfer"
 					value := filFoxAddBalanceMessage.Value
 					minerFee := filFoxAddBalanceMessage.Fee.MinerTip
 
@@ -1326,7 +1326,7 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 					if err != nil {
 						fmt.Println("get FilFoxPublishStorageDealsMessage", err)
 					}
-					transactionType := "Deals Publish"
+					transactionType := "Collateral Deposit"
 					burnFee := "0"
 					if len(filFoxMessage.Transfers) >= 2 {
 						burnFee = filFoxMessage.Transfers[1].Value
