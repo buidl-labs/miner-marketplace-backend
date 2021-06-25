@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -728,6 +729,16 @@ func PublishStorageDealsMessages(DB *pg.DB, node lens.API) {
 			value := filFoxMessage.Value
 			minerFee := filFoxMessage.Fee.MinerTip
 
+			providerCollateral := big.NewInt(0)
+			for _, d := range filFoxMessage.DecodedParams.Deals {
+				n := new(big.Int)
+				n, _ = n.SetString(d.Proposal.ProviderCollateral, 10)
+				providerCollateral = new(big.Int).Add(providerCollateral, n)
+			}
+			valueBigInt, _ := new(big.Int).SetString(value, 10)
+			valueBigInt = new(big.Int).Add(valueBigInt, providerCollateral)
+			value = valueBigInt.String()
+
 			if value == "" {
 				value = "0"
 			}
@@ -1335,6 +1346,16 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 					provider := filFoxMessage.DecodedParams.Deals[0].Proposal.Provider
 					value := filFoxMessage.Value
 					minerFee := filFoxMessage.Fee.MinerTip
+
+					providerCollateral := big.NewInt(0)
+					for _, d := range filFoxMessage.DecodedParams.Deals {
+						n := new(big.Int)
+						n, _ = n.SetString(d.Proposal.ProviderCollateral, 10)
+						providerCollateral = new(big.Int).Add(providerCollateral, n)
+					}
+					valueBigInt, _ := new(big.Int).SetString(value, 10)
+					valueBigInt = new(big.Int).Add(valueBigInt, providerCollateral)
+					value = valueBigInt.String()
 
 					if value == "" {
 						value = "0"
