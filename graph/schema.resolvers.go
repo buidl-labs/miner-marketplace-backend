@@ -239,7 +239,7 @@ func (r *minerResolver) StorageDealStats(ctx context.Context, obj *model.Miner) 
 }
 
 func (r *minerResolver) Transactions(ctx context.Context, obj *model.Miner, first *int, offset *int, filter *model.TransactionsFilter, orderBy *model.TransactionsOrderBy) ([]*model.Transaction, error) {
-	var _first = 100
+	var _first = 10000000
 	var _offset = 0
 
 	if first != nil {
