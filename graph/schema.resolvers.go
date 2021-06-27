@@ -1059,11 +1059,11 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 				input.LedgerAddress == "f1rb4xvch25rqshc7oklj3wcxgotezciqbjufgeli" ||
 				input.LedgerAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" {
 				updatedMiner := dbmodel.Miner{
-					Region:            input.Region,
-					Country:           input.Country,
-					StorageAskPrice:   input.StorageAskPrice,
-					VerifiedAskPrice:  input.VerifiedAskPrice,
-					RetrievalAskPrice: input.RetrievalAskPrice,
+					// Region:            input.Region,
+					// Country:           input.Country,
+					// StorageAskPrice:   input.StorageAskPrice,
+					// VerifiedAskPrice:  input.VerifiedAskPrice,
+					// RetrievalAskPrice: input.RetrievalAskPrice,
 					TransparencyScore: service.ComputeTransparencyScore(input),
 				}
 				updatedMinerPersonalInfo := dbmodel.MinerPersonalInfo{
@@ -1083,7 +1083,8 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 				}
 
 				_, err := r.DB.Model(&updatedMiner).
-					Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price", "transparency_score").
+					// Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price", "transparency_score").
+					Column("transparency_score").
 					Where("id = ?", input.MinerID).
 					Update()
 				if err != nil {
@@ -1123,11 +1124,11 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 		}
 		if input.LedgerAddress == ownerAddress.String() {
 			updatedMiner := dbmodel.Miner{
-				Region:            input.Region,
-				Country:           input.Country,
-				StorageAskPrice:   input.StorageAskPrice,
-				VerifiedAskPrice:  input.VerifiedAskPrice,
-				RetrievalAskPrice: input.RetrievalAskPrice,
+				// Region:            input.Region,
+				// Country:           input.Country,
+				// StorageAskPrice:   input.StorageAskPrice,
+				// VerifiedAskPrice:  input.VerifiedAskPrice,
+				// RetrievalAskPrice: input.RetrievalAskPrice,
 				TransparencyScore: service.ComputeTransparencyScore(input),
 			}
 			updatedMinerPersonalInfo := dbmodel.MinerPersonalInfo{
@@ -1147,7 +1148,8 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 			}
 
 			_, err := r.DB.Model(&updatedMiner).
-				Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price", "transparency_score").
+				// Column("region", "country", "storage_ask_price", "verified_ask_price", "retrieval_ask_price", "transparency_score").
+				Column("transparency_score").
 				Where("id = ?", input.MinerID).
 				Update()
 			if err != nil {

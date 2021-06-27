@@ -1279,8 +1279,8 @@ input ProfileSettingsInput {
   twitter: String!
   slack: String!
 
-  region: String!
-  country: String!
+  # region: String!
+  # country: String!
 
   storage: Boolean!
   retrieval: Boolean!
@@ -1289,9 +1289,9 @@ input ProfileSettingsInput {
   online: Boolean!
   offline: Boolean!
 
-  storageAskPrice: String!
-  verifiedAskPrice: String!
-  retrievalAskPrice: String!
+  # storageAskPrice: String!
+  # verifiedAskPrice: String!
+  # retrievalAskPrice: String!
 }
 
 input ProfileClaimInput {
@@ -6159,22 +6159,6 @@ func (ec *executionContext) unmarshalInputProfileSettingsInput(ctx context.Conte
 			if err != nil {
 				return it, err
 			}
-		case "region":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("region"))
-			it.Region, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "country":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("country"))
-			it.Country, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
 		case "storage":
 			var err error
 
@@ -6212,30 +6196,6 @@ func (ec *executionContext) unmarshalInputProfileSettingsInput(ctx context.Conte
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offline"))
 			it.Offline, err = ec.unmarshalNBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "storageAskPrice":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("storageAskPrice"))
-			it.StorageAskPrice, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "verifiedAskPrice":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("verifiedAskPrice"))
-			it.VerifiedAskPrice, err = ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-		case "retrievalAskPrice":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retrievalAskPrice"))
-			it.RetrievalAskPrice, err = ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}

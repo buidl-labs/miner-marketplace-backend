@@ -188,8 +188,8 @@ input ProfileSettingsInput {
   twitter: String!
   slack: String!
 
-  region: String!
-  country: String!
+  # region: String!
+  # country: String!
 
   storage: Boolean!
   retrieval: Boolean!
@@ -198,9 +198,9 @@ input ProfileSettingsInput {
   online: Boolean!
   offline: Boolean!
 
-  storageAskPrice: String!
-  verifiedAskPrice: String!
-  retrievalAskPrice: String!
+  # storageAskPrice: String!
+  # verifiedAskPrice: String!
+  # retrievalAskPrice: String!
 }
 
 input ProfileClaimInput {

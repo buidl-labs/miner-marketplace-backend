@@ -343,10 +343,10 @@ type FilRepMiners struct {
 func ComputeTransparencyScore(input gqlmodel.ProfileSettingsInput) int {
 	transparencyScore := 10.0 // already claimed
 	if input.Name != "" {
-		transparencyScore += 5
+		transparencyScore += 10
 	}
 	if input.Bio != "" {
-		transparencyScore += 5
+		transparencyScore += 10
 	}
 	if input.Slack != "" {
 		transparencyScore += 15
@@ -355,21 +355,21 @@ func ComputeTransparencyScore(input gqlmodel.ProfileSettingsInput) int {
 		transparencyScore += 15
 	}
 	if input.Email != "" {
-		transparencyScore += 7.5
+		transparencyScore += 15
 	}
 	if input.Website != "" {
-		transparencyScore += 7.5
+		transparencyScore += 15
 	}
 	transparencyScore += 10 // for service details, give all points for datatransfermechanism and servicetype
-	if input.Region != "" {
-		transparencyScore += 2.5
-	}
-	if input.Country != "" {
-		transparencyScore += 2.5
-	}
-	if input.StorageAskPrice != "" {
-		transparencyScore += 20
-	}
+	// if input.Region != "" {
+	// 	transparencyScore += 2.5
+	// }
+	// if input.Country != "" {
+	// 	transparencyScore += 2.5
+	// }
+	// if input.StorageAskPrice != "" {
+	// 	transparencyScore += 20
+	// }
 	return int(transparencyScore)
 }
 
