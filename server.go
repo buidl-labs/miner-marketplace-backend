@@ -66,8 +66,10 @@ func main() {
 		service.StorageDeals(newDB, node)
 	} else if command == "ams" {
 		service.AddressMessages(newDB, node)
+	} else if command == "idx" {
+		service.Indexer(newDB, node)
 	} else {
-		go service.Indexer(newDB, node)
+		// go service.Indexer(newDB, node)
 
 		router := chi.NewRouter()
 

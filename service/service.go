@@ -29,7 +29,7 @@ func Indexer(DB *pg.DB, node lens.API) {
 	hourlyTasks(DB, node)
 	dailyTasks(DB, node)
 
-	hourlyTicker := time.NewTicker(1 * time.Hour)
+	hourlyTicker := time.NewTicker(3 * time.Hour)
 	dailyTicker := time.NewTicker(24 * time.Hour)
 
 	for {
