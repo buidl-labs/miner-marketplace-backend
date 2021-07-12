@@ -26,8 +26,8 @@ addresses:
 `)
 
 func Indexer(DB *pg.DB, node lens.API) {
-	hourlyTasks(DB, node)
 	dailyTasks(DB, node)
+	hourlyTasks(DB, node)
 
 	hourlyTicker := time.NewTicker(3 * time.Hour)
 	dailyTicker := time.NewTicker(24 * time.Hour)
@@ -208,9 +208,10 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 	if filRepMiners.Pagination.Total > 0 {
 		for _, m := range filRepMiners.Miners {
 			// https://filfox.info/api/v1/address/f02770
+			time.Sleep(2 * time.Second)
 			filFoxMiner := new(FilFoxMiner)
 			util.GetJson(FILFOX_MINER+m.Address, filFoxMiner)
-
+			fmt.Println("daily miner", m.Address, filFoxMiner.Miner, "owner", filFoxMiner.Miner.Owner.Address, "worker", filFoxMiner.Miner.Worker.Address)
 			miner := &model.Miner{
 				WorkerAddress: filFoxMiner.Miner.Worker.Address,
 				OwnerAddress:  filFoxMiner.Miner.Owner.Address,
@@ -223,6 +224,9 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 				log.Println("updating worker/owner addresses:", m.Address, " error:", err)
 				continue
 			}
+			// } else {
+			// 	log.Println("daily miner", m.Address, "null owner/worker address")
+			// }
 		}
 	}
 }
