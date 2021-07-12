@@ -982,6 +982,15 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 	fmt.Println("i", input.MinerID, "t", reflect.TypeOf(input.MinerID))
 	fmt.Println("j", input.LedgerAddress, "t", reflect.TypeOf(input.LedgerAddress))
 
+	dbMiner := dbmodel.Miner{}
+	if err := r.DB.Model(&dbMiner).Where("id = ?", input.MinerID).Select(); err != nil {
+		return false, err
+	}
+	transparencyScore := 10
+	// if already claimed
+	if dbMiner.Claimed {
+		transparencyScore = dbMiner.TransparencyScore
+	}
 	// ######
 	// NOTE: just for testing with our ledger wallets
 	if input.MinerID == "f04321" {
@@ -990,7 +999,7 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 			input.LedgerAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" {
 			dbMiner := dbmodel.Miner{
 				Claimed:           true,
-				TransparencyScore: 10,
+				TransparencyScore: transparencyScore,
 			}
 			_, err := r.DB.Model(&dbMiner).
 				Column("claimed", "transparency_score").
@@ -1029,7 +1038,7 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 		// success
 		dbMiner := dbmodel.Miner{
 			Claimed:           true,
-			TransparencyScore: 10,
+			TransparencyScore: transparencyScore,
 		}
 		_, err := r.DB.Model(&dbMiner).
 			Column("claimed", "transparency_score").
