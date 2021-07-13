@@ -1346,47 +1346,49 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 					if len(filFoxMessage.Transfers) >= 2 {
 						burnFee = filFoxMessage.Transfers[1].Value
 					}
-					ids := filFoxMessage.DecodedReturnValue.IDs
-					provider := filFoxMessage.DecodedParams.Deals[0].Proposal.Provider
-					value := filFoxMessage.Value
-					minerFee := filFoxMessage.Fee.MinerTip
+					if len(filFoxMessage.DecodedParams.Deals) > 0 {
+						ids := filFoxMessage.DecodedReturnValue.IDs
+						provider := filFoxMessage.DecodedParams.Deals[0].Proposal.Provider
+						value := filFoxMessage.Value
+						minerFee := filFoxMessage.Fee.MinerTip
 
-					providerCollateral := big.NewInt(0)
-					for _, d := range filFoxMessage.DecodedParams.Deals {
-						n := new(big.Int)
-						n, _ = n.SetString(d.Proposal.ProviderCollateral, 10)
-						providerCollateral = new(big.Int).Add(providerCollateral, n)
-					}
-					valueBigInt, _ := new(big.Int).SetString(value, 10)
-					valueBigInt = new(big.Int).Add(valueBigInt, providerCollateral)
-					value = valueBigInt.String()
+						providerCollateral := big.NewInt(0)
+						for _, d := range filFoxMessage.DecodedParams.Deals {
+							n := new(big.Int)
+							n, _ = n.SetString(d.Proposal.ProviderCollateral, 10)
+							providerCollateral = new(big.Int).Add(providerCollateral, n)
+						}
+						valueBigInt, _ := new(big.Int).SetString(value, 10)
+						valueBigInt = new(big.Int).Add(valueBigInt, providerCollateral)
+						value = valueBigInt.String()
 
-					if value == "" {
-						value = "0"
-					}
-					if minerFee == "" {
-						minerFee = "0"
-					}
-					if burnFee == "" {
-						burnFee = "0"
-					}
-					_, err := DB.Model(&model.Transaction{
-						ID:              psdm.Cid,
-						MinerID:         provider,
-						Height:          int64(psdm.Height),
-						Timestamp:       int64(psdm.Timestamp),
-						TransactionType: transactionType,
-						MethodName:      psdm.Method,
-						Value:           value,
-						MinerFee:        minerFee,
-						BurnFee:         burnFee,
-						From:            psdm.From,
-						To:              psdm.To,
-						ExitCode:        psdm.Receipt.ExitCode,
-						Deals:           ids,
-					}).Insert()
-					if err != nil {
-						fmt.Println("publishStorageDealsMessages insert err:", err)
+						if value == "" {
+							value = "0"
+						}
+						if minerFee == "" {
+							minerFee = "0"
+						}
+						if burnFee == "" {
+							burnFee = "0"
+						}
+						_, err := DB.Model(&model.Transaction{
+							ID:              psdm.Cid,
+							MinerID:         provider,
+							Height:          int64(psdm.Height),
+							Timestamp:       int64(psdm.Timestamp),
+							TransactionType: transactionType,
+							MethodName:      psdm.Method,
+							Value:           value,
+							MinerFee:        minerFee,
+							BurnFee:         burnFee,
+							From:            psdm.From,
+							To:              psdm.To,
+							ExitCode:        psdm.Receipt.ExitCode,
+							Deals:           ids,
+						}).Insert()
+						if err != nil {
+							fmt.Println("publishStorageDealsMessages insert err:", err)
+						}
 					}
 				}
 			}
