@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"math/big"
@@ -13,6 +14,7 @@ import (
 	"github.com/buidl-labs/miner-marketplace-backend/db/model"
 	gqlmodel "github.com/buidl-labs/miner-marketplace-backend/graph/model"
 	"github.com/buidl-labs/miner-marketplace-backend/util"
+	"github.com/filecoin-project/go-address"
 	"github.com/go-pg/pg/v10"
 	"github.com/spf13/viper"
 )
@@ -55,6 +57,17 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 
 	if filRepMiners.Pagination.Total > 0 {
 		for _, m := range filRepMiners.Miners {
+			qap := m.QualityAdjPower
+			if ts, err := node.ChainHead(context.Background()); err == nil {
+				if minerAddr, err := address.NewFromString(m.Address); err == nil {
+					if minerPower, err := node.StateMinerPower(context.Background(), minerAddr, ts.Key()); err == nil {
+						fmt.Println("powerbigint", minerPower.MinerPower.QualityAdjPower)
+						fmt.Println("powerbigintstring", minerPower.MinerPower.QualityAdjPower.String())
+						qap = minerPower.MinerPower.QualityAdjPower.String()
+					}
+				}
+			}
+
 			reputationScoreString, _ := m.Score.(string)
 			reputationScoreInt64, _ := strconv.ParseInt(reputationScoreString, 10, 64)
 			reputationScore := int(reputationScoreInt64)
@@ -78,7 +91,7 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 				}
 				if claimed {
 					miner := &model.Miner{
-						QualityAdjustedPower: m.QualityAdjPower,
+						QualityAdjustedPower: qap,
 						ReputationScore:      reputationScore,
 					}
 					_, err = DB.Model(miner).
@@ -94,7 +107,7 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 					miner := &model.Miner{
 						Region:               m.Region,
 						Country:              m.IsoCode,
-						QualityAdjustedPower: m.QualityAdjPower,
+						QualityAdjustedPower: qap,
 						StorageAskPrice:      storageAskPrice,
 						VerifiedAskPrice:     verifiedAskPrice,
 						ReputationScore:      reputationScore,
@@ -134,7 +147,7 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 					Claimed:              false,
 					Region:               m.Region,
 					Country:              m.IsoCode,
-					QualityAdjustedPower: m.QualityAdjPower,
+					QualityAdjustedPower: qap,
 					StorageAskPrice:      storageAskPrice,
 					VerifiedAskPrice:     verifiedAskPrice,
 					ReputationScore:      reputationScore,
@@ -199,7 +212,7 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 	// update owner/worker/control addresses
 
 	var FILREP_MINERS string = "https://api.filrep.io/api/v1/miners"
-	var FILFOX_MINER string = "https://filfox.info/api/v1/address/"
+	// var FILFOX_MINER string = "https://filfox.info/api/v1/address/"
 
 	filRepMiners := new(FilRepMiners)
 	util.GetJson(FILREP_MINERS, filRepMiners)
@@ -209,15 +222,37 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 	if filRepMiners.Pagination.Total > 0 {
 		for _, m := range filRepMiners.Miners {
 			// https://filfox.info/api/v1/address/f02770
-			time.Sleep(2 * time.Second)
-			filFoxMiner := new(FilFoxMiner)
-			util.GetJson(FILFOX_MINER+m.Address, filFoxMiner)
-			fmt.Println("daily miner", m.Address, filFoxMiner.Miner, "owner", filFoxMiner.Miner.Owner.Address, "worker", filFoxMiner.Miner.Worker.Address)
-			miner := &model.Miner{
-				WorkerAddress: filFoxMiner.Miner.Worker.Address,
-				OwnerAddress:  filFoxMiner.Miner.Owner.Address,
+			ts, err := node.ChainHead(context.Background())
+			if err != nil {
+				continue
 			}
-			_, err := DB.Model(miner).
+			minerAddr, err := address.NewFromString(m.Address)
+			if err != nil {
+				continue
+			}
+			minerInfo, err := node.StateMinerInfo(context.Background(), minerAddr, ts.Key())
+			if err != nil {
+				continue
+			}
+			workerAddr, err := node.StateAccountKey(context.Background(), minerInfo.Worker, ts.Key())
+			if err != nil {
+				continue
+			}
+			ownerAddr, err := node.StateAccountKey(context.Background(), minerInfo.Owner, ts.Key())
+			if err != nil {
+				continue
+			}
+			// time.Sleep(2 * time.Second)
+			// filFoxMiner := new(FilFoxMiner)
+			// util.GetJson(FILFOX_MINER+m.Address, filFoxMiner)
+			// fmt.Println("daily miner", m.Address, filFoxMiner.Miner, "owner", filFoxMiner.Miner.Owner.Address, "worker", filFoxMiner.Miner.Worker.Address)
+			miner := &model.Miner{
+				WorkerAddress: workerAddr.String(),
+				OwnerAddress:  ownerAddr.String(),
+				// WorkerAddress: filFoxMiner.Miner.Worker.Address,
+				// OwnerAddress:  filFoxMiner.Miner.Owner.Address,
+			}
+			_, err = DB.Model(miner).
 				Column("worker_address", "owner_address").
 				Where("id = ?", m.Address).
 				Update()
