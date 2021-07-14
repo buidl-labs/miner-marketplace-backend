@@ -230,6 +230,9 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 			// }
 		}
 	}
+	PublishStorageDealsMessages(DB, node)
+	WithdrawBalanceMarketMessages(DB, node)
+	AddBalanceMessages(DB, node)
 }
 
 type FilFoxMiner struct {
