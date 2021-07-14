@@ -611,6 +611,7 @@ func MinerPageMessages(DB *pg.DB, node lens.API) {
 				// https://filfox.info/api/v1/message/bafy2bzacebo54zcaakbqov2e7shpfvxqugmpgmn4m7mpirsbac6w7jumkra3i
 				filFoxMessage := new(FilFoxMessage)
 				util.GetJson(FILFOX_MESSAGE+mr.Cid, filFoxMessage)
+				time.Sleep(2 * time.Second)
 				transactionType, value, minerFee, burnFee, _, _ := GetMessageAttributes(node, *filFoxMessage)
 				if value == "" {
 					value = "0"
@@ -722,7 +723,7 @@ func PublishStorageDealsMessages(DB *pg.DB, node lens.API) {
 		for _, psdm := range publishStorageDealsMessages {
 			filFoxMessage := new(FilFoxPublishStorageDealsMessage)
 			util.GetJson(FILFOX_MESSAGE+psdm.Cid, filFoxMessage)
-
+			time.Sleep(2 * time.Second)
 			transactionType := "Collateral Deposit"
 			burnFee := "0"
 			if len(filFoxMessage.Transfers) >= 2 {
@@ -854,7 +855,7 @@ func WithdrawBalanceMarketMessages(DB *pg.DB, node lens.API) {
 		for _, wbmm := range withdrawBalanceMarketMessages {
 			filFoxMessage := new(FilFoxWithdrawBalanceMarketMessage)
 			util.GetJson(FILFOX_MESSAGE+wbmm.Cid, filFoxMessage)
-
+			time.Sleep(2 * time.Second)
 			burnFee := "0"
 			if len(filFoxMessage.Transfers) >= 2 {
 				burnFee = filFoxMessage.Transfers[1].Value
@@ -974,7 +975,7 @@ func AddBalanceMessages(DB *pg.DB, node lens.API) {
 		for _, abm := range addBalanceMessages {
 			filFoxAddBalanceMessage := new(FilFoxAddBalanceMessage)
 			util.GetJson(FILFOX_MESSAGE+abm.Cid, filFoxAddBalanceMessage)
-
+			time.Sleep(2 * time.Second)
 			burnFee := "0"
 			if len(filFoxAddBalanceMessage.Transfers) >= 2 {
 				burnFee = filFoxAddBalanceMessage.Transfers[1].Value
@@ -1267,6 +1268,7 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 					if err != nil {
 						fmt.Println("get FilFoxAddBalanceMessage", err)
 					}
+					time.Sleep(2 * time.Second)
 					burnFee := "0"
 					if len(filFoxAddBalanceMessage.Transfers) >= 2 {
 						burnFee = filFoxAddBalanceMessage.Transfers[1].Value
@@ -1341,6 +1343,7 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 					if err != nil {
 						fmt.Println("get FilFoxPublishStorageDealsMessage", err)
 					}
+					time.Sleep(2 * time.Second)
 					transactionType := "Collateral Deposit"
 					burnFee := "0"
 					if len(filFoxMessage.Transfers) >= 2 {
