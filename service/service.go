@@ -54,7 +54,13 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 
 	if filRepMiners.Pagination.Total > 0 {
 		for _, m := range filRepMiners.Miners {
-			qap := m.QualityAdjPower
+			// qap := m.QualityAdjPower
+			dbMiner := model.Miner{}
+			if err := DB.Model(&dbMiner).Where("id = ?", m.Address).Select(); err != nil {
+				fmt.Println("can't fetch dbMiner", err)
+				continue
+			}
+			qap := dbMiner.QualityAdjustedPower
 			if ts, err := node.ChainHead(context.Background()); err == nil {
 				if minerAddr, err := address.NewFromString(m.Address); err == nil {
 					if minerPower, err := node.StateMinerPower(context.Background(), minerAddr, ts.Key()); err == nil {
