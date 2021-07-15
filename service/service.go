@@ -28,8 +28,8 @@ addresses:
 `)
 
 func Indexer(DB *pg.DB, node lens.API) {
-	dailyTasks(DB, node)
 	hourlyTasks(DB, node)
+	dailyTasks(DB, node)
 
 	hourlyTicker := time.NewTicker(3 * time.Hour)
 	dailyTicker := time.NewTicker(24 * time.Hour)
@@ -45,9 +45,6 @@ func Indexer(DB *pg.DB, node lens.API) {
 }
 
 func hourlyTasks(DB *pg.DB, node lens.API) {
-	MinerPageMessages(DB, node)
-	StorageDeals(DB, node)
-
 	var FILREP_MINERS string = "https://api.filrep.io/api/v1/miners"
 
 	filRepMiners := FilRepMiners{}
@@ -206,6 +203,9 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 			}
 		}
 	}
+
+	MinerPageMessages(DB, node)
+	StorageDeals(DB, node)
 }
 
 func dailyTasks(DB *pg.DB, node lens.API) {
