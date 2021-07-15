@@ -1364,7 +1364,7 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 
 		var diff1 int64
 		var pages1 int
-		if err == nil && db_publish_storage_deals_messages_total_count < int64(totalAddBalanceMessagesCount) {
+		if err == nil && db_publish_storage_deals_messages_total_count < int64(totalPublishStorageDealsMessagesCount) {
 			diff1 = int64(totalPublishStorageDealsMessagesCount) - db_publish_storage_deals_messages_total_count
 			pages1 = int(diff1) / 100
 			fmt.Println("case1 diff", diff1, "pages", pages1)
