@@ -747,8 +747,9 @@ func PublishStorageDealsMessages(DB *pg.DB, node lens.API) {
 		diff = int64(totalPublishStorageDealsMessageCount) - db_publish_storage_deals_messages_total_count
 		pages = int(diff) / 100
 		fmt.Println("case1 diff", diff, "pages", pages)
-		for i := 1; i <= pages; i++ {
-			fmt.Println("page", i)
+		// for i := 1; i <= pages; i++ {
+		for i := 1; i <= 5; i++ {
+				fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(publishStorageDealsMessages))
 			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxMessagesList)
 			publishStorageDealsMessages = append(publishStorageDealsMessages, filFoxMessagesList.Messages...)
@@ -756,7 +757,8 @@ func PublishStorageDealsMessages(DB *pg.DB, node lens.API) {
 	} else if db_publish_storage_deals_messages_total_count != int64(totalPublishStorageDealsMessageCount) {
 		minerMessagePagesCount := totalPublishStorageDealsMessageCount / 100
 		fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
-		for i := 1; i <= minerMessagePagesCount; i++ {
+		// for i := 1; i <= minerMessagePagesCount; i++ {
+		for i := 1; i <= 5; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(publishStorageDealsMessages))
 			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxMessagesList)
@@ -999,7 +1001,8 @@ func AddBalanceMessages(DB *pg.DB, node lens.API) {
 		diff = int64(totalAddBalanceMessageCount) - db_add_balance_messages_total_count
 		pages = int(diff) / 100
 		fmt.Println("case1 diff", diff, "pages", pages)
-		for i := 1; i <= pages; i++ {
+		// for i := 1; i <= pages; i++ {
+		for i := 1; i <= 5; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(addBalanceMessages))
 			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxMessagesList)
@@ -1008,7 +1011,8 @@ func AddBalanceMessages(DB *pg.DB, node lens.API) {
 	} else if db_add_balance_messages_total_count != int64(totalAddBalanceMessageCount) {
 		minerMessagePagesCount := totalAddBalanceMessageCount / 100
 		fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
-		for i := 1; i <= minerMessagePagesCount; i++ {
+		// for i := 1; i <= minerMessagePagesCount; i++ {
+		for i := 1; i <= 5; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(addBalanceMessages))
 			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxMessagesList)
