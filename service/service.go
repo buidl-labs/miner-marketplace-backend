@@ -1982,10 +1982,22 @@ type FilFoxDealsList struct {
 func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, string, string, string, string, []int) {
 	fmt.Println("inside GetMessageAttributes", filfoxMessage)
 	switch filfoxMessage.Method {
-	case "PreCommitSector", "ProveCommitSector":
+	case "PreCommitSector", "ProveCommitSector", "PreCommitSectorBatch":
 		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
+		}
+		return "Collateral Deposit", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
+	case "ProveCommitAggregate":
+		burnFee := "0"
+		if len(filfoxMessage.Transfers) >= 2 {
+			burnFee = filfoxMessage.Transfers[1].Value
+		}
+		if len(filfoxMessage.Transfers) >= 4 {
+			burn0, _ := strconv.ParseInt(filfoxMessage.Transfers[1].Value, 10, 64)
+			burn, _ := strconv.ParseInt(filfoxMessage.Transfers[3].Value, 10, 64)
+			totalBurn := burn0 + burn
+			burnFee = fmt.Sprintf("%v", totalBurn)
 		}
 		return "Collateral Deposit", filfoxMessage.Value, filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
 	case "ReportConsensusFault", "DisputeWindowedPoSt":

@@ -480,7 +480,9 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 
 	for _, dbTransaction := range dbTransactions {
 		switch dbTransaction.MethodName {
-		case "PreCommitSector", "ProveCommitSector", "PublishStorageDeals":
+		case "PreCommitSector", "ProveCommitSector",
+			"PreCommitSectorBatch", "ProveCommitAggregate",
+			"PublishStorageDeals":
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
@@ -746,7 +748,9 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 
 	for _, dbTransaction := range dbTransactions {
 		switch dbTransaction.MethodName {
-		case "PreCommitSector", "ProveCommitSector", "PublishStorageDeals":
+		case "PreCommitSector", "ProveCommitSector",
+			"PreCommitSectorBatch", "ProveCommitAggregate",
+			"PublishStorageDeals":
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
