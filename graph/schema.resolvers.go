@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"math/big"
@@ -19,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	filecoinbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	mineractor "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
@@ -1000,7 +1002,8 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 	if input.MinerID == "f04321" {
 		if input.LedgerAddress == "f1v2qntmt4k6wxugdbxqjw6l3knywh2csi2lcmz2a" ||
 			input.LedgerAddress == "f1rb4xvch25rqshc7oklj3wcxgotezciqbjufgeli" ||
-			input.LedgerAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" {
+			input.LedgerAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" ||
+			input.LedgerAddress == "t3uxch2zqrqvtgm23r7dqqro4ngsermw53f5iiowyje7k2s4hkdoxwgdauudn32yttltm233uwlhgkjl4aagja" {
 			dbMiner := dbmodel.Miner{
 				Claimed:           true,
 				TransparencyScore: transparencyScore,
@@ -1070,7 +1073,8 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 		if input.MinerID == "f04321" {
 			if input.LedgerAddress == "f1v2qntmt4k6wxugdbxqjw6l3knywh2csi2lcmz2a" ||
 				input.LedgerAddress == "f1rb4xvch25rqshc7oklj3wcxgotezciqbjufgeli" ||
-				input.LedgerAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" {
+				input.LedgerAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" ||
+				input.LedgerAddress == "t3uxch2zqrqvtgm23r7dqqro4ngsermw53f5iiowyje7k2s4hkdoxwgdauudn32yttltm233uwlhgkjl4aagja" {
 				updatedMiner := dbmodel.Miner{
 					// Region:            input.Region,
 					// Country:           input.Country,
@@ -1188,6 +1192,104 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 		}
 	}
 	return false, nil
+}
+
+func (r *mutationResolver) VerifyWallet(ctx context.Context, minerID string, walletAddress string, hexMessage string, signature string) (bool, error) {
+	dbMiner := dbmodel.Miner{}
+	if err := r.DB.Model(&dbMiner).Where("id = ?", minerID).Select(); err != nil {
+		return false, err
+	}
+	transparencyScore := 10
+	// if already claimed
+	if dbMiner.Claimed {
+		transparencyScore = dbMiner.TransparencyScore
+	}
+
+	wA, err := address.NewFromString(walletAddress)
+	if err != nil {
+		return false, err
+	}
+	msg, err := hex.DecodeString(hexMessage)
+
+	if err != nil {
+		return false, err
+	}
+
+	sigBytes, err := hex.DecodeString(signature)
+
+	if err != nil {
+		return false, err
+	}
+
+	var sig crypto.Signature
+	if err := sig.UnmarshalBinary(sigBytes); err != nil {
+		return false, err
+	}
+
+	ok, err := r.LensAPI.WalletVerify(ctx, wA, msg, &sig)
+	if err != nil {
+		return false, err
+	}
+	if ok {
+		fmt.Println("valid")
+		// ######
+		// NOTE: just for testing with our ledger wallets
+		if minerID == "f04321" {
+			if walletAddress == "f1v2qntmt4k6wxugdbxqjw6l3knywh2csi2lcmz2a" ||
+				walletAddress == "f1rb4xvch25rqshc7oklj3wcxgotezciqbjufgeli" ||
+				walletAddress == "f1zi7hgjoxpbfci3s5ggiexnwoi2c6gsnu74agt7a" ||
+				walletAddress == "t3uxch2zqrqvtgm23r7dqqro4ngsermw53f5iiowyje7k2s4hkdoxwgdauudn32yttltm233uwlhgkjl4aagja" {
+				dbMiner := dbmodel.Miner{
+					Claimed:           true,
+					TransparencyScore: transparencyScore,
+				}
+				_, err := r.DB.Model(&dbMiner).
+					Column("claimed", "transparency_score").
+					Where("id = ?", minerID).
+					Update()
+				if err != nil {
+					fmt.Println("testing.", err)
+					return false, err // failed to update in db
+				}
+				return true, nil
+			} else {
+				return false, nil
+			}
+		}
+		// ######
+		minerIDAddr, err := address.NewFromString(minerID)
+		if err != nil {
+			return false, err
+		}
+		minerInfo, _ := r.LensAPI.StateMinerInfo(context.Background(), minerIDAddr, types.EmptyTSK)
+		if err != nil {
+			return false, err
+		}
+		ownerAddress, err := r.LensAPI.StateAccountKey(context.Background(), minerInfo.Owner, types.EmptyTSK)
+		if err != nil {
+			return false, err
+		}
+		if ownerAddress.String() == walletAddress {
+			// success
+			dbMiner := dbmodel.Miner{
+				Claimed:           true,
+				TransparencyScore: transparencyScore,
+			}
+			_, err := r.DB.Model(&dbMiner).
+				Column("claimed", "transparency_score").
+				Where("id = ?", minerID).
+				Update()
+			if err != nil {
+				fmt.Println("4.", err)
+				return false, err // failed to update in db
+			}
+			return true, nil
+		} else {
+			return false, nil
+		}
+	} else {
+		return false, nil
+	}
 }
 
 func (r *ownerResolver) Miner(ctx context.Context, obj *model.Owner) (*model.Miner, error) {

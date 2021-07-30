@@ -250,6 +250,12 @@ enum Sort {
 type Mutation {
   claimProfile(input: ProfileClaimInput!): Boolean! # true: success, false: failure
   editProfile(input: ProfileSettingsInput!): Boolean! # true: updated, false: failed
+  verifyWallet(
+    minerID: String!
+    walletAddress: String!
+    hexMessage: String!
+    signature: String!
+  ): Boolean! # true: success, false: failure
 }
 
 ####################################
