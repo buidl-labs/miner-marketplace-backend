@@ -448,7 +448,7 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 	var FILFOX_MINER string = "https://filfox.info/api/v1/address/"
 	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
 
-	fmt.Println("miner", m)
+	fmt.Println("xxxminer", m)
 	// block rewards
 	minerRewards := []struct {
 		Cid          string `json:"cid"`
@@ -479,9 +479,10 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 
 	totalRewardCount := filFoxMinerTransfersReward.TotalCount
 	fmt.Println("totalRewardCount", totalRewardCount)
-
+	fmt.Println("fromStart", fromStart)
 	if !fromStart {
 		if db_miner_transfers_reward_total_count != 0 {
+			fmt.Println("db_miner_transfers_reward_total_count != 0")
 			var diffRw int64
 			var pagesRw int
 			diffRw = int64(totalRewardCount) - db_miner_transfers_reward_total_count
@@ -493,6 +494,8 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 				util.GetJson(FILFOX_MINER+m+"/blocks?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerTransfersReward)
 				minerRewards = append(minerRewards, filFoxMinerTransfersReward.Blocks...)
 			}
+		} else {
+			fmt.Println("db_miner_transfers_reward_total_count = 0")
 		}
 	} else {
 		var diffRw int64
@@ -588,6 +591,7 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 
 	if !fromStart {
 		if db_miner_messages_total_count != 0 {
+			fmt.Println("db_miner_messages_total_count != 0")
 			var diff int64
 			var pages int
 			diff = int64(totalMinerMessageCount) - db_miner_messages_total_count
@@ -599,6 +603,8 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 				util.GetJson(FILFOX_MINER+m+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerMessages)
 				minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
 			}
+		} else {
+			fmt.Println("db_miner_messages_total_count = 0")
 		}
 	} else {
 		var diff int64
