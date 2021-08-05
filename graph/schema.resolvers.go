@@ -1413,13 +1413,13 @@ func (r *queryResolver) NetworkStats(ctx context.Context) (*model.NetworkStats, 
 		fmt.Println("PowerActorState err", err)
 	}
 	pas, _ := PowerActorState.State.(map[string]interface{})
-	fmt.Println("PASS", pas)
+	// fmt.Println("PASS", pas)
 	TotalQualityAdjPower, _ := pas["TotalQualityAdjPower"].(string)
-	fmt.Println("TotalQualityAdjPower", TotalQualityAdjPower)
+	// fmt.Println("TotalQualityAdjPower", TotalQualityAdjPower)
 	TotalQualityAdjPowerFloat, _ := strconv.ParseFloat(TotalQualityAdjPower, 64)
-	fmt.Println("TotalQualityAdjPowerFloat", TotalQualityAdjPowerFloat)
+	// fmt.Println("TotalQualityAdjPowerFloat", TotalQualityAdjPowerFloat)
 	TotalQualityAdjPowerFloat3 := fmt.Sprintf("%.3f EB", TotalQualityAdjPowerFloat/math.Pow(10, 18))
-	fmt.Println("TotalQualityAdjPowerFloat3", TotalQualityAdjPowerFloat3)
+	// fmt.Println("TotalQualityAdjPowerFloat3", TotalQualityAdjPowerFloat3)
 
 	// TotalQualityAdjPowerBigFloat := big.NewFloat(float64(TotalQualityAdjPower) / math.Pow(10, 18))
 	// fmt.Println("TotalQualityAdjPowerBigFloat", TotalQualityAdjPowerBigFloat)
@@ -1460,9 +1460,9 @@ func (r *queryResolver) NetworkStats(ctx context.Context) (*model.NetworkStats, 
 	}
 	// 24008119344596096
 	dataStoredBigFloat := big.NewFloat(float64(size) / math.Pow(10, 16))
-	fmt.Println("dataStoredBigFloat", dataStoredBigFloat)
+	// fmt.Println("dataStoredBigFloat", dataStoredBigFloat)
 	dataStoredBigFloat3 := fmt.Sprintf("%.3f PB", dataStoredBigFloat)
-	fmt.Println("dataStoredBigFloat3", dataStoredBigFloat3)
+	// fmt.Println("dataStoredBigFloat3", dataStoredBigFloat3)
 
 	return &model.NetworkStats{
 		ActiveMinersCount:      activeMinersCount,

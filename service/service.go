@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -28,19 +29,23 @@ addresses:
 `)
 
 func Indexer(DB *pg.DB, node lens.API) {
-	dailyTasks(DB, node)
-	hourlyTasks(DB, node)
+	// dailyTasks(DB, node)
+	// hourlyTasks(DB, node)
 
-	hourlyTicker := time.NewTicker(3 * time.Hour)
-	dailyTicker := time.NewTicker(24 * time.Hour)
+	// hourlyTicker := time.NewTicker(6 * time.Hour)
+	// dailyTicker := time.NewTicker(24 * time.Hour)
 
 	for {
-		select {
-		case <-hourlyTicker.C:
-			hourlyTasks(DB, node)
-		case <-dailyTicker.C:
-			dailyTasks(DB, node)
-		}
+		fmt.Println("starting iteration", time.Now())
+		dailyTasks(DB, node)
+		fmt.Println("ending iteration", time.Now())
+
+		// select {
+		// case <-hourlyTicker.C:
+		// 	hourlyTasks(DB, node)
+		// case <-dailyTicker.C:
+		// 	dailyTasks(DB, node)
+		// }
 	}
 }
 
@@ -58,7 +63,7 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 			dbMiner := model.Miner{}
 			if err := DB.Model(&dbMiner).Where("id = ?", m.Address).Select(); err != nil {
 				fmt.Println("can't fetch dbMiner", err)
-				continue
+				// continue
 			}
 			qap := dbMiner.QualityAdjustedPower
 			if ts, err := node.ChainHead(context.Background()); err == nil {
@@ -206,12 +211,22 @@ func hourlyTasks(DB *pg.DB, node lens.API) {
 				if err != nil {
 					log.Println("inserting minerStorageDealStats:", m.Address, " error:", err)
 				}
+
+				filfoxMinerMessagesCount := &model.FilfoxMinerMessagesCount{
+					ID:                             m.Address,
+					MinerMessagesTotalCount:        0,
+					MinerTransfersRewardTotalCount: 0,
+				}
+				_, err = DB.Model(filfoxMinerMessagesCount).Insert()
+				if err != nil {
+					log.Println("inserting filfoxMinerMessagesCount:", m.Address, " error:", err)
+				}
 			}
 		}
 	}
-
-	// MinerPageMessages(DB, node)
-	StorageDeals(DB, node)
+	// TODO: Check if this is indexing all deals
+	// (it should just index the latest deals)
+	// StorageDeals(DB, node)
 }
 
 func dailyTasks(DB *pg.DB, node lens.API) {
@@ -224,16 +239,27 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 	util.GetJson(FILREP_MINERS, filRepMiners)
 
 	fmt.Println("daily pagination:", filRepMiners.Pagination)
+	viper.SetConfigType("yaml")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+	viper.ReadConfig(bytes.NewBuffer(yamlExample))
 
+	miners := viper.GetStringSlice("miners")
+	// tillHeight, _ := strconv.Atoi(os.Getenv("TILLHEIGHT"))
+	fmt.Println("MINERS", miners)
+
+	go StorageDeals(DB, node)
 	if filRepMiners.Pagination.Total > 0 {
-		go fetchAddresses(DB, node, filRepMiners)
-		for _, m := range filRepMiners.Miners {
-			fetchMinerPageMessages(DB, node, m.Address, false)
+		// go fetchAddresses(DB, node, filRepMiners)
+		hourlyTasks(DB, node)
+		fetchAddresses(DB, node, filRepMiners)
+		for _, m := range miners {
+			fetchMinerPageMessages(DB, node, m, false, 0)
 		}
 	}
-	PublishStorageDealsMessages(DB, node)
-	WithdrawBalanceMarketMessages(DB, node)
-	AddBalanceMessages(DB, node)
+	// PublishStorageDealsMessages(DB, node)
+	// WithdrawBalanceMarketMessages(DB, node)
+	// AddBalanceMessages(DB, node)
 }
 
 func fetchAddresses(DB *pg.DB, node lens.API, filRepMiners *FilRepMiners) {
@@ -428,9 +454,9 @@ func ComputeTransparencyScore(input gqlmodel.ProfileSettingsInput) int {
 
 func MinerPageMessages(DB *pg.DB, node lens.API) {
 	// reward
-	// https://filfox.info/api/v1/address/f0152712/transfers?pageSize=100&page=0&type=reward
+	// https://filfox.info/api/v1/address/f0152712/transfers?pageSize=5&page=0&type=reward
 
-	// var FILREP_MINER_TRANSFERS="https://filfox.info/api/v1/address/f0152712/transfers?pageSize=100&page=0&type=reward"
+	// var FILREP_MINER_TRANSFERS="https://filfox.info/api/v1/address/f0152712/transfers?pageSize=5&page=0&type=reward"
 
 	viper.SetConfigType("yaml")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -438,13 +464,14 @@ func MinerPageMessages(DB *pg.DB, node lens.API) {
 	viper.ReadConfig(bytes.NewBuffer(yamlExample))
 
 	miners := viper.GetStringSlice("miners")
+	tillHeight, _ := strconv.Atoi(os.Getenv("TILLHEIGHT"))
 
 	for _, m := range miners {
-		fetchMinerPageMessages(DB, node, m, true)
+		fetchMinerPageMessages(DB, node, m, true, tillHeight)
 	}
 }
 
-func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) {
+func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool, tillHeight int) {
 	var FILFOX_MINER string = "https://filfox.info/api/v1/address/"
 	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
 
@@ -461,20 +488,20 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 		MessageCount int    `json:"messageCount"`
 	}{}
 	filFoxMinerTransfersReward := new(FilFoxMinerBlocks) // new(FilFoxMinerTransfers)
-	// https://filfox.info/api/v1/address/f062353/blocks?pageSize=100&page=0
-	util.GetJson(FILFOX_MINER+m+"/blocks?pageSize=100&page=0", filFoxMinerTransfersReward)
+	// https://filfox.info/api/v1/address/f062353/blocks?pageSize=5&page=0
+	util.GetJson(FILFOX_MINER+m+"/blocks?pageSize=5&page=0", filFoxMinerTransfersReward)
 
-	// fmt.Println("url:", FILFOX_MINER+m+"/transfers?pageSize=100&page=0&type=reward")
-	// util.GetJson(FILFOX_MINER+m+"/transfers?pageSize=100&page=0&type=reward", filFoxMinerTransfersReward)
+	// fmt.Println("url:", FILFOX_MINER+m+"/transfers?pageSize=5&page=0&type=reward")
+	// util.GetJson(FILFOX_MINER+m+"/transfers?pageSize=5&page=0&type=reward", filFoxMinerTransfersReward)
 	// fmt.Println("latest reward page", filFoxMinerTransfersReward)
 	minerRewards = append(minerRewards, filFoxMinerTransfersReward.Blocks...)
 
 	var db_miner_transfers_reward_total_count int64
 	err := DB.Model((*model.FilfoxMinerMessagesCount)(nil)).
-		Column("miner_transfers_reward_total_count").
+		Column("miner_transfers_reward_total_count", "till_height").
 		Where("id = ?", m).
-		Select(&db_miner_transfers_reward_total_count)
-
+		Select(&db_miner_transfers_reward_total_count, &tillHeight)
+	fmt.Println("TILLheight", tillHeight)
 	fmt.Println("db_miner_transfers_reward_total_count", db_miner_transfers_reward_total_count)
 
 	totalRewardCount := filFoxMinerTransfersReward.TotalCount
@@ -486,13 +513,16 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 			var diffRw int64
 			var pagesRw int
 			diffRw = int64(totalRewardCount) - db_miner_transfers_reward_total_count
-			pagesRw = int(diffRw) / 100
+			pagesRw = int(diffRw) / 5
 			fmt.Println("case1 diffRw", diffRw, "pagesRw", pagesRw)
 			for i := 1; i <= pagesRw; i++ {
 				fmt.Println("page", i)
 				fmt.Println("iterminerRewards", len(minerRewards))
-				util.GetJson(FILFOX_MINER+m+"/blocks?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerTransfersReward)
+				util.GetJson(FILFOX_MINER+m+"/blocks?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxMinerTransfersReward)
 				minerRewards = append(minerRewards, filFoxMinerTransfersReward.Blocks...)
+				if filFoxMinerTransfersReward.Blocks[0].Height < tillHeight {
+					break
+				}
 			}
 		} else {
 			fmt.Println("db_miner_transfers_reward_total_count = 0")
@@ -502,22 +532,28 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 		var pagesRw int
 		if err == nil && db_miner_transfers_reward_total_count < int64(totalRewardCount) {
 			diffRw = int64(totalRewardCount) - db_miner_transfers_reward_total_count
-			pagesRw = int(diffRw) / 100
+			pagesRw = int(diffRw) / 5
 			fmt.Println("case1 diffRw", diffRw, "pagesRw", pagesRw)
 			for i := 1; i <= pagesRw; i++ {
 				fmt.Println("page", i)
 				fmt.Println("iterminerRewards", len(minerRewards))
-				util.GetJson(FILFOX_MINER+m+"/blocks?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerTransfersReward)
+				util.GetJson(FILFOX_MINER+m+"/blocks?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxMinerTransfersReward)
 				minerRewards = append(minerRewards, filFoxMinerTransfersReward.Blocks...)
+				if filFoxMinerTransfersReward.Blocks[0].Height < tillHeight {
+					break
+				}
 			}
 		} else if db_miner_transfers_reward_total_count != int64(totalRewardCount) {
-			minerRewardPagesCount := totalRewardCount / 100
+			minerRewardPagesCount := totalRewardCount / 5
 			fmt.Println("minerRewardPagesCount", minerRewardPagesCount)
 			for i := 1; i <= minerRewardPagesCount; i++ {
 				fmt.Println("page", i)
 				fmt.Println("iterminerRewards", len(minerRewards))
-				util.GetJson(FILFOX_MINER+m+"/blocks?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerTransfersReward)
+				util.GetJson(FILFOX_MINER+m+"/blocks?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxMinerTransfersReward)
 				minerRewards = append(minerRewards, filFoxMinerTransfersReward.Blocks...)
+				if filFoxMinerTransfersReward.Blocks[0].Height < tillHeight {
+					break
+				}
 			}
 		}
 	}
@@ -548,10 +584,15 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 			}
 		}
 	}
+	mrth := tillHeight
+	if len(minerRewards) > 0 {
+		mrth = minerRewards[0].Height
+	}
 	_, err = DB.Model(&model.FilfoxMinerMessagesCount{
 		MinerTransfersRewardTotalCount: int64(totalRewardCount),
+		TillHeight:                     int64(mrth),
 	}).
-		Column("miner_transfers_reward_total_count").
+		Column("miner_transfers_reward_total_count", "till_height").
 		Where("id = ?", m).
 		Update()
 	if err != nil {
@@ -559,7 +600,7 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 	}
 
 	// miner actor messages
-	// https://filfox.info/api/v1/address/f0115238/messages?pageSize=100&page=0
+	// https://filfox.info/api/v1/address/f0115238/messages?pageSize=5&page=0
 	minerMessages := []struct {
 		Cid       string `json:"cid"`
 		Height    int    `json:"height"`
@@ -574,8 +615,8 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 		} `json:"receipt"`
 	}{}
 	filFoxMinerMessages := new(FilFoxMinerMessages)
-	fmt.Println("url:", FILFOX_MINER+m+"/messages?pageSize=100&page=0")
-	util.GetJson(FILFOX_MINER+m+"/messages?pageSize=100&page=0", filFoxMinerMessages)
+	fmt.Println("url:", FILFOX_MINER+m+"/messages?pageSize=5&page=0")
+	util.GetJson(FILFOX_MINER+m+"/messages?pageSize=5&page=0", filFoxMinerMessages)
 	minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
 
 	var db_miner_messages_total_count int64
@@ -595,13 +636,16 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 			var diff int64
 			var pages int
 			diff = int64(totalMinerMessageCount) - db_miner_messages_total_count
-			pages = int(diff) / 100
+			pages = int(diff) / 5
 			fmt.Println("case1 diff", diff, "pages", pages)
 			for i := 1; i <= pages; i++ {
 				fmt.Println("page", i)
 				fmt.Println("iterminerMessages", len(minerMessages))
-				util.GetJson(FILFOX_MINER+m+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerMessages)
+				util.GetJson(FILFOX_MINER+m+"/messages?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxMinerMessages)
 				minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
+				if filFoxMinerMessages.Messages[0].Height < tillHeight {
+					break
+				}
 			}
 		} else {
 			fmt.Println("db_miner_messages_total_count = 0")
@@ -611,22 +655,28 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 		var pages int
 		if err == nil && db_miner_messages_total_count < int64(totalMinerMessageCount) {
 			diff = int64(totalMinerMessageCount) - db_miner_messages_total_count
-			pages = int(diff) / 100
+			pages = int(diff) / 5
 			fmt.Println("case1 diff", diff, "pages", pages)
 			for i := 1; i <= pages; i++ {
 				fmt.Println("page", i)
 				fmt.Println("iterminerMessages", len(minerMessages))
-				util.GetJson(FILFOX_MINER+m+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerMessages)
+				util.GetJson(FILFOX_MINER+m+"/messages?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxMinerMessages)
 				minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
+				if filFoxMinerMessages.Messages[0].Height < tillHeight {
+					break
+				}
 			}
 		} else if db_miner_messages_total_count != int64(totalMinerMessageCount) {
-			minerMessagePagesCount := totalMinerMessageCount / 100
+			minerMessagePagesCount := totalMinerMessageCount / 5
 			fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
 			for i := 1; i <= minerMessagePagesCount; i++ {
 				fmt.Println("page", i)
 				fmt.Println("iterminerMessages", len(minerMessages))
-				util.GetJson(FILFOX_MINER+m+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxMinerMessages)
+				util.GetJson(FILFOX_MINER+m+"/messages?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxMinerMessages)
 				minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
+				if filFoxMinerMessages.Messages[0].Height < tillHeight {
+					break
+				}
 			}
 		}
 	}
@@ -672,10 +722,15 @@ func fetchMinerPageMessages(DB *pg.DB, node lens.API, m string, fromStart bool) 
 			}
 		}
 	}
+	mmth := tillHeight
+	if len(minerMessages) > 0 {
+		mmth = minerMessages[0].Height
+	}
 	_, err = DB.Model(&model.FilfoxMinerMessagesCount{
 		MinerMessagesTotalCount: int64(totalMinerMessageCount),
+		TillHeight:              int64(mmth),
 	}).
-		Column("miner_messages_total_count").
+		Column("miner_messages_total_count", "till_height").
 		Where("id = ?", m).
 		Update()
 	if err != nil {
@@ -686,7 +741,7 @@ func PublishStorageDealsMessages(DB *pg.DB, node lens.API) {
 	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
 
 	filFoxMessagesList := new(FilFoxMessagesList)
-	util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page=0&method=PublishStorageDeals", filFoxMessagesList)
+	util.GetJson(FILFOX_MESSAGE+"list?pageSize=5&page=0&method=PublishStorageDeals", filFoxMessagesList)
 
 	publishStorageDealsMessages := []struct {
 		Cid       string `json:"cid"`
@@ -726,23 +781,23 @@ func PublishStorageDealsMessages(DB *pg.DB, node lens.API) {
 	var pages int
 	if err == nil && db_publish_storage_deals_messages_total_count < int64(totalPublishStorageDealsMessageCount) {
 		diff = int64(totalPublishStorageDealsMessageCount) - db_publish_storage_deals_messages_total_count
-		pages = int(diff) / 100
+		pages = int(diff) / 5
 		fmt.Println("case1 diff", diff, "pages", pages)
 		// for i := 1; i <= pages; i++ {
 		for i := 1; i <= 5; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(publishStorageDealsMessages))
-			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxMessagesList)
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=5&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxMessagesList)
 			publishStorageDealsMessages = append(publishStorageDealsMessages, filFoxMessagesList.Messages...)
 		}
 	} else if db_publish_storage_deals_messages_total_count != int64(totalPublishStorageDealsMessageCount) {
-		minerMessagePagesCount := totalPublishStorageDealsMessageCount / 100
+		minerMessagePagesCount := totalPublishStorageDealsMessageCount / 5
 		fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
 		// for i := 1; i <= minerMessagePagesCount; i++ {
 		for i := 1; i <= 5; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(publishStorageDealsMessages))
-			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxMessagesList)
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=5&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxMessagesList)
 			publishStorageDealsMessages = append(publishStorageDealsMessages, filFoxMessagesList.Messages...)
 		}
 	}
@@ -820,7 +875,7 @@ func WithdrawBalanceMarketMessages(DB *pg.DB, node lens.API) {
 	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
 
 	filFoxMessagesList := new(FilFoxMessagesList)
-	util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page=0&method=WithdrawBalance%20(market)", filFoxMessagesList)
+	util.GetJson(FILFOX_MESSAGE+"list?pageSize=5&page=0&method=WithdrawBalance%20(market)", filFoxMessagesList)
 
 	withdrawBalanceMarketMessages := []struct {
 		Cid       string `json:"cid"`
@@ -860,21 +915,21 @@ func WithdrawBalanceMarketMessages(DB *pg.DB, node lens.API) {
 	var pages int
 	if err == nil && db_withdraw_balance_market_messages_total_count < int64(totalWithdrawBalanceMarketMessageCount) {
 		diff = int64(totalWithdrawBalanceMarketMessageCount) - db_withdraw_balance_market_messages_total_count
-		pages = int(diff) / 100
+		pages = int(diff) / 5
 		fmt.Println("case1 diff", diff, "pages", pages)
 		for i := 1; i <= pages; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(withdrawBalanceMarketMessages))
-			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=WithdrawBalance%20(market)", filFoxMessagesList)
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=5&page="+fmt.Sprintf("%d", i)+"&method=WithdrawBalance%20(market)", filFoxMessagesList)
 			withdrawBalanceMarketMessages = append(withdrawBalanceMarketMessages, filFoxMessagesList.Messages...)
 		}
 	} else if db_withdraw_balance_market_messages_total_count != int64(totalWithdrawBalanceMarketMessageCount) {
-		minerMessagePagesCount := totalWithdrawBalanceMarketMessageCount / 100
+		minerMessagePagesCount := totalWithdrawBalanceMarketMessageCount / 5
 		fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
 		for i := 1; i <= minerMessagePagesCount; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(withdrawBalanceMarketMessages))
-			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=WithdrawBalance%20(market)", filFoxMessagesList)
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=5&page="+fmt.Sprintf("%d", i)+"&method=WithdrawBalance%20(market)", filFoxMessagesList)
 			withdrawBalanceMarketMessages = append(withdrawBalanceMarketMessages, filFoxMessagesList.Messages...)
 		}
 	}
@@ -940,7 +995,7 @@ func AddBalanceMessages(DB *pg.DB, node lens.API) {
 	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
 
 	filFoxMessagesList := new(FilFoxMessagesList)
-	util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page=0&method=AddBalance", filFoxMessagesList)
+	util.GetJson(FILFOX_MESSAGE+"list?pageSize=5&page=0&method=AddBalance", filFoxMessagesList)
 
 	addBalanceMessages := []struct {
 		Cid       string `json:"cid"`
@@ -980,23 +1035,23 @@ func AddBalanceMessages(DB *pg.DB, node lens.API) {
 	var pages int
 	if err == nil && db_add_balance_messages_total_count < int64(totalAddBalanceMessageCount) {
 		diff = int64(totalAddBalanceMessageCount) - db_add_balance_messages_total_count
-		pages = int(diff) / 100
+		pages = int(diff) / 5
 		fmt.Println("case1 diff", diff, "pages", pages)
 		// for i := 1; i <= pages; i++ {
 		for i := 1; i <= 5; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(addBalanceMessages))
-			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxMessagesList)
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=5&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxMessagesList)
 			addBalanceMessages = append(addBalanceMessages, filFoxMessagesList.Messages...)
 		}
 	} else if db_add_balance_messages_total_count != int64(totalAddBalanceMessageCount) {
-		minerMessagePagesCount := totalAddBalanceMessageCount / 100
+		minerMessagePagesCount := totalAddBalanceMessageCount / 5
 		fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
 		// for i := 1; i <= minerMessagePagesCount; i++ {
 		for i := 1; i <= 5; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterminerMessages", len(addBalanceMessages))
-			util.GetJson(FILFOX_MESSAGE+"list?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxMessagesList)
+			util.GetJson(FILFOX_MESSAGE+"list?pageSize=5&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxMessagesList)
 			addBalanceMessages = append(addBalanceMessages, filFoxMessagesList.Messages...)
 		}
 	}
@@ -1082,7 +1137,7 @@ func StorageDeals(DB *pg.DB, node lens.API) {
 		} `json:"providerTag,omitempty"`
 	}{}
 	filFoxDealsList := new(FilFoxDealsList)
-	util.GetJson(FILFOX_DEAL+"/list?pageSize=100&page=0", filFoxDealsList)
+	util.GetJson(FILFOX_DEAL+"/list?pageSize=5&page=0", filFoxDealsList)
 
 	deals = append(deals, filFoxDealsList.Deals...)
 
@@ -1101,12 +1156,12 @@ func StorageDeals(DB *pg.DB, node lens.API) {
 	var pages int
 	if err == nil && db_deals_total_count < int64(totalDealsCount) {
 		diff = int64(totalDealsCount) - db_deals_total_count
-		pages = int(diff) / 100
+		pages = int(diff) / 5
 		fmt.Println("case1 diff", diff, "pages", pages)
 		for i := 0; i <= pages; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterdeals", len(deals))
-			util.GetJson(FILFOX_DEAL+"/list?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxDealsList)
+			util.GetJson(FILFOX_DEAL+"/list?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxDealsList)
 			// if db_deals_total_count != int64(totalDealsCount) {
 			for _, d := range filFoxDealsList.Deals {
 				_, err := DB.Model(&model.MarketDealProposal{
@@ -1143,12 +1198,12 @@ func StorageDeals(DB *pg.DB, node lens.API) {
 			// deals = append(deals, filFoxDealsList.Deals...)
 		}
 	} else if db_deals_total_count != int64(totalDealsCount) {
-		dealsListPagesCount := totalDealsCount / 100
+		dealsListPagesCount := totalDealsCount / 5
 		fmt.Println("dealsListPagesCount", dealsListPagesCount)
 		for i := 0; i <= dealsListPagesCount; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterdeals", len(deals))
-			util.GetJson(FILFOX_DEAL+"/list?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxDealsList)
+			util.GetJson(FILFOX_DEAL+"/list?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxDealsList)
 			// if db_deals_total_count != int64(totalDealsCount) {
 			for _, d := range filFoxDealsList.Deals {
 				_, err := DB.Model(&model.MarketDealProposal{
@@ -1265,7 +1320,7 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 		filFoxAddressMessages := new(FilFoxMinerMessages)
 
 		// AddBalance
-		util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=100&page=0&method=AddBalance", filFoxAddressMessages)
+		util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=5&page=0&method=AddBalance", filFoxAddressMessages)
 		addressAddBalanceMessages = append(addressAddBalanceMessages, filFoxAddressMessages.Messages...)
 
 		var db_add_balance_messages_total_count int64
@@ -1283,15 +1338,15 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 		var pages int
 		if err == nil && db_add_balance_messages_total_count < int64(totalAddBalanceMessagesCount) {
 			diff = int64(totalAddBalanceMessagesCount) - db_add_balance_messages_total_count
-			pages = int(diff) / 100
+			pages = int(diff) / 5
 			fmt.Println("case1 diff", diff, "pages", pages)
 			for i := 0; i <= pages; i++ {
 				fmt.Println("page", i)
 				fmt.Println("iterabms", len(addressAddBalanceMessages))
 				filFoxAddressMessages1 := new(FilFoxMinerMessages)
 
-				util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxAddressMessages1)
-				fmt.Println(FILFOX_ADDRESS + a + "/messages?pageSize=100&page=" + fmt.Sprintf("%d", i) + "&method=AddBalance")
+				util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=5&page="+fmt.Sprintf("%d", i)+"&method=AddBalance", filFoxAddressMessages1)
+				fmt.Println(FILFOX_ADDRESS + a + "/messages?pageSize=5&page=" + fmt.Sprintf("%d", i) + "&method=AddBalance")
 				for _, abm := range filFoxAddressMessages1.Messages {
 					filFoxAddBalanceMessage := new(FilFoxAddBalanceMessage)
 					_, err = util.GetJson(FILFOX_MESSAGE+abm.Cid, filFoxAddBalanceMessage)
@@ -1339,7 +1394,7 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 		}
 
 		// PublishStorageDeals
-		util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=100&page=0&method=PublishStorageDeals", filFoxAddressMessages)
+		util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=5&page=0&method=PublishStorageDeals", filFoxAddressMessages)
 		addressPublishStorageDealsMessages = append(addressPublishStorageDealsMessages, filFoxAddressMessages.Messages...)
 
 		var db_publish_storage_deals_messages_total_count int64
@@ -1357,15 +1412,15 @@ func AddressMessages(DB *pg.DB, node lens.API) {
 		var pages1 int
 		if err == nil && db_publish_storage_deals_messages_total_count < int64(totalPublishStorageDealsMessagesCount) {
 			diff1 = int64(totalPublishStorageDealsMessagesCount) - db_publish_storage_deals_messages_total_count
-			pages1 = int(diff1) / 100
+			pages1 = int(diff1) / 5
 			fmt.Println("case1 diff", diff1, "pages", pages1)
 			for i := 0; i <= pages1; i++ {
 				fmt.Println("page", i)
 				fmt.Println("iterpsdms", len(addressPublishStorageDealsMessages))
 				filFoxAddressMessages2 := new(FilFoxMinerMessages)
 
-				util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=100&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxAddressMessages2)
-				fmt.Println(FILFOX_ADDRESS + a + "/messages?pageSize=100&page=" + fmt.Sprintf("%d", i) + "&method=PublishStorageDeals")
+				util.GetJson(FILFOX_ADDRESS+a+"/messages?pageSize=5&page="+fmt.Sprintf("%d", i)+"&method=PublishStorageDeals", filFoxAddressMessages2)
+				fmt.Println(FILFOX_ADDRESS + a + "/messages?pageSize=5&page=" + fmt.Sprintf("%d", i) + "&method=PublishStorageDeals")
 				for _, psdm := range filFoxAddressMessages2.Messages {
 					filFoxMessage := new(FilFoxPublishStorageDealsMessage)
 
@@ -1961,7 +2016,7 @@ type FilFoxDealsList struct {
 }
 
 func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, string, string, string, string, []int) {
-	fmt.Println("inside GetMessageAttributes", filfoxMessage)
+	fmt.Println("inside GetMessageAttributes", filfoxMessage.Cid)
 	switch filfoxMessage.Method {
 	case "PreCommitSector", "ProveCommitSector", "PreCommitSectorBatch":
 		burnFee := "0"
@@ -1995,7 +2050,11 @@ func GetMessageAttributes(node lens.API, filfoxMessage FilFoxMessage) (string, s
 		if len(filfoxMessage.Transfers) >= 2 {
 			burnFee = filfoxMessage.Transfers[1].Value
 		}
-		return "Penalty", filfoxMessage.Transfers[2].Value, filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
+		val := filfoxMessage.Value
+		if len(filfoxMessage.Transfers) >= 3 {
+			val = filfoxMessage.Transfers[2].Value
+		}
+		return "Penalty", val, filfoxMessage.Fee.MinerTip, burnFee, "", []int{}
 	case "RepayDebt":
 		burnFee := "0"
 		if len(filfoxMessage.Transfers) >= 2 {

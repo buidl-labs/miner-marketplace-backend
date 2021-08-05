@@ -88,6 +88,7 @@ type FilfoxMinerMessagesCount struct {
 	ID                             string `pg:",pk,notnull"`
 	MinerMessagesTotalCount        int64  `pg:",use_zero"`
 	MinerTransfersRewardTotalCount int64  `pg:",use_zero"`
+	TillHeight                     int64  `pg:","`
 }
 
 type FilfoxMessagesCount struct {
