@@ -74,7 +74,7 @@ func main() {
 		router := chi.NewRouter()
 
 		router.Use(cors.New(cors.Options{
-			AllowedOrigins:   []string{"*"},
+			AllowedOrigins:   []string{"https://datastation.app", "https://www.datastation.app", "https://filecoin-miner-marketplace.onrender.com"},
 			AllowCredentials: true,
 			AllowedMethods:   []string{"GET", "POST", "PUT", "OPTIONS"},
 			AllowedHeaders:   []string{"*"},
