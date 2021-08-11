@@ -102,5 +102,6 @@ func NewDB() (*pg.DB, error) {
 		return nil, err
 	}
 	db := pg.Connect(opt)
+	// db = db.WithTimeout(time.Second * 20)
 	return db, nil
 }

@@ -132,19 +132,21 @@ func (r *locationResolver) Country(ctx context.Context, obj *model.Location) (st
 }
 
 func (r *minerResolver) PersonalInfo(ctx context.Context, obj *model.Miner) (*model.PersonalInfo, error) {
-	minerPersonalInfo := dbmodel.MinerPersonalInfo{}
-	err := r.DB.Model(&minerPersonalInfo).Where("id = ?", obj.ID).Select()
-	if err != nil {
-		return &model.PersonalInfo{}, nil
-	}
-	return &model.PersonalInfo{
-		Name:    minerPersonalInfo.Name,
-		Bio:     minerPersonalInfo.Bio,
-		Email:   minerPersonalInfo.Email,
-		Website: minerPersonalInfo.Website,
-		Twitter: minerPersonalInfo.Twitter,
-		Slack:   minerPersonalInfo.Slack,
-	}, nil
+	fmt.Println("obj.PersonalInfo", obj.PersonalInfo, "n", obj.PersonalInfo.Name)
+	return obj.PersonalInfo, nil
+	// minerPersonalInfo := dbmodel.MinerPersonalInfo{}
+	// err := r.DB.Model(&minerPersonalInfo).Where("id = ?", obj.ID).Select()
+	// if err != nil {
+	// 	return &model.PersonalInfo{}, nil
+	// }
+	// return &model.PersonalInfo{
+	// 	Name:    minerPersonalInfo.Name,
+	// 	Bio:     minerPersonalInfo.Bio,
+	// 	Email:   minerPersonalInfo.Email,
+	// 	Website: minerPersonalInfo.Website,
+	// 	Twitter: minerPersonalInfo.Twitter,
+	// 	Slack:   minerPersonalInfo.Slack,
+	// }, nil
 }
 
 func (r *minerResolver) Worker(ctx context.Context, obj *model.Miner) (*model.Worker, error) {
@@ -170,14 +172,15 @@ func (r *minerResolver) Owner(ctx context.Context, obj *model.Miner) (*model.Own
 }
 
 func (r *minerResolver) Location(ctx context.Context, obj *model.Miner) (*model.Location, error) {
-	dbMiner := dbmodel.Miner{}
-	if err := r.DB.Model(&dbMiner).Where("id = ?", obj.ID).Select(); err != nil {
-		return &model.Location{}, err
-	}
-	return &model.Location{
-		Region:  dbMiner.Region,
-		Country: dbMiner.Country,
-	}, nil
+	return obj.Location, nil
+	// dbMiner := dbmodel.Miner{}
+	// if err := r.DB.Model(&dbMiner).Where("id = ?", obj.ID).Select(); err != nil {
+	// 	return &model.Location{}, err
+	// }
+	// return &model.Location{
+	// 	Region:  dbMiner.Region,
+	// 	Country: dbMiner.Country,
+	// }, nil
 }
 
 func (r *minerResolver) QualityAdjustedPower(ctx context.Context, obj *model.Miner) (string, error) {
@@ -185,34 +188,36 @@ func (r *minerResolver) QualityAdjustedPower(ctx context.Context, obj *model.Min
 }
 
 func (r *minerResolver) Service(ctx context.Context, obj *model.Miner) (*model.Service, error) {
-	dbMinerService := dbmodel.MinerService{}
-	if err := r.DB.Model(&dbMinerService).Where("id = ?", obj.ID).Select(); err != nil {
-		return &model.Service{}, err
-	}
-	return &model.Service{
-		ServiceTypes: &model.ServiceTypes{
-			Storage:   dbMinerService.Storage,
-			Retrieval: dbMinerService.Retrieval,
-			Repair:    dbMinerService.Repair,
-		},
-		DataTransferMechanism: &model.DataTransferMechanism{
-			Online:  dbMinerService.DataTransferOnline,
-			Offline: dbMinerService.DataTransferOffline,
-		},
-	}, nil
+	return obj.Service, nil
+	// dbMinerService := dbmodel.MinerService{}
+	// if err := r.DB.Model(&dbMinerService).Where("id = ?", obj.ID).Select(); err != nil {
+	// 	return &model.Service{}, err
+	// }
+	// return &model.Service{
+	// 	ServiceTypes: &model.ServiceTypes{
+	// 		Storage:   dbMinerService.Storage,
+	// 		Retrieval: dbMinerService.Retrieval,
+	// 		Repair:    dbMinerService.Repair,
+	// 	},
+	// 	DataTransferMechanism: &model.DataTransferMechanism{
+	// 		Online:  dbMinerService.DataTransferOnline,
+	// 		Offline: dbMinerService.DataTransferOffline,
+	// 	},
+	// }, nil
 }
 
 func (r *minerResolver) Pricing(ctx context.Context, obj *model.Miner) (*model.Pricing, error) {
-	dbMiner := dbmodel.Miner{}
-	if err := r.DB.Model(&dbMiner).Where("id = ?", obj.ID).Select(); err != nil {
-		fmt.Println("Pricing: ", err)
-		return &model.Pricing{}, err
-	}
-	return &model.Pricing{
-		StorageAskPrice:   dbMiner.StorageAskPrice,
-		VerifiedAskPrice:  dbMiner.VerifiedAskPrice,
-		RetrievalAskPrice: dbMiner.RetrievalAskPrice,
-	}, nil
+	return obj.Pricing, nil
+	// dbMiner := dbmodel.Miner{}
+	// if err := r.DB.Model(&dbMiner).Where("id = ?", obj.ID).Select(); err != nil {
+	// 	fmt.Println("Pricing: ", err)
+	// 	return &model.Pricing{}, err
+	// }
+	// return &model.Pricing{
+	// 	StorageAskPrice:   dbMiner.StorageAskPrice,
+	// 	VerifiedAskPrice:  dbMiner.VerifiedAskPrice,
+	// 	RetrievalAskPrice: dbMiner.RetrievalAskPrice,
+	// }, nil
 }
 
 func (r *minerResolver) ReputationScore(ctx context.Context, obj *model.Miner) (int, error) {
@@ -1333,17 +1338,96 @@ func (r *pricingResolver) RetrievalAskPrice(ctx context.Context, obj *model.Pric
 }
 
 func (r *queryResolver) Miner(ctx context.Context, id string) (*model.Miner, error) {
+	// &dbJoinedMiner.ID, &dbJoinedMiner.Claimed,
+	// &dbJoinedMiner.Region, &dbJoinedMiner.Country, &dbJoinedMiner.WorkerID, &dbJoinedMiner.WorkerAddress,
+	// &dbJoinedMiner.OwnerID, &dbJoinedMiner.OwnerAddress,
+	// &dbJoinedMiner.QualityAdjustedPower,
+	// &dbJoinedMiner.StorageAskPrice,
+	// &dbJoinedMiner.VerifiedAskPrice,
+	// &dbJoinedMiner.RetrievalAskPrice,
+	// &dbJoinedMiner.ReputationScore,
+	// &dbJoinedMiner.TransparencyScore,
+	// &dbJoinedMiner.Storage,
+	// &dbJoinedMiner.Retrieval,
+	// &dbJoinedMiner.Repair,
+	// &dbJoinedMiner.DataTransferOnline,
+	// &dbJoinedMiner.DataTransferOffline,
+	// &dbJoinedMiner.Name,
+	// &dbJoinedMiner.Bio,
+	// &dbJoinedMiner.Email,
+	// &dbJoinedMiner.Website,
+	// &dbJoinedMiner.Twitter,
+	// &dbJoinedMiner.Slack
 	dbMiner := dbmodel.Miner{}
-	if err := r.DB.Model(&dbMiner).Where("id = ?", id).Select(); err != nil {
-		fmt.Println("Miner", err)
-		return &model.Miner{}, err
+	dbJoinedMiner := dbmodel.JoinedMiner{}
+	// var id1, reg1, cou1, wi1, wa1, oi1, oa1, qap1, sap1, vap1, rap1, name, bio, em, web, twt, slk string
+	// var cl1, srg1, ret1, rep1, dton, dtof bool
+	// var rs1, ts1 int
+	result, err := r.DB.QueryOne(&dbJoinedMiner, "select * from miners natural join miner_services natural join miner_personal_infos where id='"+id+"'")
+	if err != nil {
+		fmt.Println("queryoneerr", err)
 	}
+	// r.DB.Query("select * from miners natural join miner_services natural join miner_personal_infos where id='"+id+"';")
+	// var somedata interface{}
+	// if err := r.DB.Model(&dbMiner).
+	// 	Join("natural join miner_services").
+	// 	Join("natural join miner_personal_infos").
+	// 	Where("id = ?", id).
+	// 	Select(somedata); err != nil {
+	// 	return &model.Miner{}, err
+	// }
+	// &id1, &cl1, &reg1, &cou1, &wi1, &wa1, &oi1, &oa1,
+	// &qap1, &sap1, &vap1, &rap1, &rs1, &ts1, &srg1, &ret1, &rep1,
+	// &dton, &dtof, &name, &bio, &em, &web, &twt, &slk,
+	fmt.Println("desired", result, "sf", dbMiner)
+	fmt.Println("MMMMINERRRRRR", id, "dbJoinedMiner", dbJoinedMiner, "name", dbJoinedMiner.Name)
+	// dbMiner := dbmodel.Miner{}
+	// if err := r.DB.Model(&dbMiner).Where("id = ?", id).Select(); err != nil {
+	// 	fmt.Println("Miner", err)
+	// 	return &model.Miner{}, err
+	// }
 	return &model.Miner{
-		ID:                   dbMiner.ID,
-		Claimed:              dbMiner.Claimed,
-		QualityAdjustedPower: dbMiner.QualityAdjustedPower,
-		ReputationScore:      dbMiner.ReputationScore,
-		TransparencyScore:    dbMiner.TransparencyScore,
+		ID:                   dbJoinedMiner.ID,
+		Claimed:              dbJoinedMiner.Claimed,
+		QualityAdjustedPower: dbJoinedMiner.QualityAdjustedPower,
+		ReputationScore:      dbJoinedMiner.ReputationScore,
+		TransparencyScore:    dbJoinedMiner.TransparencyScore,
+		PersonalInfo: &model.PersonalInfo{
+			Name:    dbJoinedMiner.Name,
+			Bio:     dbJoinedMiner.Bio,
+			Email:   dbJoinedMiner.Email,
+			Website: dbJoinedMiner.Website,
+			Twitter: dbJoinedMiner.Twitter,
+			Slack:   dbJoinedMiner.Slack,
+		},
+		Location: &model.Location{
+			Region:  dbJoinedMiner.Region,
+			Country: dbJoinedMiner.Country,
+		},
+		Worker: &model.Worker{
+			ID:      dbJoinedMiner.WorkerID,
+			Address: dbJoinedMiner.WorkerAddress,
+		},
+		Owner: &model.Owner{
+			ID:      dbJoinedMiner.OwnerID,
+			Address: dbJoinedMiner.OwnerAddress,
+		},
+		Service: &model.Service{
+			ServiceTypes: &model.ServiceTypes{
+				Storage:   dbJoinedMiner.Storage,
+				Retrieval: dbJoinedMiner.Retrieval,
+				Repair:    dbJoinedMiner.Repair,
+			},
+			DataTransferMechanism: &model.DataTransferMechanism{
+				Online:  dbJoinedMiner.DataTransferOnline,
+				Offline: dbJoinedMiner.DataTransferOffline,
+			},
+		},
+		Pricing: &model.Pricing{
+			StorageAskPrice:   dbJoinedMiner.StorageAskPrice,
+			RetrievalAskPrice: dbJoinedMiner.RetrievalAskPrice,
+			VerifiedAskPrice:  dbJoinedMiner.VerifiedAskPrice,
+		},
 	}, nil
 }
 
@@ -1358,23 +1442,113 @@ func (r *queryResolver) Miners(ctx context.Context, first *int, offset *int) ([]
 		_offset = *offset
 	}
 
-	var dbMiners []*dbmodel.Miner
-	if err := r.DB.Model(&dbMiners).
-		Limit(_first).
-		Offset(_offset).
-		Select(); err != nil {
-		return []*model.Miner{}, err
+	// var dbMiners []*dbmodel.Miner
+	var dbJoinedMiners []*dbmodel.JoinedMiner
+	// if err := r.DB.Model(&dbMiners).
+	// 	Join("natural join miner_services").
+	// 	Join("natural join miner_personal_infos").
+	// 	// OrderExpr("id ASC").
+	// 	Limit(_first).
+	// 	Offset(_offset).
+	// 	Select(&dbJoinedMiners); err != nil {
+	// 	return []*model.Miner{}, err
+	// }
+	// dbMiner := dbmodel.Miner{}
+	// dbJoinedMiner := dbmodel.JoinedMiner{}
+	// var id1, reg1, cou1, wi1, wa1, oi1, oa1, qap1, sap1, vap1, rap1, name, bio, em, web, twt, slk string
+	// var cl1, srg1, ret1, rep1, dton, dtof bool
+	// var rs1, ts1 int
+	result, err := r.DB.Query(&dbJoinedMiners, "select * from miners natural join miner_services natural join miner_personal_infos limit "+fmt.Sprint(_first)+" offset "+fmt.Sprint(_offset))
+	if err != nil {
+		fmt.Println("queryerr", err)
 	}
+
+	// var dbMiners []*dbmodel.Miner
+	// if err := r.DB.Model(&dbMiners).
+	// 	OrderExpr("id ASC").
+	// 	Limit(_first).
+	// 	Offset(_offset).
+	// 	Select(); err != nil {
+	// 	return []*model.Miner{}, err
+	// }
+	// var minerPersonalInfos []*dbmodel.MinerPersonalInfo
+	// if err := r.DB.Model(&minerPersonalInfos).
+	// 	OrderExpr("id ASC").
+	// 	Limit(_first).
+	// 	Offset(_offset).
+	// 	Select(); err != nil {
+	// 	return []*model.Miner{}, err
+	// }
+	// var dbMinerServices []*dbmodel.MinerService
+	// if err := r.DB.Model(&dbMinerServices).
+	// 	OrderExpr("id ASC").
+	// 	Limit(_first).
+	// 	Offset(_offset).
+	// 	Select(); err != nil {
+	// 	return []*model.Miner{}, err
+	// }
+
+	// if !(len(dbMiners) == len(dbMinerServices) && len(dbMinerServices) == len(minerPersonalInfos)) {
+	// 	return []*model.Miner{}, nil
+	// }
+
+	fmt.Println("LENGTHdbJoinedMiners", len(dbJoinedMiners), "res", result)
+
 	var miners []*model.Miner
-	for _, dbMiner := range dbMiners {
+	for _, dbJoinedMiner := range dbJoinedMiners {
 		miners = append(miners, &model.Miner{
-			ID:                   dbMiner.ID,
-			Claimed:              dbMiner.Claimed,
-			QualityAdjustedPower: dbMiner.QualityAdjustedPower,
-			ReputationScore:      dbMiner.ReputationScore,
-			TransparencyScore:    dbMiner.TransparencyScore,
+			ID:                   dbJoinedMiner.ID,
+			Claimed:              dbJoinedMiner.Claimed,
+			QualityAdjustedPower: dbJoinedMiner.QualityAdjustedPower,
+			ReputationScore:      dbJoinedMiner.ReputationScore,
+			TransparencyScore:    dbJoinedMiner.TransparencyScore,
+			PersonalInfo: &model.PersonalInfo{
+				Name: dbJoinedMiner.Name,
+				// Bio:     dbJoinedMiner.Bio,
+				// Email:   dbJoinedMiner.Email,
+				// Website: dbJoinedMiner.Website,
+				// Twitter: dbJoinedMiner.Twitter,
+				// Slack:   dbJoinedMiner.Slack,
+			},
+			Location: &model.Location{
+				Region:  dbJoinedMiner.Region,
+				Country: dbJoinedMiner.Country,
+			},
+			// Worker: &model.Worker{
+			// 	ID: dbJoinedMiner.WorkerID,
+			// 	Address: dbJoinedMiner.WorkerAddress,
+			// },
+			// Owner: &model.Owner{
+			// 	ID: dbJoinedMiner.OwnerID,
+			// 	Address: dbJoinedMiner.OwnerAddress,
+			// },
+			Service: &model.Service{
+				ServiceTypes: &model.ServiceTypes{
+					Storage:   dbJoinedMiner.Storage,
+					Retrieval: dbJoinedMiner.Retrieval,
+					Repair:    dbJoinedMiner.Repair,
+				},
+				DataTransferMechanism: &model.DataTransferMechanism{
+					Online:  dbJoinedMiner.DataTransferOnline,
+					Offline: dbJoinedMiner.DataTransferOffline,
+				},
+			},
+			Pricing: &model.Pricing{
+				StorageAskPrice: dbJoinedMiner.StorageAskPrice,
+				// RetrievalAskPrice: dbJoinedMiner.RetrievalAskPrice,
+				// VerifiedAskPrice: dbJoinedMiner.VerifiedAskPrice,
+			},
 		})
 	}
+	// for _, dbMiner := range dbMiners {
+	// 	miners = append(miners, &model.Miner{
+	// 		ID:                   dbMiner.ID,
+	// 		Claimed:              dbMiner.Claimed,
+	// 		QualityAdjustedPower: dbMiner.QualityAdjustedPower,
+	// 		ReputationScore:      dbMiner.ReputationScore,
+	// 		TransparencyScore:    dbMiner.TransparencyScore,
+	// 	})
+	// }
 	return miners, nil
 }
 
