@@ -66,6 +66,7 @@ type Location struct {
 type Miner struct {
 	ID                   string             `json:"id"`
 	Claimed              bool               `json:"claimed"`
+	Onboarded            *bool              `json:"onboarded"`
 	PersonalInfo         *PersonalInfo      `json:"personalInfo"`
 	Worker               *Worker            `json:"worker"`
 	Owner                *Owner             `json:"owner"`

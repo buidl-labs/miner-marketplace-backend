@@ -255,6 +255,16 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 		fetchAddresses(DB, node, filRepMiners)
 		for _, m := range miners {
 			fetchMinerPageMessages(DB, node, m, false, 0)
+			miner := &model.Miner{
+				Onboarded: true,
+			}
+			_, err := DB.Model(miner).
+				Column("onboarded").
+				Where("id = ?", m).
+				Update()
+			if err != nil {
+				log.Println("updating miner onboarded status:", m, " error:", err)
+			}
 		}
 	}
 	// PublishStorageDealsMessages(DB, node)
@@ -468,6 +478,16 @@ func MinerPageMessages(DB *pg.DB, node lens.API) {
 
 	for _, m := range miners {
 		fetchMinerPageMessages(DB, node, m, true, tillHeight)
+		miner := &model.Miner{
+			Onboarded: true,
+		}
+		_, err := DB.Model(miner).
+			Column("onboarded").
+			Where("id = ?", m).
+			Update()
+		if err != nil {
+			log.Println("updating miner onboarded status:", m, " error:", err)
+		}
 	}
 }
 

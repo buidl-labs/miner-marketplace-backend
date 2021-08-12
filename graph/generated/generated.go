@@ -120,6 +120,7 @@ type ComplexityRoot struct {
 		EstimatedEarnings    func(childComplexity int, days int, transactionTypes []bool, includeGas bool) int
 		ID                   func(childComplexity int) int
 		Location             func(childComplexity int) int
+		Onboarded            func(childComplexity int) int
 		Owner                func(childComplexity int) int
 		PersonalInfo         func(childComplexity int) int
 		Pricing              func(childComplexity int) int
@@ -574,6 +575,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Miner.Location(childComplexity), true
+
+	case "Miner.onboarded":
+		if e.complexity.Miner.Onboarded == nil {
+			break
+		}
+
+		return e.complexity.Miner.Onboarded(childComplexity), true
 
 	case "Miner.owner":
 		if e.complexity.Miner.Owner == nil {
@@ -1124,6 +1132,7 @@ type NetworkStats {
 type Miner {
   id: ID!
   claimed: Boolean!
+  onboarded: Boolean
   personalInfo: PersonalInfo @goField(forceResolver: true) # filled by miner
   worker: Worker @goField(forceResolver: true)
   owner: Owner @goField(forceResolver: true)
@@ -2713,6 +2722,38 @@ func (ec *executionContext) _Miner_claimed(ctx context.Context, field graphql.Co
 	res := resTmp.(bool)
 	fc.Result = res
 	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Miner_onboarded(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Miner",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Onboarded, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Miner_personalInfo(ctx context.Context, field graphql.CollectedField, obj *model.Miner) (ret graphql.Marshaler) {
@@ -7038,6 +7079,8 @@ func (ec *executionContext) _Miner(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "onboarded":
+			out.Values[i] = ec._Miner_onboarded(ctx, field, obj)
 		case "personalInfo":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {

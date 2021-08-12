@@ -4,6 +4,7 @@ type JoinedMiner struct {
 	tableName            struct{} `pg:"miners"`
 	ID                   string   `pg:",pk,notnull"`
 	Claimed              bool     `pg:",notnull"`
+	Onboarded            bool
 	Region               string
 	Country              string
 	WorkerID             string
@@ -32,6 +33,7 @@ type JoinedMiner struct {
 type Miner struct {
 	ID                   string `pg:",pk,notnull"`
 	Claimed              bool   `pg:",notnull"`
+	Onboarded            bool
 	Region               string
 	Country              string
 	WorkerID             string

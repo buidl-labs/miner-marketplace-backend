@@ -1389,6 +1389,7 @@ func (r *queryResolver) Miner(ctx context.Context, id string) (*model.Miner, err
 	return &model.Miner{
 		ID:                   dbJoinedMiner.ID,
 		Claimed:              dbJoinedMiner.Claimed,
+		Onboarded:            &dbJoinedMiner.Onboarded,
 		QualityAdjustedPower: dbJoinedMiner.QualityAdjustedPower,
 		ReputationScore:      dbJoinedMiner.ReputationScore,
 		TransparencyScore:    dbJoinedMiner.TransparencyScore,
@@ -1499,6 +1500,7 @@ func (r *queryResolver) Miners(ctx context.Context, first *int, offset *int) ([]
 		miners = append(miners, &model.Miner{
 			ID:                   dbJoinedMiner.ID,
 			Claimed:              dbJoinedMiner.Claimed,
+			Onboarded:            &dbJoinedMiner.Onboarded,
 			QualityAdjustedPower: dbJoinedMiner.QualityAdjustedPower,
 			ReputationScore:      dbJoinedMiner.ReputationScore,
 			TransparencyScore:    dbJoinedMiner.TransparencyScore,

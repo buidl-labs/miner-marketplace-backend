@@ -19,6 +19,7 @@ type NetworkStats {
 type Miner {
   id: ID!
   claimed: Boolean!
+  onboarded: Boolean
   personalInfo: PersonalInfo @goField(forceResolver: true) # filled by miner
   worker: Worker @goField(forceResolver: true)
   owner: Owner @goField(forceResolver: true)
