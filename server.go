@@ -68,6 +68,8 @@ func main() {
 		service.AddressMessages(newDB, node)
 	} else if command == "idx" {
 		service.Indexer(newDB, node)
+	} else if command == "umm" {
+		service.UpdateMinerMessages(newDB, node)
 	} else {
 		// go service.Indexer(newDB, node)
 

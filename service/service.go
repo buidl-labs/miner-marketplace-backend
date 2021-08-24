@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"os"
+	// "os"
 	"strconv"
 	"strings"
 	"time"
@@ -248,7 +248,7 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 	// tillHeight, _ := strconv.Atoi(os.Getenv("TILLHEIGHT"))
 	fmt.Println("MINERS", miners)
 
-	go StorageDeals(DB, node)
+	// go StorageDeals(DB, node)
 	if filRepMiners.Pagination.Total > 0 {
 		// go fetchAddresses(DB, node, filRepMiners)
 		hourlyTasks(DB, node)
@@ -462,11 +462,86 @@ func ComputeTransparencyScore(input gqlmodel.ProfileSettingsInput) int {
 	return int(transparencyScore)
 }
 
+func UpdateMinerMessages(DB *pg.DB, node lens.API) {
+	var dbTransactions []*model.Transaction
+
+	if err := DB.Model(&dbTransactions).
+		// Where("miner_id = 'f0773157' and method_name = 'PublishStorageDeals'").
+		// Where("transaction_type = 'Collateral Deposit' and miner_id = 'f0773157' and method_name != 'ProveCommitSector'").
+		Where("transaction_type = 'Collateral Deposit' and value='0' and method_name != 'PublishStorageDeals' and miner_id != 'f0773157'").
+		Select(); err != nil {
+		fmt.Println("err", err)
+	}
+	fmt.Println("transaction_type = 'Collateral Deposit' and value='0' and method_name != 'PublishStorageDeals' and miner_id != 'f0773157'")
+	fmt.Println("count:", len(dbTransactions))
+	zc := 0
+	for k, v := range dbTransactions {
+		fmt.Println("k", k)
+		fmt.Println("v", v.ID, v.Value)
+		if v.Value == "0" {
+			zc += 1
+		}
+
+		var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
+		// filFoxMessage := new(FilFoxPublishStorageDealsMessage)
+		filFoxMessage := new(FilFoxMessage)
+		util.GetJson(FILFOX_MESSAGE+v.ID, filFoxMessage)
+		time.Sleep(time.Millisecond * 500)
+		// burnFee := "0"
+		// if len(filFoxMessage.Transfers) >= 2 {
+		// 	burnFee = filFoxMessage.Transfers[1].Value
+		// }
+		// value := filFoxMessage.Value
+		// minerFee := filFoxMessage.Fee.MinerTip
+
+		// providerCollateral := big.NewInt(0)
+		// for _, d := range filFoxMessage.DecodedParams.Deals {
+		// 	n := new(big.Int)
+		// 	n, _ = n.SetString(d.Proposal.ProviderCollateral, 10)
+		// 	providerCollateral = new(big.Int).Add(providerCollateral, n)
+		// }
+		// valueBigInt, _ := new(big.Int).SetString(value, 10)
+		// valueBigInt = new(big.Int).Add(valueBigInt, providerCollateral)
+		// value = valueBigInt.String()
+
+		// if value == "" {
+		// 	value = "0"
+		// }
+		// if minerFee == "" {
+		// 	minerFee = "0"
+		// }
+		// if burnFee == "" {
+		// 	burnFee = "0"
+		// }
+
+		_, value, minerFee, burnFee, _, _ := GetMessageAttributes(node, *filFoxMessage)
+		txn := model.Transaction{
+			Value:    value,
+			MinerFee: minerFee,
+			BurnFee:  burnFee,
+		}
+		r, err := DB.Model(&txn).
+			Column("value", "miner_fee", "burn_fee").
+			// Where("miner_id = 'f0773157' and method_name = 'ProveCommitSector' and id = ?", v.ID).
+			Where("id = ?", v.ID).
+			Update()
+		if err != nil {
+			fmt.Println("db update err", err)
+		}
+		fmt.Println("db update res", r)
+	}
+	fmt.Println("zc", zc)
+	// from transactions where miner_id='f0773157' and method_name ='ProveCommitSector' and value='0';
+}
+
 func MinerPageMessages(DB *pg.DB, node lens.API) {
 	// reward
 	// https://filfox.info/api/v1/address/f0152712/transfers?pageSize=5&page=0&type=reward
 
 	// var FILREP_MINER_TRANSFERS="https://filfox.info/api/v1/address/f0152712/transfers?pageSize=5&page=0&type=reward"
+
+	var FILFOX_MINER string = "https://filfox.info/api/v1/address/"
+	var FILFOX_MESSAGE string = "https://filfox.info/api/v1/message/"
 
 	viper.SetConfigType("yaml")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -474,10 +549,74 @@ func MinerPageMessages(DB *pg.DB, node lens.API) {
 	viper.ReadConfig(bytes.NewBuffer(yamlExample))
 
 	miners := viper.GetStringSlice("miners")
-	tillHeight, _ := strconv.Atoi(os.Getenv("TILLHEIGHT"))
+	// tillHeight, _ := strconv.Atoi(os.Getenv("TILLHEIGHT"))
 
 	for _, m := range miners {
-		fetchMinerPageMessages(DB, node, m, true, tillHeight)
+		fmt.Println("xxxminer", m)
+
+		minerMessages := []struct {
+			Cid       string `json:"cid"`
+			Height    int    `json:"height"`
+			Timestamp int    `json:"timestamp"`
+			From      string `json:"from"`
+			To        string `json:"to"`
+			Nonce     int    `json:"nonce"`
+			Value     string `json:"value"`
+			Method    string `json:"method"`
+			Receipt   struct {
+				ExitCode int `json:"exitCode"`
+			} `json:"receipt"`
+		}{}
+		filFoxMinerMessages := new(FilFoxMinerMessages)
+		fmt.Println("url:", FILFOX_MINER+m+"/messages?pageSize=5&page=0")
+		util.GetJson(FILFOX_MINER+m+"/messages?pageSize=5&page=0", filFoxMinerMessages)
+		minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
+
+		totalMinerMessageCount := filFoxMinerMessages.TotalCount
+
+		minerMessagePagesCount := totalMinerMessageCount / 5
+		fmt.Println("minerMessagePagesCount", minerMessagePagesCount)
+		for i := 1; i <= minerMessagePagesCount; i++ {
+			fmt.Println("page", i)
+			fmt.Println("iterminerMessages", len(minerMessages))
+			util.GetJson(FILFOX_MINER+m+"/messages?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxMinerMessages)
+			// minerMessages = append(minerMessages, filFoxMinerMessages.Messages...)
+
+			for _, mr := range filFoxMinerMessages.Messages {
+				// https://filfox.info/api/v1/message/bafy2bzacebo54zcaakbqov2e7shpfvxqugmpgmn4m7mpirsbac6w7jumkra3i
+				filFoxMessage := new(FilFoxMessage)
+				util.GetJson(FILFOX_MESSAGE+mr.Cid, filFoxMessage)
+				time.Sleep(time.Millisecond * 1500)
+				transactionType, value, minerFee, burnFee, _, _ := GetMessageAttributes(node, *filFoxMessage)
+				if value == "" {
+					value = "0"
+				}
+				if minerFee == "" {
+					minerFee = "0"
+				}
+				if burnFee == "" {
+					burnFee = "0"
+				}
+				_, err := DB.Model(&model.Transaction{
+					ID:              mr.Cid,
+					MinerID:         m,
+					Height:          int64(mr.Height),
+					Timestamp:       int64(mr.Timestamp),
+					TransactionType: transactionType,
+					MethodName:      mr.Method,
+					Value:           value,
+					MinerFee:        minerFee,
+					BurnFee:         burnFee,
+					From:            mr.From,
+					To:              mr.To,
+					ExitCode:        mr.Receipt.ExitCode,
+				}).Insert()
+				if err != nil {
+					fmt.Println("minerMessages insert err:", err)
+				}
+			}
+		}
+		// fetchMinerPageMessages(DB, node, m, true, tillHeight)
 		miner := &model.Miner{
 			Onboarded: true,
 		}
