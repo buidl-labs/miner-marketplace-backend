@@ -140,9 +140,12 @@ type ComplexityRoot struct {
 	}
 
 	NetworkStats struct {
-		ActiveMinersCount      func(childComplexity int) int
-		DataStored             func(childComplexity int) int
-		NetworkStorageCapacity func(childComplexity int) int
+		ActiveMinersCount       func(childComplexity int) int
+		AverageDealPrice        func(childComplexity int) int
+		DataStored              func(childComplexity int) int
+		NetworkStorageCapacity  func(childComplexity int) int
+		TopMinerBlockRewards24h func(childComplexity int) int
+		TotalBlockRewards24h    func(childComplexity int) int
 	}
 
 	Owner struct {
@@ -701,6 +704,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.NetworkStats.ActiveMinersCount(childComplexity), true
 
+	case "NetworkStats.averageDealPrice":
+		if e.complexity.NetworkStats.AverageDealPrice == nil {
+			break
+		}
+
+		return e.complexity.NetworkStats.AverageDealPrice(childComplexity), true
+
 	case "NetworkStats.dataStored":
 		if e.complexity.NetworkStats.DataStored == nil {
 			break
@@ -714,6 +724,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.NetworkStats.NetworkStorageCapacity(childComplexity), true
+
+	case "NetworkStats.topMinerBlockRewards24H":
+		if e.complexity.NetworkStats.TopMinerBlockRewards24h == nil {
+			break
+		}
+
+		return e.complexity.NetworkStats.TopMinerBlockRewards24h(childComplexity), true
+
+	case "NetworkStats.totalBlockRewards24H":
+		if e.complexity.NetworkStats.TotalBlockRewards24h == nil {
+			break
+		}
+
+		return e.complexity.NetworkStats.TotalBlockRewards24h(childComplexity), true
 
 	case "Owner.address":
 		if e.complexity.Owner.Address == nil {
@@ -1127,6 +1151,9 @@ type NetworkStats {
   activeMinersCount: Int!
   networkStorageCapacity: String!
   dataStored: String!
+  topMinerBlockRewards24H: String!
+  totalBlockRewards24H: String!
+  averageDealPrice: String!
 }
 
 type Miner {
@@ -3429,6 +3456,111 @@ func (ec *executionContext) _NetworkStats_dataStored(ctx context.Context, field 
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.DataStored, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _NetworkStats_topMinerBlockRewards24H(ctx context.Context, field graphql.CollectedField, obj *model.NetworkStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "NetworkStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TopMinerBlockRewards24h, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _NetworkStats_totalBlockRewards24H(ctx context.Context, field graphql.CollectedField, obj *model.NetworkStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "NetworkStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalBlockRewards24h, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _NetworkStats_averageDealPrice(ctx context.Context, field graphql.CollectedField, obj *model.NetworkStats) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "NetworkStats",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AverageDealPrice, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7320,6 +7452,21 @@ func (ec *executionContext) _NetworkStats(ctx context.Context, sel ast.Selection
 			}
 		case "dataStored":
 			out.Values[i] = ec._NetworkStats_dataStored(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "topMinerBlockRewards24H":
+			out.Values[i] = ec._NetworkStats_topMinerBlockRewards24H(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "totalBlockRewards24H":
+			out.Values[i] = ec._NetworkStats_totalBlockRewards24H(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "averageDealPrice":
+			out.Values[i] = ec._NetworkStats_averageDealPrice(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"os"
+
 	// "os"
 	"strconv"
 	"strings"
@@ -16,6 +18,8 @@ import (
 	gqlmodel "github.com/buidl-labs/miner-marketplace-backend/graph/model"
 	"github.com/buidl-labs/miner-marketplace-backend/util"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/go-pg/pg/v10"
 	"github.com/spf13/viper"
 )
@@ -429,6 +433,30 @@ type FilRepMiners struct {
 	} `json:"pagination"`
 }
 
+type FilFox24H struct {
+	Height    int `json:"height"`
+	Timestamp int `json:"timestamp"`
+	Miners    []struct {
+		Address string `json:"address"`
+		Tag     struct {
+			Name   string `json:"name"`
+			Signed bool   `json:"signed"`
+		} `json:"tag"`
+		BlocksMined         int     `json:"blocksMined"`
+		WeightedBlocksMined int     `json:"weightedBlocksMined"`
+		TotalRewards        string  `json:"totalRewards"`
+		RawBytePower        string  `json:"rawBytePower"`
+		QualityAdjPower     string  `json:"qualityAdjPower"`
+		LuckyValue          float64 `json:"luckyValue"`
+	} `json:"miners"`
+	TipsetCount          int    `json:"tipsetCount"`
+	BlockCount           int    `json:"blockCount"`
+	WeightedBlockCount   int    `json:"weightedBlockCount"`
+	TotalRewards         string `json:"totalRewards"`
+	TotalRawBytePower    string `json:"totalRawBytePower"`
+	TotalQualityAdjPower string `json:"totalQualityAdjPower"`
+}
+
 func ComputeTransparencyScore(input gqlmodel.ProfileSettingsInput) int {
 	transparencyScore := 10.0 // already claimed
 	if input.Name != "" {
@@ -460,6 +488,18 @@ func ComputeTransparencyScore(input gqlmodel.ProfileSettingsInput) int {
 	// 	transparencyScore += 20
 	// }
 	return int(transparencyScore)
+}
+
+func RunCustom(DB *pg.DB, node lens.API) {
+	addr, _ := address.NewFromString(os.Getenv("ADDR"))
+	// ts, _ := node.ChainHead(context.Background())
+	hstr, _ := strconv.Atoi(os.Getenv("HEIGHT"))
+	height := abi.ChainEpoch(hstr)
+	fmt.Println("height", height)
+	ts, _ := node.ChainGetTipSetByHeight(context.Background(), height, types.EmptyTSK)
+	actorState, _ := node.StateReadState(context.Background(), addr, ts.Key())
+	fmt.Println("actorState", actorState)
+	// fmt.Println("actorState.State", actorState.State)
 }
 
 func UpdateMinerMessages(DB *pg.DB, node lens.API) {

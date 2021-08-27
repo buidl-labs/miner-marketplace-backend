@@ -14,6 +14,9 @@ type NetworkStats {
   activeMinersCount: Int!
   networkStorageCapacity: String!
   dataStored: String!
+  topMinerBlockRewards24H: String!
+  totalBlockRewards24H: String!
+  averageDealPrice: String!
 }
 
 type Miner {

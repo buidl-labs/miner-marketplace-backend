@@ -83,9 +83,12 @@ type Miner struct {
 }
 
 type NetworkStats struct {
-	ActiveMinersCount      int    `json:"activeMinersCount"`
-	NetworkStorageCapacity string `json:"networkStorageCapacity"`
-	DataStored             string `json:"dataStored"`
+	ActiveMinersCount       int    `json:"activeMinersCount"`
+	NetworkStorageCapacity  string `json:"networkStorageCapacity"`
+	DataStored              string `json:"dataStored"`
+	TopMinerBlockRewards24h string `json:"topMinerBlockRewards24H"`
+	TotalBlockRewards24h    string `json:"totalBlockRewards24H"`
+	AverageDealPrice        string `json:"averageDealPrice"`
 }
 
 type Owner struct {

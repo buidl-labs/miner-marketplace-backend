@@ -1560,7 +1560,7 @@ func (r *queryResolver) NetworkStats(ctx context.Context) (*model.NetworkStats, 
 	activeMinersCount, err := r.DB.Model(&dbMiners).Count()
 	if err != nil {
 		fmt.Println("couldn't get activeminerscount")
-		activeMinersCount = 2247
+		activeMinersCount = 3500
 	}
 
 	// var FILFOX_STATS_POWER string = "https://filfox.info/api/v1/stats/power"
@@ -1640,10 +1640,42 @@ func (r *queryResolver) NetworkStats(ctx context.Context) (*model.NetworkStats, 
 	dataStoredBigFloat3 := fmt.Sprintf("%.3f PB", dataStoredBigFloat)
 	// fmt.Println("dataStoredBigFloat3", dataStoredBigFloat3)
 
+	var FILFOX_24H = "https://filfox.info/api/v1/miner/top-miners/blocks?count=1&duration=24h"
+	filFox24H := new(service.FilFox24H)
+	util.GetJson(FILFOX_24H, filFox24H)
+	fmt.Println("f24h", filFox24H.Miners[0].TotalRewards, filFox24H.TotalRewards)
+	topMinerBlockRewards24h := filFox24H.Miners[0].TotalRewards
+	totalBlockRewards24h := filFox24H.TotalRewards
+
+	var dbMDPs []*dbmodel.MarketDealProposal
+	var spsum, dealscount int64
+	var spsumStr string
+	err = r.DB.Model(&dbMDPs).
+		ColumnExpr("sum(storage_price::numeric) AS spsum, count(*) AS dealscount").
+		Select(&spsumStr, &dealscount)
+	if err != nil {
+		fmt.Println("couldn't get spsum", err)
+	}
+	fmt.Println("spsum", spsumStr, "dealscount", dealscount)
+	spsumbi := new(big.Int)
+	spsumbi, ok := spsumbi.SetString(spsumStr, 10)
+	if !ok {
+		fmt.Println("SetString: error")
+	}
+	fmt.Println("spsumbi", spsumbi)
+	adpbi := new(big.Int).Div(spsumbi, big.NewInt(dealscount))
+	fmt.Println("adpbi", adpbi)
+	adp := spsum / dealscount
+	adpstr := strconv.Itoa(int(adp))
+	fmt.Println("adpstr", adpstr)
+
 	return &model.NetworkStats{
-		ActiveMinersCount:      activeMinersCount,
-		NetworkStorageCapacity: TotalQualityAdjPowerFloat3,
-		DataStored:             dataStoredBigFloat3,
+		ActiveMinersCount:       activeMinersCount,
+		NetworkStorageCapacity:  TotalQualityAdjPowerFloat3,
+		DataStored:              dataStoredBigFloat3,
+		TopMinerBlockRewards24h: topMinerBlockRewards24h,
+		TotalBlockRewards24h:    totalBlockRewards24h,
+		AverageDealPrice:        adpbi.String(),
 	}, nil
 }
 
