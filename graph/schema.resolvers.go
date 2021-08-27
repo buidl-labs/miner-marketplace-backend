@@ -493,16 +493,19 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+				val = big.NewInt(0)
 			}
 			collateralDeposit = new(big.Int).Add(collateralDeposit, val)
 			expenditure = new(big.Int).Add(expenditure, val)
 			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
 			if !ok {
 				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+				minerFee = big.NewInt(0)
 			}
 			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
 			if !ok {
 				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+				burnFee = big.NewInt(0)
 			}
 			gas = new(big.Int).Add(gas, minerFee)
 			gas = new(big.Int).Add(gas, burnFee)
@@ -517,16 +520,19 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+				val = big.NewInt(0)
 			}
 			penalty = new(big.Int).Add(penalty, val)
 			expenditure = new(big.Int).Add(expenditure, val)
 			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
 			if !ok {
 				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+				minerFee = big.NewInt(0)
 			}
 			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
 			if !ok {
 				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+				burnFee = big.NewInt(0)
 			}
 			gas = new(big.Int).Add(gas, minerFee)
 			gas = new(big.Int).Add(gas, burnFee)
@@ -543,16 +549,19 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+				val = big.NewInt(0)
 			}
 			others = new(big.Int).Add(others, val)
 			expenditure = new(big.Int).Add(expenditure, val)
 			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
 			if !ok {
 				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+				minerFee = big.NewInt(0)
 			}
 			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
 			if !ok {
 				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+				burnFee = big.NewInt(0)
 			}
 			gas = new(big.Int).Add(gas, minerFee)
 			gas = new(big.Int).Add(gas, burnFee)
@@ -566,6 +575,7 @@ func (r *minerResolver) AggregateEarnings(ctx context.Context, obj *model.Miner,
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+				val = big.NewInt(0)
 			}
 			blockRewards = new(big.Int).Add(blockRewards, val)
 			income = new(big.Int).Add(income, val)
@@ -761,16 +771,19 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+				val = big.NewInt(0)
 			}
 			collateralDeposit = new(big.Int).Add(collateralDeposit, val)
 			expenditure = new(big.Int).Add(expenditure, val)
 			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
 			if !ok {
 				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+				minerFee = big.NewInt(0)
 			}
 			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
 			if !ok {
 				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+				burnFee = big.NewInt(0)
 			}
 			gas = new(big.Int).Add(gas, minerFee)
 			gas = new(big.Int).Add(gas, burnFee)
@@ -785,16 +798,19 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+				val = big.NewInt(0)
 			}
 			penalty = new(big.Int).Add(penalty, val)
 			expenditure = new(big.Int).Add(expenditure, val)
 			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
 			if !ok {
 				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+				minerFee = big.NewInt(0)
 			}
 			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
 			if !ok {
 				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+				burnFee = big.NewInt(0)
 			}
 			gas = new(big.Int).Add(gas, minerFee)
 			gas = new(big.Int).Add(gas, burnFee)
@@ -811,16 +827,19 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+				val = big.NewInt(0)
 			}
 			others = new(big.Int).Add(others, val)
 			expenditure = new(big.Int).Add(expenditure, val)
 			minerFee, ok := new(big.Int).SetString(dbTransaction.MinerFee, 10)
 			if !ok {
 				fmt.Println("problem converting minerFee to bigint:", dbTransaction.MinerFee, "id:", dbTransaction.ID)
+				minerFee = big.NewInt(0)
 			}
 			burnFee, ok := new(big.Int).SetString(dbTransaction.BurnFee, 10)
 			if !ok {
 				fmt.Println("problem converting burnFee to bigint:", dbTransaction.BurnFee, "id:", dbTransaction.ID)
+				burnFee = big.NewInt(0)
 			}
 			gas = new(big.Int).Add(gas, minerFee)
 			gas = new(big.Int).Add(gas, burnFee)
@@ -834,6 +853,7 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 			val, ok := new(big.Int).SetString(dbTransaction.Value, 10)
 			if !ok {
 				fmt.Println("problem converting value to bigint:", dbTransaction.Value, "id:", dbTransaction.ID)
+				val = big.NewInt(0)
 			}
 			blockRewards = new(big.Int).Add(blockRewards, val)
 			// income = new(big.Int).Add(income, val)
