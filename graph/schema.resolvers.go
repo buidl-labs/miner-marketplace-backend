@@ -5,6 +5,7 @@ package graph
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -1009,7 +1010,19 @@ func (r *minerResolver) EstimatedEarnings(ctx context.Context, obj *model.Miner,
 	}, nil
 }
 
-func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error) {
+func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.ProfileClaimInput, tokenID string, tokenSecret string) (bool, error) {
+	sha256Digest := sha256.Sum256([]byte(tokenID + ":" + tokenSecret))
+	sha256DigestStr := hex.EncodeToString(sha256Digest[:])
+	fmt.Println("tokenID", tokenID, "tokenSecret", tokenSecret, "sha256DigestStr", sha256DigestStr)
+
+	tokenAuth := dbmodel.TokenAuth{}
+	if err := r.DB.Model(&tokenAuth).Where("id = ?", tokenID).Select(); err != nil {
+		return false, err
+	}
+	if tokenAuth.Digest != sha256DigestStr {
+		return false, fmt.Errorf("auth failed")
+	}
+
 	fmt.Println("i", input.MinerID, "t", reflect.TypeOf(input.MinerID))
 	fmt.Println("j", input.LedgerAddress, "t", reflect.TypeOf(input.LedgerAddress))
 
@@ -1087,7 +1100,19 @@ func (r *mutationResolver) ClaimProfile(ctx context.Context, input model.Profile
 	}
 }
 
-func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileSettingsInput) (bool, error) {
+func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileSettingsInput, tokenID string, tokenSecret string) (bool, error) {
+	sha256Digest := sha256.Sum256([]byte(tokenID + ":" + tokenSecret))
+	sha256DigestStr := hex.EncodeToString(sha256Digest[:])
+	fmt.Println("tokenID", tokenID, "tokenSecret", tokenSecret, "sha256DigestStr", sha256DigestStr)
+
+	tokenAuth := dbmodel.TokenAuth{}
+	if err := r.DB.Model(&tokenAuth).Where("id = ?", tokenID).Select(); err != nil {
+		return false, err
+	}
+	if tokenAuth.Digest != sha256DigestStr {
+		return false, fmt.Errorf("auth failed")
+	}
+
 	dbMiner := dbmodel.Miner{}
 	if err := r.DB.Model(&dbMiner).Where("id = ?", input.MinerID).Select(); err != nil {
 		return false, err
@@ -1219,7 +1244,19 @@ func (r *mutationResolver) EditProfile(ctx context.Context, input model.ProfileS
 	return false, nil
 }
 
-func (r *mutationResolver) VerifyWallet(ctx context.Context, minerID string, walletAddress string, hexMessage string, signature string) (bool, error) {
+func (r *mutationResolver) VerifyWallet(ctx context.Context, minerID string, walletAddress string, hexMessage string, signature string, tokenID string, tokenSecret string) (bool, error) {
+	sha256Digest := sha256.Sum256([]byte(tokenID + ":" + tokenSecret))
+	sha256DigestStr := hex.EncodeToString(sha256Digest[:])
+	fmt.Println("tokenID", tokenID, "tokenSecret", tokenSecret, "sha256DigestStr", sha256DigestStr)
+
+	tokenAuth := dbmodel.TokenAuth{}
+	if err := r.DB.Model(&tokenAuth).Where("id = ?", tokenID).Select(); err != nil {
+		return false, err
+	}
+	if tokenAuth.Digest != sha256DigestStr {
+		return false, fmt.Errorf("auth failed")
+	}
+
 	dbMiner := dbmodel.Miner{}
 	if err := r.DB.Model(&dbMiner).Where("id = ?", minerID).Select(); err != nil {
 		return false, err

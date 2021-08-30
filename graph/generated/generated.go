@@ -134,9 +134,9 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		ClaimProfile func(childComplexity int, input model.ProfileClaimInput) int
-		EditProfile  func(childComplexity int, input model.ProfileSettingsInput) int
-		VerifyWallet func(childComplexity int, minerID string, walletAddress string, hexMessage string, signature string) int
+		ClaimProfile func(childComplexity int, input model.ProfileClaimInput, tokenID string, tokenSecret string) int
+		EditProfile  func(childComplexity int, input model.ProfileSettingsInput, tokenID string, tokenSecret string) int
+		VerifyWallet func(childComplexity int, minerID string, walletAddress string, hexMessage string, signature string, tokenID string, tokenSecret string) int
 	}
 
 	NetworkStats struct {
@@ -283,9 +283,9 @@ type MinerResolver interface {
 	EstimatedEarnings(ctx context.Context, obj *model.Miner, days int, transactionTypes []bool, includeGas bool) (*model.EstimatedEarnings, error)
 }
 type MutationResolver interface {
-	ClaimProfile(ctx context.Context, input model.ProfileClaimInput) (bool, error)
-	EditProfile(ctx context.Context, input model.ProfileSettingsInput) (bool, error)
-	VerifyWallet(ctx context.Context, minerID string, walletAddress string, hexMessage string, signature string) (bool, error)
+	ClaimProfile(ctx context.Context, input model.ProfileClaimInput, tokenID string, tokenSecret string) (bool, error)
+	EditProfile(ctx context.Context, input model.ProfileSettingsInput, tokenID string, tokenSecret string) (bool, error)
+	VerifyWallet(ctx context.Context, minerID string, walletAddress string, hexMessage string, signature string, tokenID string, tokenSecret string) (bool, error)
 }
 type OwnerResolver interface {
 	Miner(ctx context.Context, obj *model.Owner) (*model.Miner, error)
@@ -671,7 +671,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ClaimProfile(childComplexity, args["input"].(model.ProfileClaimInput)), true
+		return e.complexity.Mutation.ClaimProfile(childComplexity, args["input"].(model.ProfileClaimInput), args["tokenID"].(string), args["tokenSecret"].(string)), true
 
 	case "Mutation.editProfile":
 		if e.complexity.Mutation.EditProfile == nil {
@@ -683,7 +683,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.EditProfile(childComplexity, args["input"].(model.ProfileSettingsInput)), true
+		return e.complexity.Mutation.EditProfile(childComplexity, args["input"].(model.ProfileSettingsInput), args["tokenID"].(string), args["tokenSecret"].(string)), true
 
 	case "Mutation.verifyWallet":
 		if e.complexity.Mutation.VerifyWallet == nil {
@@ -695,7 +695,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.VerifyWallet(childComplexity, args["minerID"].(string), args["walletAddress"].(string), args["hexMessage"].(string), args["signature"].(string)), true
+		return e.complexity.Mutation.VerifyWallet(childComplexity, args["minerID"].(string), args["walletAddress"].(string), args["hexMessage"].(string), args["signature"].(string), args["tokenID"].(string), args["tokenSecret"].(string)), true
 
 	case "NetworkStats.activeMinersCount":
 		if e.complexity.NetworkStats.ActiveMinersCount == nil {
@@ -1389,13 +1389,23 @@ enum Sort {
 ####################################
 
 type Mutation {
-  claimProfile(input: ProfileClaimInput!): Boolean! # true: success, false: failure
-  editProfile(input: ProfileSettingsInput!): Boolean! # true: updated, false: failed
+  claimProfile(
+    input: ProfileClaimInput!
+    tokenID: String!
+    tokenSecret: String!
+  ): Boolean! # true: success, false: failure
+  editProfile(
+    input: ProfileSettingsInput!
+    tokenID: String!
+    tokenSecret: String!
+  ): Boolean! # true: updated, false: failed
   verifyWallet(
     minerID: String!
     walletAddress: String!
     hexMessage: String!
     signature: String!
+    tokenID: String!
+    tokenSecret: String!
   ): Boolean! # true: success, false: failure
 }
 
@@ -1549,6 +1559,24 @@ func (ec *executionContext) field_Mutation_claimProfile_args(ctx context.Context
 		}
 	}
 	args["input"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["tokenID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tokenID"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tokenID"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["tokenSecret"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tokenSecret"))
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tokenSecret"] = arg2
 	return args, nil
 }
 
@@ -1564,6 +1592,24 @@ func (ec *executionContext) field_Mutation_editProfile_args(ctx context.Context,
 		}
 	}
 	args["input"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["tokenID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tokenID"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tokenID"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["tokenSecret"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tokenSecret"))
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tokenSecret"] = arg2
 	return args, nil
 }
 
@@ -1606,6 +1652,24 @@ func (ec *executionContext) field_Mutation_verifyWallet_args(ctx context.Context
 		}
 	}
 	args["signature"] = arg3
+	var arg4 string
+	if tmp, ok := rawArgs["tokenID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tokenID"))
+		arg4, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tokenID"] = arg4
+	var arg5 string
+	if tmp, ok := rawArgs["tokenSecret"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tokenSecret"))
+		arg5, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tokenSecret"] = arg5
 	return args, nil
 }
 
@@ -3266,7 +3330,7 @@ func (ec *executionContext) _Mutation_claimProfile(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ClaimProfile(rctx, args["input"].(model.ProfileClaimInput))
+		return ec.resolvers.Mutation().ClaimProfile(rctx, args["input"].(model.ProfileClaimInput), args["tokenID"].(string), args["tokenSecret"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3308,7 +3372,7 @@ func (ec *executionContext) _Mutation_editProfile(ctx context.Context, field gra
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().EditProfile(rctx, args["input"].(model.ProfileSettingsInput))
+		return ec.resolvers.Mutation().EditProfile(rctx, args["input"].(model.ProfileSettingsInput), args["tokenID"].(string), args["tokenSecret"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3350,7 +3414,7 @@ func (ec *executionContext) _Mutation_verifyWallet(ctx context.Context, field gr
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().VerifyWallet(rctx, args["minerID"].(string), args["walletAddress"].(string), args["hexMessage"].(string), args["signature"].(string))
+		return ec.resolvers.Mutation().VerifyWallet(rctx, args["minerID"].(string), args["walletAddress"].(string), args["hexMessage"].(string), args["signature"].(string), args["tokenID"].(string), args["tokenSecret"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

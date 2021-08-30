@@ -129,3 +129,9 @@ type FilfoxMessagesCount struct {
 	AddBalanceMessagesTotalCount            int64  `pg:",use_zero"`
 	DealsTotalCount                         int64  `pg:",use_zero"`
 }
+
+type TokenAuth struct {
+	tableName struct{} `pg:"token_auth"`
+	ID        string   `pg:",pk,notnull"`
+	Digest    string   `pg:",notnull"`
+}
