@@ -171,7 +171,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Miner        func(childComplexity int, id string) int
-		Miners       func(childComplexity int, first *int, offset *int) int
+		Miners       func(childComplexity int, first *int, offset *int, omitZeroQap *bool) int
 		NetworkStats func(childComplexity int) int
 	}
 
@@ -305,7 +305,7 @@ type PricingResolver interface {
 }
 type QueryResolver interface {
 	Miner(ctx context.Context, id string) (*model.Miner, error)
-	Miners(ctx context.Context, first *int, offset *int) ([]*model.Miner, error)
+	Miners(ctx context.Context, first *int, offset *int, omitZeroQap *bool) ([]*model.Miner, error)
 	NetworkStats(ctx context.Context) (*model.NetworkStats, error)
 }
 type ServiceResolver interface {
@@ -845,7 +845,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Miners(childComplexity, args["first"].(*int), args["offset"].(*int)), true
+		return e.complexity.Query.Miners(childComplexity, args["first"].(*int), args["offset"].(*int), args["omitZeroQAP"].(*bool)), true
 
 	case "Query.networkStats":
 		if e.complexity.Query.NetworkStats == nil {
@@ -1139,7 +1139,7 @@ var sources = []*ast.Source{
 
 type Query {
   miner(id: ID!): Miner
-  miners(first: Int, offset: Int): [Miner!]!
+  miners(first: Int, offset: Int, omitZeroQAP: Boolean): [Miner!]!
   networkStats: NetworkStats!
 }
 
@@ -1724,6 +1724,15 @@ func (ec *executionContext) field_Query_miners_args(ctx context.Context, rawArgs
 		}
 	}
 	args["offset"] = arg1
+	var arg2 *bool
+	if tmp, ok := rawArgs["omitZeroQAP"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("omitZeroQAP"))
+		arg2, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["omitZeroQAP"] = arg2
 	return args, nil
 }
 
@@ -4122,7 +4131,7 @@ func (ec *executionContext) _Query_miners(ctx context.Context, field graphql.Col
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Miners(rctx, args["first"].(*int), args["offset"].(*int))
+		return ec.resolvers.Query().Miners(rctx, args["first"].(*int), args["offset"].(*int), args["omitZeroQAP"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

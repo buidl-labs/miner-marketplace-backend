@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	mineractor "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/v4/actors/util/smoothing"
+	"github.com/go-pg/pg/v10/orm"
 )
 
 func (r *aggregateEarningsResolver) Income(ctx context.Context, obj *model.AggregateEarnings) (*model.AggregateIncome, error) {
@@ -1489,9 +1490,10 @@ func (r *queryResolver) Miner(ctx context.Context, id string) (*model.Miner, err
 	}, nil
 }
 
-func (r *queryResolver) Miners(ctx context.Context, first *int, offset *int) ([]*model.Miner, error) {
+func (r *queryResolver) Miners(ctx context.Context, first *int, offset *int, omitZeroQap *bool) ([]*model.Miner, error) {
 	var _first = 100
 	var _offset = 0
+	var _omitZeroQap = true
 
 	if first != nil {
 		_first = *first
@@ -1499,56 +1501,29 @@ func (r *queryResolver) Miners(ctx context.Context, first *int, offset *int) ([]
 	if offset != nil {
 		_offset = *offset
 	}
-
-	// var dbMiners []*dbmodel.Miner
-	var dbJoinedMiners []*dbmodel.JoinedMiner
-	// if err := r.DB.Model(&dbMiners).
-	// 	Join("natural join miner_services").
-	// 	Join("natural join miner_personal_infos").
-	// 	// OrderExpr("id ASC").
-	// 	Limit(_first).
-	// 	Offset(_offset).
-	// 	Select(&dbJoinedMiners); err != nil {
-	// 	return []*model.Miner{}, err
-	// }
-	// dbMiner := dbmodel.Miner{}
-	// dbJoinedMiner := dbmodel.JoinedMiner{}
-	// var id1, reg1, cou1, wi1, wa1, oi1, oa1, qap1, sap1, vap1, rap1, name, bio, em, web, twt, slk string
-	// var cl1, srg1, ret1, rep1, dton, dtof bool
-	// var rs1, ts1 int
-	result, err := r.DB.Query(&dbJoinedMiners, "select * from miners natural join miner_services natural join miner_personal_infos limit "+fmt.Sprint(_first)+" offset "+fmt.Sprint(_offset))
-	if err != nil {
-		fmt.Println("queryerr", err)
+	if omitZeroQap != nil {
+		_omitZeroQap = *omitZeroQap
 	}
 
-	// var dbMiners []*dbmodel.Miner
-	// if err := r.DB.Model(&dbMiners).
-	// 	OrderExpr("id ASC").
-	// 	Limit(_first).
-	// 	Offset(_offset).
-	// 	Select(); err != nil {
-	// 	return []*model.Miner{}, err
-	// }
-	// var minerPersonalInfos []*dbmodel.MinerPersonalInfo
-	// if err := r.DB.Model(&minerPersonalInfos).
-	// 	OrderExpr("id ASC").
-	// 	Limit(_first).
-	// 	Offset(_offset).
-	// 	Select(); err != nil {
-	// 	return []*model.Miner{}, err
-	// }
-	// var dbMinerServices []*dbmodel.MinerService
-	// if err := r.DB.Model(&dbMinerServices).
-	// 	OrderExpr("id ASC").
-	// 	Limit(_first).
-	// 	Offset(_offset).
-	// 	Select(); err != nil {
-	// 	return []*model.Miner{}, err
-	// }
+	var dbJoinedMiners []*dbmodel.JoinedMiner
 
-	// if !(len(dbMiners) == len(dbMinerServices) && len(dbMinerServices) == len(minerPersonalInfos)) {
-	// 	return []*model.Miner{}, nil
-	// }
+	var result orm.Result
+	var err error
+	if _omitZeroQap {
+		result, err = r.DB.Query(
+			&dbJoinedMiners,
+			"select * from miners natural join miner_services natural join miner_personal_infos where quality_adjusted_power != '0' limit "+
+				fmt.Sprint(_first)+" offset "+fmt.Sprint(_offset),
+		)
+		if err != nil {
+			fmt.Println("queryerr", err)
+		}
+	} else {
+		result, err = r.DB.Query(&dbJoinedMiners, "select * from miners natural join miner_services natural join miner_personal_infos limit "+fmt.Sprint(_first)+" offset "+fmt.Sprint(_offset))
+		if err != nil {
+			fmt.Println("queryerr", err)
+		}
+	}
 
 	fmt.Println("LENGTHdbJoinedMiners", len(dbJoinedMiners), "res", result)
 
@@ -1563,24 +1538,11 @@ func (r *queryResolver) Miners(ctx context.Context, first *int, offset *int) ([]
 			TransparencyScore:    dbJoinedMiner.TransparencyScore,
 			PersonalInfo: &model.PersonalInfo{
 				Name: dbJoinedMiner.Name,
-				// Bio:     dbJoinedMiner.Bio,
-				// Email:   dbJoinedMiner.Email,
-				// Website: dbJoinedMiner.Website,
-				// Twitter: dbJoinedMiner.Twitter,
-				// Slack:   dbJoinedMiner.Slack,
 			},
 			Location: &model.Location{
 				Region:  dbJoinedMiner.Region,
 				Country: dbJoinedMiner.Country,
 			},
-			// Worker: &model.Worker{
-			// 	ID: dbJoinedMiner.WorkerID,
-			// 	Address: dbJoinedMiner.WorkerAddress,
-			// },
-			// Owner: &model.Owner{
-			// 	ID: dbJoinedMiner.OwnerID,
-			// 	Address: dbJoinedMiner.OwnerAddress,
-			// },
 			Service: &model.Service{
 				ServiceTypes: &model.ServiceTypes{
 					Storage:   dbJoinedMiner.Storage,
@@ -1594,20 +1556,10 @@ func (r *queryResolver) Miners(ctx context.Context, first *int, offset *int) ([]
 			},
 			Pricing: &model.Pricing{
 				StorageAskPrice: dbJoinedMiner.StorageAskPrice,
-				// RetrievalAskPrice: dbJoinedMiner.RetrievalAskPrice,
-				// VerifiedAskPrice: dbJoinedMiner.VerifiedAskPrice,
 			},
 		})
 	}
-	// for _, dbMiner := range dbMiners {
-	// 	miners = append(miners, &model.Miner{
-	// 		ID:                   dbMiner.ID,
-	// 		Claimed:              dbMiner.Claimed,
-	// 		QualityAdjustedPower: dbMiner.QualityAdjustedPower,
-	// 		ReputationScore:      dbMiner.ReputationScore,
-	// 		TransparencyScore:    dbMiner.TransparencyScore,
-	// 	})
-	// }
+
 	return miners, nil
 }
 

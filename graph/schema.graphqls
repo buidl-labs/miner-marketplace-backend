@@ -2,7 +2,7 @@
 
 type Query {
   miner(id: ID!): Miner
-  miners(first: Int, offset: Int): [Miner!]!
+  miners(first: Int, offset: Int, omitZeroQAP: Boolean): [Miner!]!
   networkStats: NetworkStats!
 }
 
