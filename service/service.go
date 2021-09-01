@@ -1336,7 +1336,7 @@ func StorageDeals(DB *pg.DB, node lens.API) {
 		} `json:"providerTag,omitempty"`
 	}{}
 	filFoxDealsList := new(FilFoxDealsList)
-	util.GetJson(FILFOX_DEAL+"/list?pageSize=5&page=0", filFoxDealsList)
+	util.GetJson(FILFOX_DEAL+"/list?pageSize=100&page=0", filFoxDealsList)
 
 	deals = append(deals, filFoxDealsList.Deals...)
 
@@ -1355,12 +1355,12 @@ func StorageDeals(DB *pg.DB, node lens.API) {
 	var pages int
 	if err == nil && db_deals_total_count < int64(totalDealsCount) {
 		diff = int64(totalDealsCount) - db_deals_total_count
-		pages = int(diff) / 5
+		pages = int(diff) / 100
 		fmt.Println("case1 diff", diff, "pages", pages)
 		for i := 0; i <= pages; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterdeals", len(deals))
-			util.GetJson(FILFOX_DEAL+"/list?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxDealsList)
+			util.GetJson(FILFOX_DEAL+"/list?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxDealsList)
 			// if db_deals_total_count != int64(totalDealsCount) {
 			for _, d := range filFoxDealsList.Deals {
 				_, err := DB.Model(&model.MarketDealProposal{
@@ -1397,12 +1397,12 @@ func StorageDeals(DB *pg.DB, node lens.API) {
 			// deals = append(deals, filFoxDealsList.Deals...)
 		}
 	} else if db_deals_total_count != int64(totalDealsCount) {
-		dealsListPagesCount := totalDealsCount / 5
+		dealsListPagesCount := totalDealsCount / 100
 		fmt.Println("dealsListPagesCount", dealsListPagesCount)
 		for i := 0; i <= dealsListPagesCount; i++ {
 			fmt.Println("page", i)
 			fmt.Println("iterdeals", len(deals))
-			util.GetJson(FILFOX_DEAL+"/list?pageSize=5&page="+fmt.Sprintf("%d", i), filFoxDealsList)
+			util.GetJson(FILFOX_DEAL+"/list?pageSize=100&page="+fmt.Sprintf("%d", i), filFoxDealsList)
 			// if db_deals_total_count != int64(totalDealsCount) {
 			for _, d := range filFoxDealsList.Deals {
 				_, err := DB.Model(&model.MarketDealProposal{
