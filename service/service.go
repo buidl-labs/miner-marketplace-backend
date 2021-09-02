@@ -252,7 +252,7 @@ func dailyTasks(DB *pg.DB, node lens.API) {
 	// tillHeight, _ := strconv.Atoi(os.Getenv("TILLHEIGHT"))
 	fmt.Println("MINERS", miners)
 
-	// go StorageDeals(DB, node)
+	StorageDeals(DB, node)
 	if filRepMiners.Pagination.Total > 0 {
 		// go fetchAddresses(DB, node, filRepMiners)
 		hourlyTasks(DB, node)
